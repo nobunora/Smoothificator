@@ -1,56 +1,64 @@
 # Plugin Requirements — Stock Orca Printable Architecture
 
-## Orca version
-Target Orca builds with Python Plugin System and SlicingPipeline. Official docs currently state Nightly or releases > 2.4.2. Pin exact tested versions because SlicingPipeline is experimental.
+## Orca
+Target builds with Python Plugin System + SlicingPipeline (officially Nightly or releases > 2.4.2). Pin exact tested versions.
 
 ## Capabilities
-Plugin package MUST provide:
-1. SlicingPipeline capability:
-   - posContouring analyzer
-   - psGCodePostProcess injector
-2. Script/UI-safe capability:
-   - open/refresh plugin preview and diagnostics from copied PlanStore data
+One plugin package registers multiple capabilities:
 
-Never call orca.host.ui.* from SlicingPipeline execute().
+1. SlicingPipeline capability
+   - posSimplifyPath Analyzer
+   - psGCodePostProcess Injector
+2. Script capability
+   - preview/diagnostics on UI thread
 
-## Why stock Orca is sufficient
-Geometry hooks expose enough data to calculate source geometry, post-ZAA 3D paths, bead surface, residual error and optimized SubEdgePlan.
+Official Orca supports multiple capabilities per plugin package.
 
-psGCodePostProcess officially exposes the working exported G-code path for in-place editing.
+## Thread rules
+SlicingPipeline execution is not a UI entrypoint. Never call orca.host.ui.* there.
 
-Therefore v1 prints arbitrary-Z sub-edges by translating the already-computed geometry plan into validated G-code, not by mutating Orca's read-only perimeter graph.
+Script capability runs on the main/UI thread and may create the preview window, but must keep heavy work outside UI.
 
-## Preview
-Orca standard G-code viewer uses pre-post-process G-code and will not display injected paths.
+## Current-session state
+Capability/module state exists for the plugin load lifetime, but live slicing graph objects do not.
 
-The plugin MUST provide a separate preview based on the exact immutable SubEdgePlan used for injection.
+Use a shared thread-safe module/application PlanStore containing copied immutable plans/runtime records only.
 
-UI status MUST distinguish planned vs injection-validated state.
+Fresh slice is mandatory before first printable injection after plugin load/reload.
 
-## Cross-hook state
-ctx.print/ctx.object do not exist at psGCodePostProcess and live references expire after geometry execute().
+## v1 printable gates
+- one printable object
+- one printable instance
+- one ModelPart volume
+- no modifier/negative volume
+- one tool/extruder
+- no other active slicing-pipeline capability
+- classic post_process empty
+- supported G-code dialect/profile
+- validated coordinate transform
+- plan generated in current session
+- non-crossing outward/top-facing target region
 
-The analyzer MUST copy all data and store immutable plans in a thread-safe PlanStore. Injector may only consume a matching stored plan.
+Unsupported => analysis-only or injection skipped.
 
-No geometry reconstruction from final G-code is permitted when a plan is missing.
+## Post-process execution
+psGCodePostProcess edits ctx.gcode_path after classic scripts.
 
-## G-code safety
-Injector must be parser/state-machine based, all-or-nothing, idempotent and atomic.
+Because v1 forbids classic scripts/other slicing-pipeline capabilities, the validated Orca file is the only mutation target.
 
-Unsupported dialect/state/anchor => skip and preserve original output.
+The injector uses streaming parse/validation and temp-file emission, then atomic same-directory replacement.
 
-## Plugin packaging
-Target a pure-Python wheel. Do not require platform-specific compiled extensions for v1.
+## Standard preview limitation
+Orca standard G-code viewer maps the pre-post-process file.
 
-## First supported domain
-- stock supported Orca
-- 0.4 mm nozzle
-- PLA first
-- single tool/extruder
-- outward/top-facing non-crossing surfaces
-- default min Z spacing 0.08 mm
-- ZAA-first where available
-- no downward-facing reconstruction
+Plugin Script capability provides a separate preview from the exact plan hash.
+
+## Dependencies
+Target pure-Python wheel.
+
+NumPy is required for mesh/path arrays.
+
+Avoid mandatory compiled geometry dependencies in v1. Orca-backed planar geometry operations may be accessed through an abstract adapter/port during the live hook, with copied results returned to the engine.
 
 ## Compatibility
-Each release MUST declare tested Orca versions/profiles. Unknown Orca/plugin API changes default to analysis-only or injection-disabled behavior, never best-effort mutation.
+Unknown Orca/API/dialect changes default to injection disabled, never best-effort mutation.
