@@ -2,40 +2,36 @@
 
 Upstream: TengerTechnologies/Smoothificator
 
-## Current behavior
-The original Smoothificator is a G-code post-processing script. It identifies external-perimeter/outer-wall blocks and repeats them at additional Z values.
+## Upstream behavior
+Smoothificator is a final-G-code post-processing script. It detects external perimeter/outer-wall blocks and repeats the same XY path at additional equally spaced Z values, dividing extrusion among passes.
 
-The fixed-height version:
-- reads base layer height from G-code comments
-- computes a pass count from base height / requested outer height
-- divides the base height evenly
-- duplicates the same XY outer-wall path
-- divides extrusion by pass count
-- inserts explicit Z and return-to-start travel moves
+Adaptive variant chooses an integer equal subdivision closest to requested outer-wall height.
 
-The adaptive version additionally:
-- reads ;LAYER_CHANGE and ;HEIGHT
-- reads min_layer_height when no explicit target is supplied
-- evaluates floor/ceil integer pass counts
-- selects the equal pass height closest to the requested target
+## Useful inheritance
+This fork retains:
+- GPL lineage
+- proof that post-generated G-code can be altered for outer-wall refinement
+- Orca/Prusa marker knowledge
+- baseline tests/concepts for outer-only refinement
 
-## Limitations relative to this fork's target
-1. It operates after geometry/path generation.
-2. It does not measure error against the source model.
-3. Added Z positions are equally spaced.
-4. Repeated passes use the same XY contour.
-5. It does not reconstruct the true intermediate model contour.
-6. It has no finite-bead geometric optimizer.
-7. It does not perform general 3D nozzle-clearance analysis.
-8. Print-time/quality tradeoff is implicit rather than optimized.
+## What is NOT reused as architecture
+- regex-driven geometry decisions
+- identical XY repeated at equal Z
+- target fixed outer layer height
+- pass-count-only optimization
+- G-code as the source of geometric truth
 
-## What this fork changes
-The fork keeps Smoothificator as its conceptual and licensing starting point but moves the target architecture upstream into OrcaSlicer's slicing geometry pipeline.
+## Current fork architecture
+Geometry decisions happen while source mesh and finalized post-ZAA/post-simplification paths are available at Orca posSimplifyPath.
 
-The defining change is:
+The resulting immutable SubEdgePlan is later translated into final G-code at psGCodePostProcess.
 
-Legacy:
-target outer layer height -> integer equal passes -> duplicate XY path
+Therefore the architecture is hybrid:
 
-New:
-model-vs-baseline error -> optimize arbitrary intermediate Z contours -> extract local surface-only sub-edges -> validate -> normal path generation
+source mesh + Orca toolpath -> error/optimization -> immutable plan
+final G-code + matching plan -> validated execution
+
+G-code post-processing is execution only, not geometry inference.
+
+## Major additional difference
+Added sub-edges are extra material. The optimizer includes lower/upper structural beads and candidate flow in a finite-bead final-surface model to prevent naive overfill.
