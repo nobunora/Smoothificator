@@ -99,3 +99,19 @@ On mandatory validation failure, original Orca output MUST remain unchanged.
 - multimaterial/tool-change injection
 - intentional collision smoothing
 - claiming standard Orca preview includes injected paths
+
+
+## Architecture quality requirements
+The implementation MUST follow the responsibility/dependency rules in [ARCHITECTURE.md](ARCHITECTURE.md).
+
+Required properties:
+- domain algorithms are independent of Orca and G-code syntax;
+- Orca live-data access is isolated to an adapter boundary;
+- Preview and Injector are consumers of the same immutable plan, never producers;
+- G-code execution is isolated from geometry optimization;
+- configuration is mapped once into a validated settings object;
+- public cross-boundary data is immutable;
+- expected failures use stable typed reason codes;
+- architecture/safety changes require ADR review before code changes.
+
+The design goal is change locality: modifying one algorithm or external integration SHOULD NOT require unrelated safety-critical modules to change.
