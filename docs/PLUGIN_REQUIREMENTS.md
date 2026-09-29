@@ -1,74 +1,56 @@
-# Plugin Requirements and Compatibility
+# Plugin Requirements — Stock Orca Printable Architecture
 
-## Minimum Orca requirement
-The project targets OrcaSlicer builds containing the Python Plugin System and SlicingPipeline API.
+## Orca version
+Target Orca builds with Python Plugin System and SlicingPipeline. Official docs currently state Nightly or releases > 2.4.2. Pin exact tested versions because SlicingPipeline is experimental.
 
-Official documentation currently states:
-- Nightly builds, or
-- releases greater than 2.4.2.
+## Capabilities
+Plugin package MUST provide:
+1. SlicingPipeline capability:
+   - posContouring analyzer
+   - psGCodePostProcess injector
+2. Script/UI-safe capability:
+   - open/refresh plugin preview and diagnostics from copied PlanStore data
 
-Because SlicingPipeline is experimental, exact supported Orca versions must be pinned per plugin release.
+Never call orca.host.ui.* from SlicingPipeline execute().
 
-## Stock-Orca capability today
-A stock compatible Orca can run a read-only/research version that:
-- reads source mesh/model data
-- reads layers and surfaces
-- reads 3D extrusion paths after ZAA
-- reads width/height/flow
-- computes residual error
-- computes and visualizes/logs proposed sub-edges
+## Why stock Orca is sufficient
+Geometry hooks expose enough data to calculate source geometry, post-ZAA 3D paths, bead surface, residual error and optimized SubEdgePlan.
 
-It cannot currently inject arbitrary-Z new extrusion paths using the public Python API.
+psGCodePostProcess officially exposes the working exported G-code path for in-place editing.
 
-## Requirement for working Sub-Edge printing
-One of the following must be true:
+Therefore v1 prints arbitrary-Z sub-edges by translating the already-computed geometry plan into validated G-code, not by mutating Orca's read-only perimeter graph.
 
-### Preferred
-Orca upstream exposes a safe sub-edge/path insertion binding.
+## Preview
+Orca standard G-code viewer uses pre-post-process G-code and will not display injected paths.
 
-### Development
-Use a custom Orca build containing this repository's small C++/pybind extension.
+The plugin MUST provide a separate preview based on the exact immutable SubEdgePlan used for injection.
 
-### Not preferred
-Post-process final G-code. This remains a debugging fallback only and is not the target architecture.
+UI status MUST distinguish planned vs injection-validated state.
 
-## Required binding behavior
-The extension must:
-- accept copied Python path specifications
-- validate geometry and extrusion parameters
-- insert paths into an Orca-owned graph
-- preserve preview/export
-- maintain required caches/invariants
-- preserve deterministic lower-Z-first grouping
-- reject invalid stages
-- fail atomically
+## Cross-hook state
+ctx.print/ctx.object do not exist at psGCodePostProcess and live references expire after geometry execute().
 
-## Plugin package
-Target: pure-Python wheel.
+The analyzer MUST copy all data and store immutable plans in a thread-safe PlanStore. Injector may only consume a matching stored plan.
 
-Why:
-- project is multi-module
-- easier version/dependency metadata
-- avoids platform-specific native Python wheels
-- native mutation belongs in Orca's C++ API, not a hidden second ABI layer
+No geometry reconstruction from final G-code is permitted when a plan is missing.
 
-## Runtime checks
-At plugin start:
-1. verify Orca version
-2. verify SlicingPipeline API
-3. verify required insertion binding and version
-4. inspect ZAA state
-5. verify required geometry attributes
-6. if injection unavailable, enter analysis-only mode rather than modifying G-code
+## G-code safety
+Injector must be parser/state-machine based, all-or-nothing, idempotent and atomic.
 
-## First supported print domain
+Unsupported dialect/state/anchor => skip and preserve original output.
+
+## Plugin packaging
+Target a pure-Python wheel. Do not require platform-specific compiled extensions for v1.
+
+## First supported domain
+- stock supported Orca
 - 0.4 mm nozzle
-- PLA calibration profile
-- outward/top-facing slopes
-- non-crossing sub-edges
-- default min adjacent Z spacing 0.08 mm
+- PLA first
+- single tool/extruder
+- outward/top-facing non-crossing surfaces
+- default min Z spacing 0.08 mm
+- ZAA-first where available
 - no downward-facing reconstruction
-- ZAA-first when applicable
 
-## Compatibility philosophy
-Never silently approximate a missing capability. If an Orca update changes graph semantics or invalidates the insertion API, disable modification and report incompatibility.
+## Compatibility
+Each release MUST declare tested Orca versions/profiles. Unknown Orca/plugin API changes default to analysis-only or injection-disabled behavior, never best-effort mutation.
