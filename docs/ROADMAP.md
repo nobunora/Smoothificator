@@ -7,6 +7,18 @@
 - immutable plan/preview/injection contract
 - parser safety and all-or-nothing requirements
 
+## Phase 0.5 — architecture skeleton and contract tests
+Before algorithms:
+- create package/module skeleton from ARCHITECTURE.md
+- frozen domain dataclasses and typed errors
+- settings validation boundary
+- canonical plan serializer/hash
+- import-boundary tests
+- PlanStore interface tests
+- no Orca/G-code implementation yet
+
+Exit: dependency-boundary tests pass and later phases can implement behind stable interfaces.
+
 ## Phase 1 — standalone reference engine
 Implement analytic/mesh error model, finite bead model, arbitrary multi-sub-edge optimization, deterministic SubEdgePlan and tests.
 
