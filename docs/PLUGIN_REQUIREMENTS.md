@@ -1,64 +1,72 @@
 # Plugin Requirements — Stock Orca Printable Architecture
 
 ## Orca
-Target builds with Python Plugin System + SlicingPipeline (officially Nightly or releases > 2.4.2). Pin exact tested versions.
+Target Orca builds with Python Plugin System + SlicingPipeline. Pin exact tested version/build because the API is experimental.
 
 ## Capabilities
-One plugin package registers multiple capabilities:
-
-1. SlicingPipeline capability
+One package registers:
+1. SlicingPipeline
    - posSimplifyPath Analyzer
    - psGCodePostProcess Injector
 2. Script capability
-   - preview/diagnostics on UI thread
+   - Preview/diagnostics on UI thread
 
-Official Orca supports multiple capabilities per plugin package.
+Never call host UI from SlicingPipeline execution.
 
-## Thread rules
-SlicingPipeline execution is not a UI entrypoint. Never call orca.host.ui.* there.
+## Shared state
+PlanStore is plugin-owned, thread-safe, process-local.
 
-Script capability runs on the main/UI thread and may create the preview window, but must keep heavy work outside UI.
+Live Orca objects never enter PlanStore.
 
-## Current-session state
-Capability/module state exists for the plugin load lifetime, but live slicing graph objects do not.
+Fresh slice in current plugin load is required for Injection.
 
-Use a shared thread-safe module/application PlanStore containing copied immutable plans/runtime records only.
-
-Fresh slice is mandatory before first printable injection after plugin load/reload.
-
-## v1 printable gates
-- one printable object
-- one printable instance
+## Printable v1 model gates
+- one object
+- one instance
 - one ModelPart volume
-- no modifier/negative volume
-- one tool/extruder
-- no other active slicing-pipeline capability
+- no NegativeVolume/ParameterModifier
+- no support/raft
+- nested top-facing target
+- validated coordinate frame
+
+## Printable v1 process gates
+- one tool/material
+- 0.4 mm nozzle initial target
+- relative E
+- firmware retraction off
+- arc fitting off
+- line number/checksum mode off
+- spiral vase off
+- ironing off
+- scarf seam off
+- no other slicing-pipeline capability
 - classic post_process empty
-- supported G-code dialect/profile
-- validated coordinate transform
-- plan generated in current session
-- non-crossing outward/top-facing target region
 
-Unsupported => analysis-only or injection skipped.
+## Initial printer profile family
+Current stock Bambu/Orca A1, P1P/P1S and X1 Carbon 0.4 mm profile family is the first Golden-G-code target.
 
-## Post-process execution
-psGCodePostProcess edits ctx.gcode_path after classic scripts.
+Current inspected layer-change template contains motion-neutral M73/M991 notifications and before-layer code is empty through the inspected inheritance chain.
 
-Because v1 forbids classic scripts/other slicing-pipeline capabilities, the validated Orca file is the only mutation target.
+Profile/template hashes and config are revalidated per Orca release.
 
-The injector uses streaming parse/validation and temp-file emission, then atomic same-directory replacement.
+## Geometry dependencies
+NumPy required.
 
-## Standard preview limitation
-Orca standard G-code viewer maps the pre-post-process file.
+Avoid mandatory external compiled polygon libraries in v1.
 
-Plugin Script capability provides a separate preview from the exact plan hash.
+Planar boolean/offset operations use a domain port; Orca-backed geometry implementation may be used during the live hook and must return copied domain data.
 
-## Dependencies
-Target pure-Python wheel.
+## Nozzle model
+Physical Injection requires validated nozzle-envelope parameters/safety margin.
 
-NumPy is required for mesh/path arrays.
+If unavailable, Analyzer/Preview may operate but Injector remains disabled.
 
-Avoid mandatory compiled geometry dependencies in v1. Orca-backed planar geometry operations may be accessed through an abstract adapter/port during the live hook, with copied results returned to the engine.
+## Preview
+Standard Orca G-code viewer is pre-post-process.
 
-## Compatibility
-Unknown Orca/API/dialect changes default to injection disabled, never best-effort mutation.
+Plugin Preview displays the exact immutable plan and runtime Injection status.
+
+## Post-process
+Injector edits ctx.gcode_path only after full validation.
+
+Unknown profile/API/dialect/state defaults to Injection disabled.
