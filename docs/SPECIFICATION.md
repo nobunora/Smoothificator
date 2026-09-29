@@ -1,58 +1,93 @@
 # Adaptive Sub-Edge Surface Reconstruction — Specification
 
 ## Goal
-Reconstruct sloped/curved FDM outer surfaces more accurately without reducing the layer height of the complete part.
+Extend OrcaSlicer's Z Anti-Aliasing (ZAA / Z Contouring) with a second, error-driven reconstruction stage.
 
-The slicer's ordinary layers remain the structural baseline. Additional outer-surface paths ("sub-edges") are inserted only where geometric error warrants them.
+The system first takes the low-cost quality improvement available from ZAA. It then measures the remaining difference between the predicted printable surface and the ideal model. Only regions that still exceed the requested tolerance receive additional outer-surface paths ("sub-edges").
 
-## Core principle
-This project is **error-driven**, not fixed-pitch.
+The objective is not to replace ZAA or beat it on print time. It is to exceed the geometric quality ceiling of ZAA with the minimum necessary additional extrusion.
 
-For a base interval from Z0 to Z1 with height h = Z1-Z0, the optimizer may select zero, one, or multiple intermediate paths:
+## Pipeline
+Baseline slicing -> ZAA -> finite-bead surface prediction -> residual error -> adaptive sub-edge -> validation -> G-code
+
+1. Orca produces baseline layer/perimeter geometry.
+2. ZAA runs normally where eligible.
+3. Build a finite-width predicted surface from post-ZAA paths.
+4. Compare that surface with the source model.
+5. If error is within tolerance, do nothing.
+6. Otherwise generate candidate intermediate model contours.
+7. Add the lowest-cost set of sub-edges satisfying the target.
+8. Re-evaluate the surface and pass accepted paths downstream.
+
+## Error-driven, not fixed-pitch
+For a structural interval Z0..Z1, the optimizer may select:
 
 Z0 < z1 < z2 < ... < zk < Z1
 
-The intermediate heights do not need to be equally spaced.
+Each z_i is an independent optimization variable. Equal spacing and fixed 1/2 or 1/3 subdivisions are not required.
 
-### Hard Z-spacing constraint
-For the initial 0.4 mm nozzle target:
+## Z constraints
+Initial 0.4 mm nozzle target:
+- configurable minimum adjacent printed-surface-path Z spacing: 0.08 mm
+- monotonic accepted Z order
+- no crossing between accepted sub-edge contours
+- minimum spacing becomes a calibratable machine/material/nozzle profile value
 
-- minimum adjacent printed surface-path Z spacing: 0.08 mm
-- maximum spacing: the slicer-selected base interval
-- the 0.08 mm value is a configurable safety constraint, not a mathematical constant
+0.08 mm is an initial engineering constraint, not a universal constant.
 
-Therefore a 0.24 mm base interval may use, for example, 0.08/0.16 mm, but may also use non-uniform positions such as 0.09/0.17 mm if those positions reduce surface error and all spacing constraints are satisfied.
+## Ordering and collision model
+For non-crossing contours with z_A < z_B < z_C, print A -> B -> C. This intentionally mirrors ordinary bottom-to-top FDM layering.
+
+Sub-edge/sub-edge collision is therefore not inherently expected for monotonic non-crossing geometry. Validation focuses on:
+- real bead height exceeding the model
+- inward/concave geometry reducing nozzle-body clearance
+- insufficient support/contact
+- travel across printed geometry
+- seam blobs/local over-extrusion
+
+Hard nozzle-body collisions are forbidden.
 
 ## Optimization objective
-For each candidate surface region, minimize a cost such as:
+Minimize:
 
-J = w_max E_max + w_rms E_rms + w_path C_path + w_time C_time
+J = w_max E_max + w_rms E_rms + w_path C_path + w_time C_time + w_material C_material
 
-where:
-- E_max: maximum signed/absolute surface-normal error
-- E_rms: RMS surface-normal error
-- C_path: added extrusion/path complexity
-- C_time: estimated print-time penalty
+where E_max/E_rms are surface-normal error metrics and the remaining terms penalize added complexity, time and material.
 
-Primary quality metric is distance to the ideal model measured approximately along the local surface normal, not Z error alone.
+A quality mode may instead impose E_max <= user_tolerance and minimize added cost subject to that constraint.
+
+## ZAA relationship
+ZAA changes Z coordinates of existing eligible extrusion points and is highly time-efficient.
+
+Adaptive Sub-Edge has a larger solution space because it may add new contours/material. It runs only after ZAA residual error justifies that cost.
+
+Expected strengths over ZAA-only:
+- lower attainable geometric error where moving existing paths is insufficient
+- reconstruction of missing intermediate surface geometry
+- explicit tolerance-driven quality control
+- future outer-silhouette/side-wall treatment
+- constant-Z deposition within each added contour
+
+Expected cost:
+- additional extrusion and print time
 
 ## Required behavior
-1. Analyze the ideal model surface and the baseline sliced geometry.
-2. Estimate the error produced by the baseline layer geometry.
-3. Leave regions below the error threshold unchanged.
-4. For regions above threshold, generate candidate intermediate contours at free Z positions.
-5. Allow multiple intermediate contours in one base-layer interval.
-6. Optimize each intermediate Z independently subject to minimum spacing.
-7. Extract only the surface material/path required for reconstruction; do not print a complete intermediate layer.
-8. Re-evaluate geometric error after adding candidates.
-9. Select the lowest-cost candidate satisfying configured error limits.
-10. Pass the resulting geometry to normal OrcaSlicer path generation where practical.
+1. Preserve Orca structural layer decisions.
+2. Prefer post-ZAA geometry as the baseline.
+3. Estimate post-ZAA printable-surface error.
+4. Leave compliant regions untouched.
+5. Generate true model cross-sections at candidate Z values where possible.
+6. Permit multiple non-uniform sub-edges.
+7. Optimize each Z independently.
+8. Add only surface contributions, not full intermediate structural layers.
+9. Validate support, topology, ordering and clearance.
+10. Re-score the finite-bead surface.
+11. Fail safely to unmodified Orca output on uncertainty/failure.
 
-## Non-goals for first implementation
+## First-version non-goals
+- replacing ZAA
 - full non-planar nozzle orientation
-- Z values below configured machine/nozzle minimum
-- replacing OrcaSlicer's infill/inner-wall generation
-- arbitrary post-G-code duplication as the final architecture
-
-## Safety
-Generated paths must be rejected if geometry or clearance validation cannot establish a safe printable route. Travel/Z-hop remains a slicer responsibility where supported, but extrusion-path collision must be validated before path generation.
+- downward-facing reconstruction without support modeling
+- modifying infill/inner-wall scheduling
+- G-code regex rewriting as the final architecture
+- intentional nozzle collision as a smoothing mechanism
