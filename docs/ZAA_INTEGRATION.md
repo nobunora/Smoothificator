@@ -1,65 +1,50 @@
 # ZAA Integration Strategy
 
-## Role of ZAA
-OrcaSlicer Z Contouring/ZAA is the first-line optimizer. It modifies Z coordinates of existing eligible extrusion points so top-facing curved/sloped surfaces follow the source mesh more closely while retaining the nominal structural layer height.
+## Role
+Orca ZAA/Z Contouring is the low-cost first optimizer. Adaptive Sub-Edge does not replace it.
 
-Adaptive Sub-Edge does not duplicate this work.
+## Actual baseline
+Analysis occurs after Orca path simplification at posSimplifyPath.
 
-## Hybrid strategy
-1. Baseline slicing
-2. ZAA
-3. Predict the finite-bead surface actually implied by the post-ZAA paths
-4. Measure residual normal error
-5. If within tolerance: stop
-6. If outside tolerance: add optimized sub-edge contours
-7. Re-score
+The engine consumes the actual 3D extrusion paths. It records whether ZAA is enabled and whether non-planar contouring is observed; it does not assume every path was modified.
 
-## Why ZAA first
-ZAA generally changes existing paths rather than adding complete new extrusion paths. Its quality improvement therefore has a much lower time/material cost than sub-edge reconstruction.
-
-The optimizer should spend added material only after ZAA has exhausted the low-cost correction available to the existing path topology.
+## Hybrid flow
+baseline structural paths
+-> ZAA where eligible
+-> path simplification
+-> finite-bead final-surface estimate
+-> residual error
+-> optional Sub-edge optimization
 
 ## Different solution spaces
-
 ZAA:
-- modifies existing path Z
-- path topology largely fixed
-- excellent time efficiency
-- current official scope focuses on top-facing curved/sloped surfaces
+- changes Z of existing paths
+- minimal added path/time
+- fixed existing topology
 
-Adaptive Sub-Edge:
-- creates new surface contours
-- can add missing intermediate material
-- each added contour can have independent Z
-- explicit residual-error/tolerance objective
-- incurs additional path/time/material cost
+Sub-edge:
+- can create additional surface contours/material
+- independent candidate Z and flow
+- higher potential quality ceiling
+- costs time/material
 
-## Quality target
-The project should be judged against:
-- normal 0.20 mm
-- fine conventional layers
-- ZAA-only
-- ZAA + Adaptive Sub-Edge
+## Success criterion
+Not "beat ZAA everywhere".
 
-Primary success criterion is not "beats ZAA everywhere." It is:
+Target:
+When ZAA-only remains above tolerance, reduce error materially with less penalty than globally reducing layer height.
 
-**For geometries where ZAA-only remains above the requested surface-error tolerance, achieve a materially lower error with a smaller time penalty than globally reducing layer height.**
+## Collision/order
+Added non-crossing sub-edges are explicitly printed lower-Z first.
 
-## Collision distinction
-ZAA may produce high-to-low neighboring extrusion ordering inside one contoured layer, creating nozzle-interference concerns.
+Candidate feasibility is still checked against local post-ZAA finite-bead envelopes because ZAA structural paths may vary in Z.
 
-For Adaptive Sub-Edge, accepted non-crossing contours are explicitly sorted from lower Z to higher Z. This makes the common case closer to ordinary FDM layering.
-
-## Benchmark targets
-Initial angles:
-1°, 5°, 10°, 15°, 20°, 25°, 30°
-
+## Benchmark
+1/5/10/15/20/25/30 degree coupons plus smooth slope.
 Compare:
-- error metrics
-- roughness proxy / measured Ra where equipment permits
-- print time
-- material
-- failures/artifacts
-- dimensional bias
+- normal
+- fine conventional
+- ZAA
+- ZAA + Sub-edge
 
-Also include domes/chamfers and a model with side-silhouette curvature once the top-facing PoC is stable.
+Measure error, roughness, time, material and failures.
