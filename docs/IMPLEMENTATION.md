@@ -299,3 +299,99 @@ plan hash, Orca version, baseline mode, paths added, error before/after, added l
 - deterministic output for identical input/settings
 - use explicit frozen dataclasses/types and pure functions where practical
 - any safety relaxation requires an ADR before implementation
+
+
+## 17. Responsibility and source-boundary contract
+
+The normative architecture is [ARCHITECTURE.md](ARCHITECTURE.md). Implementation MUST conform to it.
+
+### Required package structure
+
+adaptive_subedge/
+  domain/
+    geometry.py
+    metrics.py
+    plan.py
+    settings.py
+    status.py
+    errors.py
+  engine/
+    bead_model.py
+    error_estimator.py
+    mesh_section.py
+    candidate_generator.py
+    subedge_extractor.py
+    z_optimizer.py
+    collision.py
+    cost_model.py
+  application/
+    analyzer.py
+    plan_store.py
+    serialization.py
+    hashing.py
+    migrations/
+  ports/
+    mesh_section_provider.py
+    plan_repository.py
+    cancellation.py
+
+orca_plugin/
+  adapters/
+    geometry_snapshot.py
+    orca_config.py
+    fingerprint.py
+  capabilities/
+    slicing.py
+    preview.py
+  ui/
+    preview_model.py
+    preview_renderer.py
+  gcode/
+    lexer.py
+    parser.py
+    state.py
+    anchors.py
+    validation.py
+    emitter.py
+    injector.py
+    atomic_writer.py
+
+### Boundary rules
+- domain and engine MUST NOT import orca_plugin.
+- engine MUST NOT import G-code modules.
+- gcode MUST NOT import optimizer/candidate generation.
+- UI MUST NOT create/modify plans.
+- capabilities contain orchestration glue only.
+- Orca live objects MUST terminate at adapters/geometry_snapshot.py.
+- canonical plan serialization exists only in application/serialization.py.
+- settings are validated once and passed explicitly.
+- no generic utils.py module.
+
+### Change-locality target
+A normal algorithm change (for example replacing Z optimizer) SHOULD require changes only in:
+- its engine module
+- its direct unit tests
+- optionally analyzer wiring if interface changes
+
+It SHOULD NOT require edits to G-code parser, injector, preview renderer or Orca adapter.
+
+A G-code dialect change SHOULD be isolated to orca_plugin/gcode plus fixtures/tests and MUST NOT alter geometry engine.
+
+An Orca API change SHOULD be isolated to orca_plugin/adapters/capabilities and MUST NOT alter domain algorithms.
+
+### Data separation
+Use frozen dataclasses for cross-boundary domain objects.
+
+Mutable NumPy arrays are permitted only as private work buffers. Convert/copy before storing in immutable snapshots/plans as needed to prevent alias mutation.
+
+PlanStore stores only immutable plan data/status metadata; it is not an algorithm cache.
+
+### Import-boundary tests
+Add tests that fail if forbidden dependencies appear. At minimum:
+- adaptive_subedge/domain cannot import orca_plugin
+- adaptive_subedge/engine cannot import orca_plugin or orca_plugin.gcode
+- orca_plugin/gcode cannot import adaptive_subedge.engine.z_optimizer/candidate_generator
+- orca_plugin/ui cannot import analyzer/optimizer
+
+### ADR gate
+Architecture/safety changes listed in ADR_PROCESS.md require an Accepted ADR before implementation.
