@@ -1,74 +1,84 @@
 # OrcaSlicer Plugin / Geometry API Research
 
-Research target: OrcaSlicer main and official plugin docs, 2026-09.
+Research target: OrcaSlicer main and official plugin docs, audited 2026-09-29.
 
-## Conclusion
-Stock Orca is sufficient for the v1 architecture by combining two official SlicingPipeline seams:
+## Confirmed plugin model
+Orca plugin packages may register multiple capabilities. This project uses:
+- one SlicingPipeline capability
+- one Script preview capability
 
-- posContouring: read post-ZAA geometry and compute SubEdgePlan
-- psGCodePostProcess: edit the exported working G-code in place
+Capabilities are instantiated for the plugin load lifetime.
 
-A custom Orca build is not required for v1.
+## Confirmed host data
+Python bindings expose:
+- Print / PrintObject / Layer / LayerRegion
+- Print-owned Model snapshot
+- ModelObject/ModelInstance/ModelVolume transforms
+- TriangleMesh vertices/triangles/normals
+- Surface/ExPolygon geometry and 2D boolean/offset operations
+- extrusion tree
+- 3D ExtrusionPath points
+- width/height/mm3_per_mm
+- config values
 
-## Plugin availability
-Official docs: Python Plugin System is available in Nightly or releases greater than 2.4.2. SlicingPipeline is research/experimental, so releases must pin tested Orca versions.
+ModelVolume mesh is local; volume.matrix maps volume->object and ModelInstance.matrix maps object->world. Coordinate use still requires integration tests against sliced paths/exported G-code.
 
-## Relevant API behavior
-At geometry steps:
-- ctx.print / ctx.object expose live slicing graph
-- references live only during execute(ctx)
-- pipeline capability runs on slicing worker thread
-- do not call orca.host.ui.* from that thread
+## Hook order audit
+Orca Print.cpp shows:
+1. Z contouring via obj->contour_z()
+2. posContouring hook only if need_z_contouring() is true
+3. support/detect-overhang steps
+4. psSkirtBrim
+5. obj->simplify_extrusion_path()
+6. posSimplifyPath hook on fresh slicing objects
 
-At psGCodePostProcess:
-- ctx.print / ctx.object are None
-- ctx.gcode_path points to the working exported G-code
-- ctx.host / ctx.output_name are available
-- plugin edits file in place
-- step may run separately for export/upload
-- output is not reflected in Orca standard G-code preview
+Therefore posContouring is unsuitable as universal Analyzer and psSkirtBrim is too early relative to simplification.
 
-## Readable geometry
-Bindings expose Print, PrintObject, Layer, LayerRegion, Print-owned Model snapshot, Surface/ExPolygon, extrusion tree, native 3D ExtrusionPath points, width, height, mm3_per_mm and config.
+ADR-0001 selects posSimplifyPath.
 
-This is enough for post-ZAA error analysis and plan generation.
+## Cache caveat
+Source explicitly prevents posSimplifyPath plugin hook on cache-loaded plugin-final objects.
 
-## Read-only limitation
-Perimeters/path points/layer Z cannot currently be arbitrarily mutated from Python.
+No fresh current-session plan => injection must skip and request re-slice.
 
-This no longer blocks v1 because the plugin does not attempt live path injection. It converts a geometry-derived plan to G-code at psGCodePostProcess.
+## Post-process seam
+psGCodePostProcess:
+- runs from export path after classic post_process scripts
+- ctx.print/object are None
+- ctx.gcode_path/host/output_name are present
+- edits working file in place
+- may run more than once on separate working copies
+- result is not mapped into standard G-code preview
 
-## Preview implication
-Standard Orca G-code viewer maps the pre-post-process file, so injected sub-edges are absent there.
+## G-code layer markers
+Orca emits reserved layer-change and height tags as processor metadata. BBL and non-BBL Z marker formatting differs (for example Z_HEIGHT vs Z). Parser must support tested dialect forms rather than infer structural layers from arbitrary Z moves, especially because ZAA introduces non-planar Z movement.
 
-Stock Orca still permits plugin-owned preview: the plan is copied into plugin-owned data, then a UI-safe Script capability may display a host-owned HTML window/panel. The slicing hook itself must not invoke UI.
+## Why source geometry scope is limited
+Raw individual volume meshes are accessible, but plugin API does not provide a single arbitrary-Z cross-section of fully evaluated multi-volume CSG/modifier geometry.
 
-## Required architectural separation
-Analyzer:
-model + post-ZAA geometry -> immutable SubEdgePlan
+Printable v1 therefore restricts to one ModelPart volume. This avoids reimplementing Orca CSG.
 
-Preview:
-SubEdgePlan -> visualization
+## Planar geometry
+orca.host Polygon/ExPolygon expose offset/union/difference/intersection. The engine remains Orca-independent by using a PlanarGeometryOps port; the Orca adapter may call these during execute(ctx) and copy results out.
 
-Injector:
-SubEdgePlan + exported G-code -> validated G-code insertion
+## Flow parity
+Orca Flow::mm3_per_mm() for non-bridge rounded rectangle is:
 
-Preview and injector share plan hash. Injector must not perform geometry optimization.
+h * (w - h * (1 - pi/4))
 
-## Why this is safer than legacy Smoothificator
-Legacy Smoothificator infers/refines outer walls from final G-code.
+Use this as initial bead-volume parity model.
 
-This design makes geometric decisions while source mesh and ZAA paths are still available, then uses final G-code only as an execution target. Anchor validation must prove that the G-code corresponds to the planned geometry before insertion.
+## Stock-Orca feasibility
+No custom Orca is required for v1:
+- geometry intelligence at posSimplifyPath
+- execution at psGCodePostProcess
+- preview via Script capability
 
-## Filesystem/audit
-Official slicing docs state writing ctx.gcode_path at psGCodePostProcess is an intended operation; that working folder is approved for the call. Other filesystem/network/process operations remain subject to plugin audit policy.
+The principal risk is safe G-code translation, not API access.
 
-## Remaining technical risks
-- reliable plan identity across slice/export calls
-- robust Orca G-code state parsing
-- exact anchor matching
-- Bambu/other firmware dialect differences
-- preview is plan-level, not Orca standard postprocessed viewer
-- SlicingPipeline API may change because it is experimental
+## v1 interference policy
+Because classic scripts run before psGCodePostProcess and multiple slicing-pipeline capabilities can mutate output in configured order, v1 printable mode requires:
+- classic post_process empty
+- no other active slicing-pipeline capability
 
-These risks are addressed by deterministic hashing, explicit version support, stateful parser, all-or-nothing injection and analysis-only fallback.
+Later interoperability requires a separate ADR/test matrix.
