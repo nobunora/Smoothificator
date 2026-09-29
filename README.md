@@ -1,54 +1,62 @@
 # Smoothificator — Adaptive Sub-Edge Research Fork
 
-Error-driven adaptive sub-edge surface reconstruction for OrcaSlicer.
+Error-driven adaptive surface reconstruction for OrcaSlicer.
 
-This fork investigates a **stock-Orca plugin** that uses ZAA first, measures remaining surface error, then adds only the extra surface contours needed to reach a requested quality target.
+Status: specification / pre-implementation audit complete.
 
-> Status: specification / early implementation. Original Smoothificator scripts are preserved as upstream reference.
+## v1 architecture
+Stock Orca only:
 
-## Architecture
 ```text
-Stock Orca
-  -> normal slicing
-  -> ZAA / Z Contouring
-  -> posContouring: Analyzer creates immutable SubEdgePlan
-       -> plugin Preview uses the same plan
-  -> normal Orca G-code generation
-  -> psGCodePostProcess: validate + inject the same plan
-  -> file/printer
+fresh slice
+  -> ZAA (if applicable)
+  -> Orca path simplification
+  -> posSimplifyPath Analyzer
+  -> immutable SubEdgePlan
+       -> plugin Preview
+  -> normal G-code generation
+  -> psGCodePostProcess: exact-plan validation/injection
+  -> output
 ```
 
-No custom Orca build is required for the v1 target.
+No custom Orca build is required.
 
-## Core rules
-- ZAA is the low-cost first stage.
-- Sub-edges address only residual error.
-- Added Z values are freely optimized, not fixed 1/2 or 1/3 subdivisions.
-- Multiple non-crossing sub-edges are allowed and printed lower-Z first.
-- Initial 0.4 mm-nozzle minimum adjacent Z spacing is 0.08 mm and configurable.
-- Preview and injection share one deterministic plan/hash.
-- G-code injection is parser-based, validated, idempotent, atomic and all-or-nothing.
-- Any ambiguity leaves original Orca output unchanged.
+## Key rules
+- ZAA first; Sub-edge only addresses residual error.
+- Added paths may use multiple non-uniform Z values.
+- Flow/material overlap is optimized with a finite-bead model.
+- Lower/upper structural beads remain part of the final-surface simulation.
+- Non-crossing Sub-edges print lower-Z first.
+- Preview and Injector consume the same plan hash.
+- Injection is parser/state-machine based, streaming, atomic, idempotent and all-or-nothing.
+- Missing fresh plan or any ambiguity leaves original Orca output unchanged.
 
-## Preview
-Orca's standard G-code viewer displays the pre-post-process file, so injected paths are not automatically shown there.
+## First printable scope
+Intentionally narrow:
+- one printable object
+- one printable instance
+- one ModelPart volume
+- one tool
+- no modifier/negative volume
+- no other slicing-pipeline plugin
+- no classic post-process script
+- outward/top-facing non-crossing surface
 
-The plugin provides its own preview from the exact SubEdgePlan later used by the injector, including planned paths, Z values, residual-error visualization and injection status.
+Scope expands only after tests/ADR.
 
-## Orca plugin constraints
-SlicingPipeline hooks run on the slicing worker thread; they must not call host UI APIs. Live Orca graph references are copied into plugin-owned immutable data before the hook returns.
-
-The preview is opened/refreshed through a UI-safe Script capability.
-
-## Documentation
-- [System specification](docs/SPECIFICATION.md)
-- [Detailed implementation specification](docs/IMPLEMENTATION.md)
-- [Surface error model](docs/ERROR_MODEL.md)
-- [ZAA integration](docs/ZAA_INTEGRATION.md)
+## Documents
+- [Specification](docs/SPECIFICATION.md)
+- [Implementation](docs/IMPLEMENTATION.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Error/material model](docs/ERROR_MODEL.md)
+- [Plugin/API research](docs/ORCASLICER_PLUGIN_RESEARCH.md)
 - [Plugin requirements](docs/PLUGIN_REQUIREMENTS.md)
-- [Orca plugin/API research](docs/ORCASLICER_PLUGIN_RESEARCH.md)
-- [Upstream Smoothificator analysis](docs/SMOOTHIFICATOR_ANALYSIS.md)
+- [ZAA integration](docs/ZAA_INTEGRATION.md)
+- [Dependency audit](docs/DEPENDENCY_AUDIT.md)
+- [ADRs](docs/adr/)
 - [Roadmap](docs/ROADMAP.md)
 
+Original Smoothificator scripts remain as upstream reference.
+
 ## License
-GNU GPL terms and upstream copyright notices are retained.
+GNU GPL terms and upstream notices are retained.
