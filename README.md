@@ -2,58 +2,53 @@
 
 Error-driven adaptive sub-edge surface reconstruction for OrcaSlicer.
 
-This fork of **TengerTechnologies/Smoothificator** is researching a geometry-stage surface reconstruction method that works **after OrcaSlicer's Z Anti-Aliasing (ZAA)**.
+This fork investigates a **stock-Orca plugin** that uses ZAA first, measures remaining surface error, then adds only the extra surface contours needed to reach a requested quality target.
 
-> Status: design/research. Original Smoothificator scripts are preserved. No production sub-edge printing implementation exists yet.
+> Status: specification / early implementation. Original Smoothificator scripts are preserved as upstream reference.
 
-## Core idea
-Use ZAA first because it improves surface geometry with very little added path cost. Then measure the **remaining surface error** against the original model.
-
-Only where ZAA still misses the requested tolerance:
-- add zero, one, or multiple intermediate surface contours;
-- choose each contour's Z independently;
-- use true model geometry rather than fixed 1/2 or 1/3 subdivision;
-- print non-crossing contours from lower Z to higher Z;
-- stop adding paths as soon as the quality target is met.
-
-Initial 0.4 mm-nozzle research uses 0.08 mm as the configurable minimum adjacent Z spacing.
-
+## Architecture
 ```text
-Orca baseline
-    ↓
-ZAA / Z Contouring
-    ↓
-post-ZAA surface-error estimator
-    ↓
-within tolerance? ── yes → unchanged
-    ↓ no
-Adaptive Sub-Edge optimizer
-    ↓
-validated path injection
-    ↓
-normal Orca downstream pipeline
+Stock Orca
+  -> normal slicing
+  -> ZAA / Z Contouring
+  -> posContouring: Analyzer creates immutable SubEdgePlan
+       -> plugin Preview uses the same plan
+  -> normal Orca G-code generation
+  -> psGCodePostProcess: validate + inject the same plan
+  -> file/printer
 ```
 
-## Orca plugin status
-Current Orca Python SlicingPipeline bindings are sufficient for **analysis**: they expose the source model, layers and 3D extrusion paths.
+No custom Orca build is required for the v1 target.
 
-They are **not yet sufficient for final printing** because perimeter paths, path points and layer Z structure are read-only from Python. Arbitrary-Z new extrusion paths cannot currently be inserted through the public binding.
+## Core rules
+- ZAA is the low-cost first stage.
+- Sub-edges address only residual error.
+- Added Z values are freely optimized, not fixed 1/2 or 1/3 subdivisions.
+- Multiple non-crossing sub-edges are allowed and printed lower-Z first.
+- Initial 0.4 mm-nozzle minimum adjacent Z spacing is 0.08 mm and configurable.
+- Preview and injection share one deterministic plan/hash.
+- G-code injection is parser-based, validated, idempotent, atomic and all-or-nothing.
+- Any ambiguity leaves original Orca output unchanged.
 
-The target architecture is therefore:
-- a small Orca C++/pybind path-insertion extension;
-- a pure-Python Adaptive Sub-Edge wheel using that extension.
+## Preview
+Orca's standard G-code viewer displays the pre-post-process file, so injected paths are not automatically shown there.
 
-If the insertion API is upstreamed into OrcaSlicer, the feature can become an ordinary installable plugin.
+The plugin provides its own preview from the exact SubEdgePlan later used by the injector, including planned paths, Z values, residual-error visualization and injection status.
+
+## Orca plugin constraints
+SlicingPipeline hooks run on the slicing worker thread; they must not call host UI APIs. Live Orca graph references are copied into plugin-owned immutable data before the hook returns.
+
+The preview is opened/refreshed through a UI-safe Script capability.
 
 ## Documentation
 - [System specification](docs/SPECIFICATION.md)
-- [Surface error model](docs/ERROR_MODEL.md)
 - [Detailed implementation specification](docs/IMPLEMENTATION.md)
-- [ZAA integration strategy](docs/ZAA_INTEGRATION.md)
+- [Surface error model](docs/ERROR_MODEL.md)
+- [ZAA integration](docs/ZAA_INTEGRATION.md)
 - [Plugin requirements](docs/PLUGIN_REQUIREMENTS.md)
-- [OrcaSlicer plugin/API research](docs/ORCASLICER_PLUGIN_RESEARCH.md)
+- [Orca plugin/API research](docs/ORCASLICER_PLUGIN_RESEARCH.md)
 - [Upstream Smoothificator analysis](docs/SMOOTHIFICATOR_ANALYSIS.md)
-- [Development roadmap](docs/ROADMAP.md)
+- [Roadmap](docs/ROADMAP.md)
 
 ## License
-This fork retains the upstream GNU GPL licensing terms and copyright notices.
+GNU GPL terms and upstream copyright notices are retained.
