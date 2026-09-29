@@ -1,220 +1,173 @@
 # Architecture and Responsibility Boundaries
 
-This document is normative. Its purpose is to make future changes local, reviewable and testable.
+This document is normative.
 
-## 1. Architectural rule
-Dependencies MUST point inward:
+## 1. Dependency direction
+Dependencies point inward:
 
-Orca Adapter/UI/G-code I/O -> Application orchestration -> Domain engine -> Domain models
+Orca/UI/G-code adapters -> application orchestration -> engine -> domain
 
-The domain engine MUST NOT import Orca APIs, UI APIs, filesystem APIs, or G-code parser modules.
+Domain/engine never import Orca, UI, filesystem or G-code syntax.
 
-## 2. Layers
+## 2. Normative packages
 
-### A. Domain model
-Package: adaptive_subedge/domain/
+adaptive_subedge/
+- domain/: immutable value objects, settings, metrics, plan, status/reason codes
+- engine/: bead/error/mesh-section/candidate/subedge/Z/collision/cost algorithms
+- application/: analyzer workflow, serialization, hashing, PlanStore/runtime records
+- ports/: narrow interfaces for cancellation and planar geometry operations
 
-Owns immutable vocabulary only:
-- geometry value objects
+orca_plugin/
+- adapters/: Orca live-graph -> copied snapshot/config/fingerprint
+- capabilities/: slicing + preview entrypoints only
+- ui/: preview models/rendering only
+- gcode/: dialect, lexer/parser/state/identity/anchors/emitter/injector/atomic writer
+
+## 3. Responsibility rules
+
+### domain
+Owns immutable vocabulary:
+- GeometrySnapshot DTO/value structures
 - ErrorMetrics
 - SubEdgePath
 - SubEdgePlan
-- InsertionAnchor
-- settings/value constraints
+- SliceIdentity / GCodeIdentity value types
+- Settings
 - reason/status enums
 
-MUST NOT:
-- read Orca
-- parse G-code
-- render UI
-- access filesystem
-- optimize using global mutable state
+No I/O, Orca, optimization or G-code.
 
-### B. Geometry/quality engine
-Package: adaptive_subedge/engine/
-
-Owns pure algorithms:
+### engine
+Pure algorithms:
+- source-mesh plane sectioning
 - finite bead model
-- error estimation
-- mesh sectioning abstraction
+- residual error
 - candidate generation
 - sub-edge extraction
-- Z optimization
-- collision/support checks
+- Z/flow optimization
+- support/collision checks
 - cost scoring
 
-Inputs/outputs are domain objects/arrays.
+No Orca/G-code/UI/PlanStore.
 
-MUST NOT know:
-- Orca hook names
-- G-code syntax
-- plugin UI
-- PlanStore
-- output files
-
-### C. Application services
-Package: adaptive_subedge/application/
-
+### application
 Owns workflows:
-- analyze_snapshot(snapshot, settings) -> SubEdgePlan
-- validate_plan(plan)
-- deterministic hashing/serialization
+- analyze_snapshot(...)
+- plan validation
+- canonical serialization/hash
 - PlanStore
-- cancellation abstraction
+- PlanRuntimeRecord / InjectionAttempt history
 
-May compose engine modules but MUST NOT directly depend on Orca live graph.
+SubEdgePlan stays immutable. Injection status is NOT stored inside the plan.
 
-### D. Orca adapter
-Package: orca_plugin/adapters/
+### Orca adapters
+Only layer allowed to import Orca host/slicing bindings.
+- copy live graph
+- validate v1 support gates
+- establish/validate coordinate frame
+- map config
+- implement Orca-backed planar geometry port if used
 
-Owns all Orca-specific read integration:
-- copy ctx.print/ctx.object into GeometrySnapshot
-- map Orca roles/settings/version
-- detect ZAA state
-- derive stable source fingerprints
+No live Orca refs survive execute(ctx).
 
-This is the ONLY layer allowed to import Orca host/slicing bindings.
+### G-code adapter
+Consumes an accepted immutable plan.
+- parse/state-track
+- compute GCodeIdentity
+- find exactly one matching plan
+- validate layer-boundary insertion anchors
+- emit safe blocks
+- atomic replacement
 
-It MUST convert live objects to copied internal DTOs before returning.
+It MUST NOT optimize geometry or inspect source mesh.
 
-### E. G-code execution adapter
-Package: orca_plugin/gcode/
+### UI
+Consumes copied plan/runtime records only.
+Never generates or mutates plans.
 
-Owns:
-- lexical preservation
-- parser/state machine
-- anchor matching
-- emitter
-- injection validation
-- atomic working-file replacement
+## 4. Analyzer hook
+Per ADR-0001, analysis occurs at Orca Step.posSimplifyPath, after ZAA and simplify_extrusion_path().
 
-It consumes SubEdgePlan. It MUST NOT run geometry optimization.
+v1 supports exactly one printable object/instance, so the per-object hook yields one plan.
 
-### F. Preview/UI adapter
-Package: orca_plugin/ui/
+Cache-loaded exports without a fresh current-session plan are analysis-only / injection-skipped.
 
-Owns rendering and user interaction only.
+## 5. Data ownership
 
-It consumes immutable plan/snapshot-derived preview DTOs.
+Live Orca graph:
+- Orca-owned
+- valid only during execute(ctx)
+- never stored
 
-MUST NOT:
-- recalculate optimization
-- mutate plan
-- parse G-code to invent geometry
-- access live slicing objects
+GeometrySnapshot:
+- plugin-owned copy
+- immutable across boundaries
 
-### G. Plugin entrypoints
-Package: orca_plugin/capabilities/
+Numerical work arrays:
+- local mutable buffers only
 
-Very thin adapters:
-- slicing.py: dispatch posContouring and psGCodePostProcess
-- preview.py: UI-safe preview command
+NumPy arrays stored inside frozen objects MUST be defensive copies and marked non-writeable, or converted to immutable tuples. A frozen dataclass alone is not considered deep immutability.
 
-No algorithms here.
+SubEdgePlan:
+- immutable/canonical/hashable
 
-## 3. Dependency matrix
+PlanRuntimeRecord:
+- mutable only inside PlanStore lock
+- contains status/attempt history, never geometry mutation
 
-Allowed:
-- domain -> standard library / numerical value types only
-- engine -> domain
-- application -> domain + engine
-- Orca adapter -> domain + application interfaces + Orca API
-- G-code adapter -> domain + application interfaces
-- UI -> domain/application read models
-- capabilities -> adapters/application
+G-code parser document/state:
+- injector-local only
 
-Forbidden:
-- domain/engine -> orca_plugin
-- engine -> G-code parser
-- G-code -> optimizer
-- UI -> Orca live graph
-- preview -> separate plan generation
-- injector -> source mesh analysis
+## 6. Identity model
+Geometry analysis and G-code export have no shared live Print handle.
 
-CI SHOULD include import-boundary tests.
+Plan matching therefore uses:
+- plugin/session generation
+- Orca version
+- selected settings/config fingerprint
+- structural layer schedule fingerprint
+- expected world/print-space geometry fingerprint (including selected layer XY bounds)
+- plan anchors
 
-## 4. Data ownership
+Post-process MUST select exactly one matching plan. Zero or multiple matches => skip.
 
-### Live Orca data
-Owner: Orca.
-Lifetime: execute(ctx) only.
-Rule: never store.
+PlanStore may deduplicate identical plan hashes.
 
-### GeometrySnapshot
-Owner: plugin application.
-Immutable/copy-owned.
-Contains only information needed for analysis.
+## 7. Coordinate-frame contract
+Raw ModelVolume mesh is local. Volume and instance/PrintObject transforms are exposed by Orca.
 
-### Numerical work buffers
-Owner: engine function invocation.
-Mutable locally only.
-Never exposed as global state.
+The adapter MUST produce one canonical print-mm frame and prove it with tests:
+- transformed source bbox
+- PrintObject/sliced path bbox
+- exported G-code bbox
 
-### SubEdgePlan
-Owner: application.
-Frozen/immutable.
-Canonical serialization + deterministic hash.
+Transforms are allowed in v1 only after these validations pass. Coordinate uncertainty disables injection.
 
-### PlanStore
-Owner: application infrastructure.
-Stores immutable plans only.
-Thread-safe bounded cache.
+## 8. Ports
 
-### G-code document/state
-Owner: injector invocation.
-Never shared with optimizer/UI.
+PlanarGeometryOps:
+- offset
+- union
+- difference
+- intersection
+using engine/domain data only.
 
-## 5. Mutation policy
-Mutation is allowed only:
-- inside local numerical work buffers
-- inside parser state while parsing
-- inside PlanStore's private synchronized index
-- when constructing a new output file
+The Orca implementation may internally use Python-owned orca.host Polygon/ExPolygon value objects during execute(ctx), then copy results back to domain data.
 
-Public domain objects are immutable.
+CancellationPort:
+- cancelled() -> bool
 
-No function may mutate an input SubEdgePlan.
+No interface may return a live Orca object.
 
-## 6. Interface contracts
-
-MeshSectionProvider:
-section(z_mm, region) -> tuple[Contour,...]
-
-SurfacePredictor:
-predict(paths, bead_profile) -> SurfaceEnvelope
-
-ErrorEstimator:
-estimate(reference, predicted) -> ErrorField + ErrorMetrics
-
-SubEdgeOptimizer:
-solve(problem) -> OptimizationResult
-
-PlanRepository:
-put(plan), get(fingerprint), update_status(plan_id,status)
-
-GCodeParser:
-parse(bytes/text) -> ParsedDocument + MachineState checkpoints
-
-PlanInjector:
-prepare(document, plan) -> InjectionResult
-No filesystem write.
-
-AtomicWriter:
-replace_if_valid(path, prepared_result)
-
-PreviewRenderer:
-render(preview_model) -> UI payload
-
-Interfaces SHOULD use Protocol/ABC where useful, but avoid framework-heavy dependency injection.
-
-## 7. Error taxonomy
-Do not throw generic exceptions across boundaries for expected failures.
-
-Define:
+## 9. Error taxonomy
+Expected typed failures:
 - UnsupportedOrcaVersion
+- UnsupportedPrintConfiguration
 - SnapshotError
+- CoordinateFrameError
 - GeometryUnsupported
 - OptimizationInfeasible
+- FreshSliceRequired
 - PlanMismatch
 - GCodeUnsupported
 - AnchorMismatch
@@ -222,56 +175,33 @@ Define:
 - InjectionAlreadyPresent
 - UserCancelled
 
-Map them to stable reason codes at capability boundary.
+Top-level unexpected exceptions result in no injection.
 
-Unexpected exceptions are caught at top-level, logged, and result in no injection.
+## 10. Configuration
+One validated Settings object.
+Orca/plugin config is mapped once.
 
-## 8. Configuration ownership
-One validated Settings object in domain/application.
+Settings changes change settings_hash and invalidate plan reuse.
 
-Adapters map Orca/user config into Settings once.
+## 11. Serialization
+Canonical serializer lives only in application/serialization.py.
+SubEdgePlan has schema_version.
+Runtime/injection status is serialized separately and never changes plan_hash.
 
-Engine functions MUST NOT query Orca config directly.
+## 12. Source-file boundaries
+Target <400 logical lines; split >600 unless generated data.
+No generic utils.py.
+Helpers stay private until genuinely shared.
 
-Settings changes alter settings_hash and invalidate plan reuse.
+## 13. Forbidden imports
+- domain/engine -> orca_plugin
+- engine -> gcode
+- gcode -> optimizer/candidate modules
+- UI -> analyzer/optimizer/live Orca graph
+- injector -> mesh/error estimator
 
-## 9. Serialization/versioning
-SubEdgePlan schema has explicit schema_version.
+CI MUST enforce dependency boundaries.
 
-Canonical serializer lives in application/serialization.py only.
-
-Never duplicate JSON encoding logic in UI or injector.
-
-Backward compatibility policy:
-- reader may support selected old schemas
-- injector only accepts explicitly supported schema versions
-- migration functions are isolated under application/migrations/
-
-## 10. Performance boundary
-Correctness before optimization.
-
-GeometrySnapshot may use copied NumPy arrays for large point sets.
-
-Engine may vectorize/parallelize internally, but outputs remain deterministic.
-
-No caching inside mathematical functions unless cache key is explicit and testable.
-
-## 11. Source-file size/cohesion
-A file should represent one responsibility.
-
-Guidelines:
-- target < 400 logical lines
-- split > 600 lines unless generated/table data
-- no "utils.py" dumping ground
-- helper stays private in owner module until reused by >=2 responsibilities
-- shared helper moves to a narrowly named module
-
-## 12. Change rules
-Before modifying behavior:
-1. identify owning module
-2. update contract/test at that boundary
-3. avoid edits outside owner unless interface changes
-4. if interface changes, update architecture/implementation docs first
-5. run owner unit tests, then integration tests
-
-Cross-layer shortcuts require ADR.
+## 14. Change process
+Architecture/safety changes require an Accepted ADR before implementation.
+Normal algorithm changes should remain local to owner module + tests.
