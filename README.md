@@ -2,63 +2,58 @@
 
 Error-driven adaptive sub-edge surface reconstruction for OrcaSlicer.
 
-This repository is a fork of **TengerTechnologies/Smoothificator**. The upstream project refines outer walls by duplicating outer-wall G-code at smaller, equally spaced Z intervals. This fork is investigating a different architecture: evaluate the geometric error of the slicer's baseline surface **before final G-code generation**, then add only the intermediate surface paths required to reduce that error.
+This fork of **TengerTechnologies/Smoothificator** is researching a geometry-stage surface reconstruction method that works **after OrcaSlicer's Z Anti-Aliasing (ZAA)**.
 
-> **Status:** design/research branch. The original Smoothificator scripts are currently preserved. The adaptive geometry engine described below is not yet production-ready.
+> Status: design/research. Original Smoothificator scripts are preserved. No production sub-edge printing implementation exists yet.
 
-## Target concept
+## Core idea
+Use ZAA first because it improves surface geometry with very little added path cost. Then measure the **remaining surface error** against the original model.
 
-Instead of forcing a fixed outer-wall pitch such as 0.05 mm, the algorithm will:
+Only where ZAA still misses the requested tolerance:
+- add zero, one, or multiple intermediate surface contours;
+- choose each contour's Z independently;
+- use true model geometry rather than fixed 1/2 or 1/3 subdivision;
+- print non-crossing contours from lower Z to higher Z;
+- stop adding paths as soon as the quality target is met.
 
-1. keep OrcaSlicer's structural/base layer decisions;
-2. compare the baseline printable surface with the ideal model;
-3. locate outer-surface regions whose error exceeds a configured tolerance;
-4. insert zero, one, or multiple intermediate **sub-edge** contours;
-5. optimize each added contour's Z position independently;
-6. enforce a configurable minimum adjacent Z spacing (initial target: **0.08 mm for a 0.4 mm nozzle**);
-7. re-evaluate the finite-width printed surface and select the least-complex solution meeting the error target.
-
-Intermediate Z positions therefore do **not** have to be 1/2 or 1/3 of the base layer height and do not have to be equally spaced.
-
-## Intended architecture
+Initial 0.4 mm-nozzle research uses 0.08 mm as the configurable minimum adjacent Z spacing.
 
 ```text
-3D model
-   ↓
-OrcaSlicer slice geometry
-   ↓
-baseline outer-surface estimate
-   ↓
-model-vs-print surface error map
-   ↓
-adaptive candidate intermediate contours
-   ↓
-non-uniform multi-sub-edge Z optimization
-   ↓
-geometry / collision validation
-   ↓
-OrcaSlicer path generation
-   ↓
-G-code
+Orca baseline
+    ↓
+ZAA / Z Contouring
+    ↓
+post-ZAA surface-error estimator
+    ↓
+within tolerance? ── yes → unchanged
+    ↓ no
+Adaptive Sub-Edge optimizer
+    ↓
+validated path injection
+    ↓
+normal Orca downstream pipeline
 ```
 
-The final implementation is intended to operate in OrcaSlicer's geometry/slicing pipeline rather than reconstructing geometry from completed G-code.
+## Orca plugin status
+Current Orca Python SlicingPipeline bindings are sufficient for **analysis**: they expose the source model, layers and 3D extrusion paths.
+
+They are **not yet sufficient for final printing** because perimeter paths, path points and layer Z structure are read-only from Python. Arbitrary-Z new extrusion paths cannot currently be inserted through the public binding.
+
+The target architecture is therefore:
+- a small Orca C++/pybind path-insertion extension;
+- a pure-Python Adaptive Sub-Edge wheel using that extension.
+
+If the insertion API is upstreamed into OrcaSlicer, the feature can become an ordinary installable plugin.
 
 ## Documentation
-
 - [System specification](docs/SPECIFICATION.md)
 - [Surface error model](docs/ERROR_MODEL.md)
-- [Detailed implementation design](docs/IMPLEMENTATION.md)
+- [Detailed implementation specification](docs/IMPLEMENTATION.md)
+- [ZAA integration strategy](docs/ZAA_INTEGRATION.md)
+- [Plugin requirements](docs/PLUGIN_REQUIREMENTS.md)
+- [OrcaSlicer plugin/API research](docs/ORCASLICER_PLUGIN_RESEARCH.md)
 - [Upstream Smoothificator analysis](docs/SMOOTHIFICATOR_ANALYSIS.md)
-- [OrcaSlicer plugin research](docs/ORCASLICER_PLUGIN_RESEARCH.md)
 - [Development roadmap](docs/ROADMAP.md)
 
-## Upstream Smoothificator
-
-The original scripts remain in this repository as the baseline/reference implementation. Upstream Smoothificator is a G-code post-processor that enables different effective layer heights for outer walls and the rest of a print.
-
-Upstream project: TengerTechnologies/Smoothificator.
-
 ## License
-
-This fork retains the upstream GNU GPL licensing terms and copyright notices. New contributions to this fork must remain compatible with the repository license.
+This fork retains the upstream GNU GPL licensing terms and copyright notices.
