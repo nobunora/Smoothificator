@@ -1,12 +1,11 @@
 # Surface Error and Material Model
 
-## 1. Reference
+## Reference
 M = ideal source-model boundary.
 P = predicted final printed surface.
 
-Primary signed error for predicted surface sample q:
+Primary signed error:
 e_n(q) = (q - p) dot n(p)
-where p is the corresponding/closest source point and n is outward normal.
 
 Required metrics:
 - E_max absolute normal error
@@ -14,75 +13,101 @@ Required metrics:
 - E_p95
 - signed mean/bias
 
-## 2. Final-surface requirement
-Candidate quality MUST be evaluated on the combined final bead geometry:
+## Final printed surface
+Candidate quality MUST include:
 - lower structural/post-ZAA beads
-- all added sub-edge beads
-- upper structural/post-ZAA beads that Orca will still print
+- all candidate Sub-edge beads
+- upper structural/post-ZAA beads Orca will still print
 
-A sub-edge is additional material, not a replacement layer.
+Sub-edges are extra material, not replacement layers.
 
-## 3. Initial bead model
-Use Orca's non-bridge rounded-rectangle cross-section model for parity:
+## Orca/ZAA baseline normalization
+Orca ContourZ stores each ZAA point Z as offset d from layer.print_z.
 
-A = h * (w - h * (1 - pi/4))
+Normalize:
+z_abs = layer.print_z + d
 
-where A = mm3_per_mm, w = extrusion width, h = bead height.
+For non-ironing ZAA segments Orca scales extrusion:
+h_eff = h_nominal + d
+q_eff = q_nominal * h_eff / h_nominal
 
-The geometric envelope uses the same width/height assumptions.
+The baseline predictor MUST reproduce these semantics.
 
-Later empirical calibration may replace/augment this profile.
+Printable v1 rejects ironing and scarf/sloped seams so nonzero path Z has unambiguous ZAA meaning.
 
-## 4. Candidate flow
-SubEdgePath includes width, height and mm3_per_mm.
+## Rounded-rectangle bead model
+Initial Orca parity:
+q = h * (w - h * (1 - pi/4))
 
-The optimizer MUST NOT assume a full standard outer-wall bead is always correct.
+where:
+- q = mm3_per_mm
+- h = effective deposited bead height
+- w = bead width
 
-It must account for:
+## Candidate bead height
+The initial 0.08 mm limit applies to **effective bead height above local support**, not pairwise path-Z difference.
+
+For candidate segment:
+h_eff = z_nozzle - z_support
+
+Require h_eff >= min_bead_height.
+
+Neighboring paths may have Z differences smaller than 0.08 mm if finite-bead overlap, support, machine resolution and nozzle-envelope clearance are valid.
+
+This is essential for shallow slopes, where paths separated laterally by about one line width may need only small Z increments.
+
+## Geometry boundary vs tool centerline
+Mesh-plane intersection C(z) is a material boundary.
+
+It MUST NOT be emitted directly as a nozzle path.
+
+Path layout offsets/positions centerlines on the material side using bead width and final-envelope scoring.
+
+## Nested top-facing v1 condition
+For target region:
+C(z_high) must be contained in C(z_low) within tolerance.
+
+Higher layers recede inward as Z increases.
+
+Outward-growing/downward-facing overhang targets are rejected in printable v1.
+
+## Surface coverage
+A plan may contain many SubEdgePaths at different, closely spaced nozzle Z values.
+
+The optimizer evaluates the union/envelope of deposited beads. It does not assume one path per nominal subdivision or one path is enough for a shallow terrace.
+
+## Candidate flow
+SubEdge segments carry accepted width/effective-height/q.
+
+Engine accounts for:
 - overlap with structural beads
-- overlap between sub-edges
+- overlap between Sub-edges
 - missing target volume
-- overbuild outside M
-- calibrated printable flow/shape bounds
+- overbuild
+- feasible flow/shape limits
 
-Candidates outside calibrated feasible flow/shape limits are infeasible.
+Emitter only converts accepted q to relative filament E.
 
-The G-code emitter does not decide flow; it only converts accepted mm3_per_mm to filament E.
+## Nozzle clearance
+A->B lower-to-higher order reduces collision risk but does not mathematically guarantee nozzle-body clearance when paths are close in XY/Z.
 
-## 5. Z search
-For nominal structural interval [Z0,Z1], candidate centerline Z values are bounded by the interval.
+Use a configurable nozzle envelope + safety margin.
 
-If only nominal spacing applied:
-(k+1) * z_min <= (Z1-Z0)
-so upper bound:
-k_max = max(0, floor((Z1-Z0)/z_min) - 1)
+Unknown/unvalidated nozzle geometry may allow analysis but blocks physical Injection.
 
-This is only a coarse search bound.
+## Acceptance
+1. predict post-ZAA baseline
+2. identify residual-error regions
+3. verify nested support
+4. generate boundary/path candidates
+5. compute support and h_eff
+6. score combined final bead envelope
+7. enforce nozzle/support/flow constraints
+8. choose minimum-cost solution meeting tolerance
+9. otherwise leave Orca/ZAA unchanged
 
-ZAA may make existing structural paths locally non-planar. Final support/clearance feasibility MUST be evaluated against local finite-bead envelopes and XY overlap, not only nominal Z0/Z1 differences.
-
-## 6. Spatial candidates
-Different surface regions may need different k and z values.
-
-v1 accepts only non-crossing outward/top-facing candidate contours. Abrupt/unsupported transitions are rejected.
-
-## 7. Source geometry
-Printable v1 supports one ModelPart volume. Candidate C(z) is generated by plane/triangle intersection on the copied transformed source mesh.
-
-Multi-volume CSG/modifiers remain analysis-unsupported for printable v1 per ADR-0002.
-
-## 8. Acceptance
-For each region:
-1. score post-ZAA structural beads
-2. if compliant, add nothing
-3. generate candidate k/z/flow/path sets
-4. score combined final surface including next structural bead
-5. enforce support/clearance/flow constraints
-6. choose lowest-cost solution meeting tolerance
-7. if none feasible, leave Orca/ZAA output unchanged and report infeasible
-
-## 9. Regression geometry
-- fixed slopes 1/5/10/15/20/25/30 degrees
-- smooth 1-30 degree curve
-- transformed copies for coordinate-frame tests
+## Regression geometry
+- fixed 1/5/10/15/20/25/30 degree slopes
+- smooth 1-30 degree slope
+- translated/rotated/scaled copies for coordinate tests
 - later domes/chamfers
