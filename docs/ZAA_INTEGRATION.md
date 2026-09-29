@@ -1,50 +1,55 @@
 # ZAA Integration Strategy
 
 ## Role
-Orca ZAA/Z Contouring is the low-cost first optimizer. Adaptive Sub-Edge does not replace it.
+ZAA is the low-cost first optimizer.
 
-## Actual baseline
-Analysis occurs after Orca path simplification at posSimplifyPath.
+Adaptive Sub-Edge addresses only residual error that remains after actual Orca toolpath generation/simplification.
 
-The engine consumes the actual 3D extrusion paths. It records whether ZAA is enabled and whether non-planar contouring is observed; it does not assume every path was modified.
+## Hook
+Analyze at posSimplifyPath.
 
-## Hybrid flow
-baseline structural paths
--> ZAA where eligible
--> path simplification
--> finite-bead final-surface estimate
--> residual error
--> optional Sub-edge optimization
+This works whether ZAA was active or not and sees geometry after simplify_extrusion_path().
 
-## Different solution spaces
+## ZAA data semantics
+ContourZ stores path-point Z as offset d, not absolute Z.
+
+Normalize:
+z_abs = layer.print_z + d
+
+For non-ironing ZAA, Orca G-code scales extrusion:
+q_eff = q_nominal * (h_nominal + d) / h_nominal
+
+Baseline prediction must reproduce both Z and flow behavior.
+
+## Surface-relevant roles
+Do not inspect outer walls only.
+
+ZAA also affects exposed top-solid paths; baseline prediction must include exposed roles that define the target slope.
+
+Ironing and scarf/sloped seams are disabled in printable v1 to avoid ambiguous nonzero-Z semantics.
+
+## Solution-space difference
 ZAA:
-- changes Z of existing paths
-- minimal added path/time
-- fixed existing topology
+- moves existing paths
+- very low added time/material
+- existing topology
 
-Sub-edge:
-- can create additional surface contours/material
-- independent candidate Z and flow
-- higher potential quality ceiling
-- costs time/material
+Adaptive Sub-Edge:
+- adds paths/material
+- can use many independently positioned heights
+- each candidate's physical bead height is determined relative to support
+- can fill residual geometric bandwidth that existing paths cannot represent
 
 ## Success criterion
-Not "beat ZAA everywhere".
+Not “beat ZAA everywhere.”
 
-Target:
-When ZAA-only remains above tolerance, reduce error materially with less penalty than globally reducing layer height.
+When ZAA remains above tolerance, improve error with less penalty than globally reducing structural layer height.
 
 ## Collision/order
-Added non-crossing sub-edges are explicitly printed lower-Z first.
+Lower-to-higher path ordering is required.
 
-Candidate feasibility is still checked against local post-ZAA finite-bead envelopes because ZAA structural paths may vary in Z.
+Actual nozzle clearance still uses a finite nozzle envelope; small pairwise Z differences are allowed only when clearance passes.
 
 ## Benchmark
-1/5/10/15/20/25/30 degree coupons plus smooth slope.
-Compare:
-- normal
-- fine conventional
-- ZAA
-- ZAA + Sub-edge
-
-Measure error, roughness, time, material and failures.
+Normal / fine layer / ZAA-only / ZAA+SubEdge on:
+1/5/10/15/20/25/30 degree coupons and smooth slope.
