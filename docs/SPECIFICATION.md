@@ -1,93 +1,101 @@
 # Adaptive Sub-Edge Surface Reconstruction — Specification
 
-## Goal
-Extend OrcaSlicer's Z Anti-Aliasing (ZAA / Z Contouring) with a second, error-driven reconstruction stage.
+## Product goal
+Adaptive Sub-Edge extends OrcaSlicer ZAA using **stock OrcaSlicer + Python plugin only**.
 
-The system first takes the low-cost quality improvement available from ZAA. It then measures the remaining difference between the predicted printable surface and the ideal model. Only regions that still exceed the requested tolerance receive additional outer-surface paths ("sub-edges").
+Canonical flow:
+Orca baseline -> ZAA -> posContouring analysis -> immutable SubEdgePlan -> Orca G-code -> psGCodePostProcess validation/injection -> output.
 
-The objective is not to replace ZAA or beat it on print time. It is to exceed the geometric quality ceiling of ZAA with the minimum necessary additional extrusion.
+No custom Orca build is required for v1.
 
-## Pipeline
-Baseline slicing -> ZAA -> finite-bead surface prediction -> residual error -> adaptive sub-edge -> validation -> G-code
+## Single source of truth
+The exact same immutable SubEdgePlan MUST drive:
+- plugin preview
+- predicted metrics
+- G-code injection
 
-1. Orca produces baseline layer/perimeter geometry.
-2. ZAA runs normally where eligible.
-3. Build a finite-width predicted surface from post-ZAA paths.
-4. Compare that surface with the source model.
-5. If error is within tolerance, do nothing.
-6. Otherwise generate candidate intermediate model contours.
-7. Add the lowest-cost set of sub-edges satisfying the target.
-8. Re-evaluate the surface and pass accepted paths downstream.
+The injector MUST NOT recalculate geometry.
 
-## Error-driven, not fixed-pitch
-For a structural interval Z0..Z1, the optimizer may select:
+## ZAA-first
+Use post-ZAA paths as baseline where ZAA is enabled/applicable. If unavailable, record baseline_mode="orca".
 
-Z0 < z1 < z2 < ... < zk < Z1
+## Error-driven geometry
+For structural interval [Z0,Z1]:
 
-Each z_i is an independent optimization variable. Equal spacing and fixed 1/2 or 1/3 subdivisions are not required.
+Z0 < z1 < ... < zk < Z1
 
-## Z constraints
-Initial 0.4 mm nozzle target:
-- configurable minimum adjacent printed-surface-path Z spacing: 0.08 mm
-- monotonic accepted Z order
-- no crossing between accepted sub-edge contours
-- minimum spacing becomes a calibratable machine/material/nozzle profile value
+Each z_i is independently optimized. Fixed 1/2 or 1/3 subdivision is not assumed.
 
-0.08 mm is an initial engineering constraint, not a universal constant.
+Initial 0.4 mm nozzle minimum adjacent Z spacing: 0.08 mm, configurable/profile-driven.
 
-## Ordering and collision model
-For non-crossing contours with z_A < z_B < z_C, print A -> B -> C. This intentionally mirrors ordinary bottom-to-top FDM layering.
+## Ordering and collision
+For non-crossing z_A < z_B < z_C, print A -> B -> C.
 
-Sub-edge/sub-edge collision is therefore not inherently expected for monotonic non-crossing geometry. Validation focuses on:
-- real bead height exceeding the model
-- inward/concave geometry reducing nozzle-body clearance
-- insufficient support/contact
-- travel across printed geometry
-- seam blobs/local over-extrusion
+v1 accepts outward/top-facing, non-crossing contours only. Reject contour crossing, insufficient support, uncertain inward/concave nozzle clearance, bead-clearance violation, or ambiguous insertion anchors.
 
-Hard nozzle-body collisions are forbidden.
+## Optimization
+Require E_max <= configured tolerance where feasible. Among feasible plans minimize error/cost using E_rms, added time, material and complexity.
 
-## Optimization objective
-Minimize:
+Required metrics:
+- E_max normal error
+- E_rms
+- E_p95
+- signed bias
+- added path length/volume
+- estimated added time
 
-J = w_max E_max + w_rms E_rms + w_path C_path + w_time C_time + w_material C_material
+## Preview contract
+Preview means plugin-owned visualization of SubEdgePlan. Orca standard G-code viewer displays the pre-psGCodePostProcess file and does not contain injected paths.
 
-where E_max/E_rms are surface-normal error metrics and the remaining terms penalize added complexity, time and material.
+Preview/injection MUST share plan_id and deterministic plan_hash.
 
-A quality mode may instead impose E_max <= user_tolerance and minimize added cost subject to that constraint.
+Status:
+- PLANNED
+- INJECTION PASS
+- INJECTION SKIPPED
+- INJECTION FAIL
 
-## ZAA relationship
-ZAA changes Z coordinates of existing eligible extrusion points and is highly time-efficient.
+## Thread/lifetime contract
+SlicingPipeline hooks run on Orca's slicing worker thread.
 
-Adaptive Sub-Edge has a larger solution space because it may add new contours/material. It runs only after ZAA residual error justifies that cost.
+MUST NOT call orca.host.ui.* from SlicingPipeline execute().
 
-Expected strengths over ZAA-only:
-- lower attainable geometric error where moving existing paths is insufficient
-- reconstruction of missing intermediate surface geometry
-- explicit tolerance-driven quality control
-- future outer-silhouette/side-wall treatment
-- constant-Z deposition within each added contour
+ctx.print/ctx.object/live geometry references MUST NOT survive execute(). Copy required geometry/config into plugin-owned values before returning.
 
-Expected cost:
-- additional extrusion and print time
+UI/preview MUST use only copied plan/snapshot data through a UI-safe capability.
 
-## Required behavior
-1. Preserve Orca structural layer decisions.
-2. Prefer post-ZAA geometry as the baseline.
-3. Estimate post-ZAA printable-surface error.
-4. Leave compliant regions untouched.
-5. Generate true model cross-sections at candidate Z values where possible.
-6. Permit multiple non-uniform sub-edges.
-7. Optimize each Z independently.
-8. Add only surface contributions, not full intermediate structural layers.
-9. Validate support, topology, ordering and clearance.
-10. Re-score the finite-bead surface.
-11. Fail safely to unmodified Orca output on uncertainty/failure.
+## G-code injection contract
+At psGCodePostProcess, edit ctx.gcode_path in place only after complete validation.
 
-## First-version non-goals
+Injector MUST:
+- parse statefully, not blindly regex-replace;
+- identify exact layer/object/path anchors;
+- validate Z/XY/config fingerprints;
+- preserve/restore positioning, extrusion, feed/retraction/tool state;
+- inject lower-Z-first;
+- be idempotent using versioned markers;
+- validate entire plan before writing;
+- write atomically;
+- refuse partial injection.
+
+On mandatory validation failure, original Orca output MUST remain unchanged.
+
+## First supported domain
+- stock Orca with Python Plugin System/SlicingPipeline
+- 0.4 mm nozzle
+- PLA calibration first
+- outward/top-facing slopes
+- non-crossing sub-edges
+- 0.08 mm default minimum spacing
+- ZAA-first when applicable
+- single extruder/tool first
+- no downward-facing reconstruction
+
+## Non-goals v1
+- custom Orca dependency
+- live perimeter mutation
 - replacing ZAA
-- full non-planar nozzle orientation
-- downward-facing reconstruction without support modeling
-- modifying infill/inner-wall scheduling
-- G-code regex rewriting as the final architecture
-- intentional nozzle collision as a smoothing mechanism
+- full non-planar printing
+- multimaterial/tool-change injection
+- intentional collision smoothing
+- claiming standard Orca preview includes injected paths
