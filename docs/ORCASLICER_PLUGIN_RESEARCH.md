@@ -1,156 +1,74 @@
 # OrcaSlicer Plugin / Geometry API Research
 
-Research target: OrcaSlicer main and official plugin documentation, 2026-09.
+Research target: OrcaSlicer main and official plugin docs, 2026-09.
 
 ## Conclusion
-A Python SlicingPipeline plugin can inspect substantial live geometry and mutate selected 2D slice surfaces today. **It cannot currently implement the defining Adaptive Sub-Edge operation by itself:** inserting a new external 3D extrusion contour at an arbitrary Z between structural layers.
+Stock Orca is sufficient for the v1 architecture by combining two official SlicingPipeline seams:
 
-Production therefore requires:
-1. compatible Orca with Python Plugin System;
-2. a small Orca C++/pybind path-insertion extension;
-3. the Adaptive Sub-Edge algorithm as a Python plugin/wheel.
+- posContouring: read post-ZAA geometry and compute SubEdgePlan
+- psGCodePostProcess: edit the exported working G-code in place
 
-If the binding is upstreamed, ordinary Orca users could install only the plugin. Until then, a compatible custom Orca build is required.
+A custom Orca build is not required for v1.
 
-## Version condition
-Official Orca documentation lists the Python Plugin System as available in:
-- Nightly builds, or
-- releases greater than 2.4.2.
+## Plugin availability
+Official docs: Python Plugin System is available in Nightly or releases greater than 2.4.2. SlicingPipeline is research/experimental, so releases must pin tested Orca versions.
 
-SlicingPipeline is explicitly research/experimental.
+## Relevant API behavior
+At geometry steps:
+- ctx.print / ctx.object expose live slicing graph
+- references live only during execute(ctx)
+- pipeline capability runs on slicing worker thread
+- do not call orca.host.ui.* from that thread
 
-## Packaging
-Orca accepts:
-- one .py plugin using PEP 723 metadata, or
-- a .whl plugin.
+At psGCodePostProcess:
+- ctx.print / ctx.object are None
+- ctx.gcode_path points to the working exported G-code
+- ctx.host / ctx.output_name are available
+- plugin edits file in place
+- step may run separately for export/upload
+- output is not reflected in Orca standard G-code preview
 
-This project is multi-module, so the target package is a pure-Python wheel.
+## Readable geometry
+Bindings expose Print, PrintObject, Layer, LayerRegion, Print-owned Model snapshot, Surface/ExPolygon, extrusion tree, native 3D ExtrusionPath points, width, height, mm3_per_mm and config.
 
-## Relevant SlicingPipeline steps
-Current Step enum includes:
-- posSlice
-- posPerimeters
-- posEstimateCurledExtrusions
-- posPrepareInfill
-- posInfill
-- posIroning
-- posContouring
-- posSupportMaterial
-- posDetectOverhangsForLift
-- posSimplifyPath
-- psWipeTower
-- psSkirtBrim
-- psGCodePostProcess
+This is enough for post-ZAA error analysis and plan generation.
 
-Geometry-step references are valid only during execute(ctx).
+## Read-only limitation
+Perimeters/path points/layer Z cannot currently be arbitrarily mutated from Python.
 
-## Confirmed readable live data
-Current bindings expose:
-- Print / PrintObject
-- Layer / LayerRegion
-- Print-owned Model snapshot / ModelObject
-- Surface / SurfaceCollection
-- ExPolygon geometry
-- extrusion tree
-- ExtrusionPath
-- native 3D path points
-- width
-- height
-- mm3_per_mm
-- resolved configuration
+This no longer blocks v1 because the plugin does not attempt live path injection. It converts a geometry-derived plan to G-code at psGCodePostProcess.
 
-This is enough to implement read-only post-ZAA analysis and the residual-error engine.
+## Preview implication
+Standard Orca G-code viewer maps the pre-post-process file, so injected sub-edges are absent there.
 
-## Confirmed mutable data
-At posSlice, LayerRegion.slices is a mutable SurfaceCollection supporting set/append/clear and geometry/type changes. Layer.make_slices() rebuilds merged islands afterward.
+Stock Orca still permits plugin-owned preview: the plan is copied into plugin-owned data, then a UI-safe Script capability may display a host-owned HTML window/panel. The slicing hook itself must not invoke UI.
 
-Therefore Python can alter existing layer 2D slice geometry and let later perimeter generation cascade.
+## Required architectural separation
+Analyzer:
+model + post-ZAA geometry -> immutable SubEdgePlan
 
-## Blocking API limitations
+Preview:
+SubEdgePlan -> visualization
 
-### Perimeters are read-only
-LayerRegion.perimeters is exposed for inspection but no append/set operation is bound.
+Injector:
+SubEdgePlan + exported G-code -> validated G-code insertion
 
-### ExtrusionPath is read-only
-points() returns a read-only NumPy view. width, height and mm3_per_mm are read-only.
+Preview and injector share plan hash. Injector must not perform geometry optimization.
 
-### Layer Z is read-only
-print_z, slice_z and height are read-only. No Python API creates/inserts an arbitrary-Z Layer.
+## Why this is safer than legacy Smoothificator
+Legacy Smoothificator infers/refines outer walls from final G-code.
 
-### Result
-Editing posSlice geometry cannot represent a new independently positioned intermediate surface contour. A pure Python plugin cannot currently create the project's required arbitrary-Z sub-edge.
+This design makes geometric decisions while source mesh and ZAA paths are still available, then uses final G-code only as an execution target. Anchor validation must prove that the G-code corresponds to the planned geometry before insertion.
 
-## ZAA integration
-Orca Z Contouring/ZAA adjusts Z of individual extrusion points on eligible top-facing curved/sloped surfaces while leaving nominal layer height elsewhere unchanged.
+## Filesystem/audit
+Official slicing docs state writing ctx.gcode_path at psGCodePostProcess is an intended operation; that working folder is approved for the call. Other filesystem/network/process operations remain subject to plugin audit policy.
 
-Relevant settings include:
-- zaa_enabled
-- zaa_min_z
-- zaa_minimize_perimeter_height
-- zaa_dont_alternate_fill_direction
+## Remaining technical risks
+- reliable plan identity across slice/export calls
+- robust Orca G-code state parsing
+- exact anchor matching
+- Bambu/other firmware dialect differences
+- preview is plan-level, not Orca standard postprocessed viewer
+- SlicingPipeline API may change because it is experimental
 
-Current official scope is top-facing curved/sloped surfaces; downward-facing/upside-down curves are not handled.
-
-Adaptive Sub-Edge therefore treats post-ZAA geometry as its preferred baseline and works on residual error.
-
-## Conditions for plugin operation
-
-### User/runtime conditions
-- Orca Nightly or release > 2.4.2
-- Python Plugin System available
-- SlicingPipeline capability enabled/usable
-- NumPy available if required by geometry bindings
-- compatible Adaptive Sub-Edge path-insertion binding present
-
-### Geometry conditions for first release
-- source model mesh accessible through Print snapshot
-- outward/top-facing target surface
-- non-crossing candidate contours
-- candidate spacing >= configured minimum (initially 0.08 mm)
-- enough support/contact for each added contour
-- no validated hard nozzle-body collision
-
-### ZAA condition
-Hybrid mode prefers ZAA enabled. If ZAA is disabled or a region is ineligible, the plugin may use ordinary perimeter geometry as the baseline, but should report that ZAA-first optimization was unavailable.
-
-## Required Orca extension
-Expose a narrow, stable operation that copies validated Python data into Orca-owned extrusion geometry. Do not expose arbitrary internal pointer mutation.
-
-Candidate API:
-append_subedge_paths(specs)
-
-Each spec contains 3D points, width, height, flow, role and ordering metadata.
-
-The binding must preserve graph invariants and downstream preview/G-code behavior.
-
-## Preferred execution point
-Analyze at posContouring because ZAA has run and 3D contoured paths are available.
-
-If mutation at this point is unsafe, add a dedicated post-contouring plugin hook/API rather than falling back to regex G-code rewriting.
-
-## Development modes
-
-### Mode 1 — stock Orca, read-only research plugin
-Possible now:
-- inspect post-ZAA paths
-- compute residual errors
-- visualize/log candidate sub-edges
-- benchmark optimizer
-
-### Mode 2 — custom Orca + plugin
-Required for first working geometry-injection prototype.
-
-### Mode 3 — stock Orca + plugin
-Possible only after the required insertion binding/hook is accepted upstream.
-
-## Source-level evidence
-Current Orca source comments explicitly describe:
-- SlicingPipeline as research/experimental
-- SurfaceCollection 2D mutators
-- LayerRegion.slices as the primary posSlice mutation target
-- LayerRegion.perimeters as read-only
-- ExtrusionPath points as read-only
-- Layer Z/height as read-only
-- 3D path points already native in the extrusion graph
-
-These findings make a narrow path-insertion binding substantially smaller than building a separate slicer engine.
+These risks are addressed by deterministic hashing, explicit version support, stateful parser, all-or-nothing injection and analysis-only fallback.
