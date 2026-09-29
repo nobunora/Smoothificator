@@ -1,159 +1,301 @@
-# Detailed Implementation Specification
+# Implementation Specification — Stock Orca Plugin
 
-## 1. Production architecture
-Final target:
+This document is normative. Coding agents MUST follow it unless a later ADR explicitly supersedes a requirement.
 
-**small Orca C++/pybind extension + Python SlicingPipeline plugin**
+## 0. Architecture
+Use **stock OrcaSlicer + Python plugin only**.
 
-Current Orca Python bindings expose live geometry and mutable 2D slice surfaces, but generated perimeter paths and their 3D points are read-only, and arbitrary intermediate-Z layers/paths cannot be inserted. Therefore a pure Python plugin is sufficient for analysis/prototyping but not final sub-edge injection.
+Two SlicingPipeline hooks:
+1. posContouring: analyze post-ZAA geometry and create immutable SubEdgePlan.
+2. psGCodePostProcess: validate exported G-code and inject that exact plan.
 
-## 2. Processing stages
-A. Orca baseline slicing/perimeters  
-B. Orca ZAA/Z Contouring  
-C. Read post-ZAA 3D outer paths  
-D. Build finite-width predicted surface  
-E. Compute residual normal-error map  
-F. Generate arbitrary-Z intermediate model contours only where needed  
-G. Optimize number and independent Z positions of sub-edges  
-H. Validate support/topology/clearance  
-I. Inject accepted paths through the C++ binding  
-J. Print non-crossing paths from lowest Z to highest Z  
-K. Continue normal Orca downstream path/G-code processing
+No Orca C++ changes in v1.
 
-## 3. Core modules
+## 1. Orca execution facts
+SlicingPipeline execute(ctx) runs on the slicing worker thread. Never call orca.host.ui.* there.
 
-### GeometryAdapter
-Reads Print/PrintObject/Layer/LayerRegion, source mesh, post-ZAA ExtrusionPaths and resolved settings. Handles coordinate transforms and model cross-sections.
+Geometry hooks expose live ctx.print/ctx.object only during execute().
 
-### BaselineSurfaceBuilder
-Builds a finite-width deposited-envelope approximation from post-ZAA paths.
+At psGCodePostProcess:
+- ctx.print/ctx.object are None
+- ctx.gcode_path is the working exported G-code
+- ctx.host/output_name are available
+- file is edited in place
+- hook may run multiple times on separate working copies
+- post-process result is not reflected in Orca standard G-code preview
 
-### ErrorEstimator
-Computes maximum, RMS, percentile and signed surface-normal error against the source model.
-
-### CandidateGenerator
-At arbitrary candidate Z:
-
-C(z) = model intersect plane(Z)
-
-Prefer true mesh cross-sections over interpolation between neighboring paths.
-
-### SubEdgeExtractor
-Keeps only the surface contribution required to reduce residual error. Checks minimum length, support/contact, topology changes and contour crossing.
-
-### ZOptimizer
-Variables:
-- k: number of added contours
-- z_1..z_k: independent heights
-
-Constraints:
-- ordered Z
-- configurable minimum adjacent spacing
-- no contour crossing
-- printable support/contact
-- maximum path-count guardrail
-
-Initial solver:
-1. coarse candidate grid
-2. beam/branch selection over k
-3. local continuous refinement of z_i
-4. early stop when tolerance is met
-5. select lowest total cost
-
-### BeadModel
-Initial rounded-rectangle/elliptical profile using Orca width, height and flow. Later calibrate by nozzle/material/speed/temperature.
-
-### CollisionValidator
-For monotonic non-crossing contours, bottom-to-top ordering is normal and not treated as a special collision case. Reject concave/inward nozzle-body conflicts, excessive real/predicted bead height, unsupported paths and unsafe transitions.
-
-### CostModel
-Scores added path length, material, estimated time, starts/stops and error reduction.
-
-## 4. Required Orca C++ API extension
-Minimum concept:
-
-SubEdgePathSpec
-- points3d
-- width
-- height
-- mm3_per_mm
-- extrusion role
-- ordering/group id
-
-Insertion API, e.g.:
-- append_subedge_paths(list[SubEdgePathSpec])
-
-Requirements:
-- C++ copies/owns data
-- validates coordinates and extrusion parameters
-- inserts into a graph location that survives preview and G-code generation
-- maintains/invalidate caches correctly
-- preserves deterministic ordering
-- rejects invalid pipeline stages
-
-If direct LayerRegion.perimeters insertion breaks invariants, add a dedicated sub-edge collection consumed by downstream extrusion/G-code generation.
-
-## 5. Hook strategy
-Preferred evaluation point: **posContouring**, because Orca ZAA has already produced contoured paths and the project needs post-ZAA residual error.
-
-If injection at posContouring cannot safely participate in later processing, add a dedicated Orca hook immediately after contouring, e.g. posAdaptiveSubEdgeAfterContouring.
-
-Injected paths should still flow through later simplification/order/travel/G-code logic wherever compatible.
-
-## 6. Python package layout
+## 2. Package layout
 adaptive_subedge/
-- geometry_adapter.py
+- geometry_snapshot.py
 - baseline_surface.py
 - error_estimator.py
+- mesh_section.py
 - candidate_generator.py
 - subedge_extractor.py
 - z_optimizer.py
 - bead_model.py
 - collision.py
 - cost_model.py
+- plan.py
+- plan_store.py
 - settings.py
+- hashing.py
 
 orca_plugin/
-- __init__.py
-- capability.py
-- integration.py
+- package.py
+- slicing_capability.py
+- preview_capability.py
+- preview_renderer.py
+- gcode/lexer.py
+- gcode/parser.py
+- gcode/state.py
+- gcode/anchors.py
+- gcode/emitter.py
+- gcode/injector.py
+- gcode/validation.py
 
 tests/
 - unit/
 - analytic/
-- mesh/
+- fixtures/gcode/
+- fixtures/plans/
+- integration/
 - regression/
-- printer/
 
-Distribution target: pure-Python wheel once the required binding exists in Orca.
+## 3. Immutable data model
 
-## 7. Plugin pseudocode
-execute(ctx):
-    if ctx.step != Step.posContouring:
-        return Success
-    if not required_binding_available():
-        return RecoverableError
+GeometrySnapshot MUST contain copied values only:
+- Orca version
+- object id/transform
+- copied source-mesh representation needed by algorithm
+- layers
+- copied post-ZAA outer-path XYZ points in mm
+- width/height/mm3_per_mm/role
+- relevant resolved config
+- ZAA settings
+- nozzle/filament data
 
-    mesh = ctx.object.model_object()
-    paths = read_post_zaa_outer_paths(ctx.object)
-    predicted = build_surface(paths)
-    residual = estimate_error(mesh, predicted)
+No pybind/live Orca object may be retained.
 
-    for region in residual.regions_above(tolerance):
-        solution = optimize_subedges(mesh, region)
-        if solution.feasible and validate(solution):
-            append_subedge_paths(solution.paths)
+SubEdgePath (frozen):
+- path_id, object_id, interval_id
+- z_mm
+- points_xy_mm
+- width_mm, height_mm, mm3_per_mm
+- estimated_volume_mm3
+- ordering_index
+- source_error_region_id
 
-    return Success
+InsertionAnchor (frozen):
+- expected Z0/Z1
+- object/layer identifiers when available
+- nearby expected XY
+- expected Orca comment/marker context
+- tolerances
+- anchor fingerprint
 
-## 8. Failure behavior
-Unsupported topology, missing binding, cancellation, invalid geometry or numerical failure must result in **no sub-edge modification**, never a partially modified slice.
+SubEdgePlan (frozen):
+- schema_version, plugin_version
+- plan_id, deterministic plan_hash
+- Orca version
+- baseline_mode
+- settings_hash, geometry_hash
+- paths, anchors
+- metrics_before, metrics_after_predicted
 
-## 9. First implementation scope
-- 0.4 mm nozzle
-- PLA first
-- top-facing/outward-monotonic slopes first
-- non-crossing sub-edges
-- default minimum Z spacing 0.08 mm
-- ZAA-enabled baseline where eligible
-- no downward-facing surfaces initially
+Timestamp may exist for diagnostics but MUST NOT affect deterministic hash.
+
+## 4. posContouring analyzer
+Mandatory sequence:
+1. check cancellation
+2. read settings
+3. copy required live data into GeometrySnapshot
+4. never retain live references
+5. identify eligible outer regions
+6. build post-ZAA finite-bead surface
+7. compute residual normal-error map
+8. skip compliant regions
+9. generate arbitrary-Z mesh sections
+10. extract printable surface-only candidates
+11. optimize k and independent z_i
+12. validate non-crossing/support/clearance
+13. re-score finite-bead surface
+14. create immutable SubEdgePlan
+15. store in PlanStore using deterministic slice fingerprint
+16. return concise diagnostics
+
+Heavy work MUST poll ctx.cancelled() regularly.
+
+## 5. Geometry/error rules
+Candidate contour SHOULD be true source-mesh plane intersection.
+
+Required error metrics: E_max, E_rms, E_p95, signed mean.
+
+Bead model v1: configurable rounded-rectangle or ellipse using width/height.
+
+Never evaluate quality as zero-width paths only.
+
+Optimizer MUST NOT hardcode 1/2 or 1/3.
+
+Constraints:
+- adjacent z >= min_z_spacing
+- non-crossing
+- support/contact valid
+- max path count guardrail
+- next structural layer clearance valid
+
+Solver v1:
+coarse bounded Z grid -> beam/enumeration over k -> local refinement -> early tolerance stop -> minimum-cost feasible solution.
+
+## 6. PlanStore
+Cross-hook handoff uses copied plugin-owned data only.
+
+Requirements:
+- process-local
+- thread-safe
+- immutable plans
+- deterministic slice/output fingerprint key
+- bounded LRU
+- invalidation on incompatible new slice
+- no Orca object references
+- repeated psGCodePostProcess calls reuse plan read-only
+
+If lookup is ambiguous/missing, injector skips. It MUST NOT reconstruct geometry from G-code.
+
+## 7. Preview
+Provide plugin-owned preview/diagnostic UI.
+
+Do not call UI APIs from slicing worker. Use a Script/UI-safe capability to read copied PlanStore data and create/refresh host-owned HTML window/panel.
+
+Preview MUST show:
+- post-ZAA reference paths
+- planned sub-edges
+- residual error heatmap
+- before/after predicted metrics
+- sub-edge Z values
+- plan hash
+- injection status
+
+Renderer and injector MUST consume the same plan serialization/hash.
+
+## 8. G-code parser
+No ad-hoc regex-only injection.
+
+Track at minimum:
+- X/Y/Z
+- absolute/relative XYZ mode
+- absolute/relative extrusion mode
+- current E
+- feed rate
+- retraction/unretraction state where detectable
+- active tool
+- layer/object/type comments
+- required machine-specific state
+
+Unknown commands are preserved. If an unknown command invalidates tracked-state confidence in target interval, skip injection.
+
+Support only explicitly tested Orca dialect/profile families.
+
+## 9. Anchor validation
+Before any modification:
+1. parse complete G-code
+2. locate every structural interval
+3. locate expected outer-wall neighborhood
+4. validate Z
+5. validate nearby XY/comment fingerprint
+6. validate extrusion/tool/state assumptions
+7. validate all paths/anchors
+
+All-or-nothing. No partial injection.
+
+## 10. Extrusion emitter
+For path length L and q=mm3_per_mm:
+V=L*q
+
+Convert V to filament E using configured filament cross-sectional area.
+
+Correctly handle detected extrusion mode.
+
+Each block:
+1. establish safe retraction/travel state
+2. travel to start safely
+3. set required Z
+4. extrude planned path
+5. process paths lower-Z first
+6. restore state expected by following Orca G-code
+
+Speed is conservative/configurable and initially capped from outer-wall speed.
+
+## 11. Idempotence
+Use:
+; ADAPTIVE_SUBEDGE_BEGIN plan=<hash> version=<version>
+...
+; ADAPTIVE_SUBEDGE_END plan=<hash>
+
+Existing matching marker => validate and do not inject again.
+
+## 12. Atomicity
+1. read original
+2. parse fully
+3. validate all
+4. build complete modified output separately
+5. sanity-parse modified output
+6. replace working file only after success
+
+Failure leaves original unchanged.
+
+## 13. v1 safety gates
+Skip injection for:
+- multi-tool/tool change in target interval
+- unknown extrusion mode transition
+- unsupported state-changing command
+- anchor mismatch
+- plan/settings mismatch
+- crossing contours
+- unsupported geometry
+- NaN/Inf
+- ambiguous anchors
+
+## 14. Tests
+Unit:
+- plan hashing
+- optimizer constraints
+- bead model
+- G-code state machine
+- E conversion
+- anchor matching
+- idempotence
+- atomic failure
+
+Golden G-code fixtures per supported Orca/profile version.
+
+Geometry coupons: smooth 1–30 degree curve and fixed 1/5/10/15/20/25/30 degree slopes.
+
+Regression comparison:
+normal / ZAA-only / ZAA+SubEdge / fine conventional layer.
+
+Mandatory invariants:
+- no partial injection
+- no duplicate injection
+- lower-Z-first
+- preview plan hash == injected plan hash
+- original unchanged on failure
+- no live Orca references after analyzer returns
+
+## 15. Logging
+Structured:
+plan hash, Orca version, baseline mode, paths added, error before/after, added length/volume/time estimate, injection result, reason code.
+
+## 16. Coding-agent rules
+- do not modify legacy Smoothificator scripts unless explicitly tasked
+- new code goes under adaptive_subedge/ and orca_plugin/
+- no custom Orca C++ in v1
+- no regex-only fallback
+- no UI call from SlicingPipeline execute()
+- no storing live/pybind graph objects
+- no partial file writes
+- no unsupported-feature guessing
+- tests required with behavior changes
+- deterministic output for identical input/settings
+- use explicit frozen dataclasses/types and pure functions where practical
+- any safety relaxation requires an ADR before implementation
