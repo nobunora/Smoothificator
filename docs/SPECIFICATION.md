@@ -1,187 +1,475 @@
-# Adaptive Sub-Edge Surface Reconstruction — Specification
+# Adaptive Sub-Edge Surface Reconstruction — System Specification
 
-## 1. Product goal
-Adaptive Sub-Edge is a stock-OrcaSlicer Python plugin that improves surface geometry beyond Orca ZAA where residual error remains.
+## 1. Goal
 
-No custom Orca build is required for v1.
+Adaptive Sub-Edge is a stock-OrcaSlicer Python plugin that improves FDM outer-surface fidelity where Orca's normal slicing and Z Anti-Aliasing (ZAA / Z Contouring) still leave unacceptable geometric error.
 
-## 2. Canonical flow
-Orca slice -> ZAA if applicable -> path simplification -> posSimplifyPath snapshot -> residual-error/surface-band optimization -> immutable SubEdgePlan -> plugin preview -> normal Orca G-code -> psGCodePostProcess validated additive injection -> output.
+v1 MUST NOT require a custom Orca build.
 
-The original Orca structural toolpath remains unchanged in v1.
+The central strategy is:
+
+1. let Orca finish its normal geometry work, including ZAA when applicable;
+2. inspect the final simplified structural toolpaths;
+3. predict the finite-bead printed surface;
+4. find residual surface bands that remain outside tolerance;
+5. plan the minimum additional printable SubEdge paths required;
+6. preview that exact immutable plan;
+7. inject that exact plan into the final working G-code only after strict compatibility, coordinate, state, and safety validation.
+
+## 2. Canonical pipeline
+
+```text
+Orca slice
+  -> ZAA / normal path generation
+  -> path simplification
+  -> posSimplifyPath
+       -> Orca adapter snapshot
+       -> centered source-mesh reconstruction
+       -> ZAA absolute-Z + local-flow normalization
+       -> finite-bead baseline
+       -> residual-error / surface-band planning
+       -> immutable SubEdgePlan
+            -> plugin preview
+  -> normal Orca G-code generation
+  -> psGCodePostProcess
+       -> export config fingerprint validation
+       -> streaming parser / actual machine state
+       -> seam-invariant structural-path matching
+       -> execution-frame translation
+       -> quantized execution validation
+       -> safe additive injection
+       -> exact state restoration
+       -> atomic replace
+  -> file / printer
+```
+
+The original Orca structural extrusion remains unchanged in printable v1.
 
 ## 3. Single source of truth
-The exact same immutable SubEdgePlan drives:
+
+The exact same immutable `SubEdgePlan` MUST drive:
 - preview;
 - predicted metrics;
-- G-code injection.
+- final G-code injection.
 
-Injector MUST NOT recalculate geometry.
+The injector MUST NOT:
+- rerun the optimizer;
+- infer replacement geometry from G-code;
+- silently change the plan to make it fit final G-code.
 
-## 4. Baseline semantics
-Analyzer reads final simplified paths at posSimplifyPath.
+Execution status is stored separately from the immutable plan.
 
-If ZAA modified a path, the snapshot contains:
-- absolute command Z reconstructed from layer.print_z + path Z offset;
-- local effective ZAA extrusion flow matching Orca's G-code behavior.
+## 4. Canonical geometry frame
 
-If ZAA did not apply, ordinary planar Orca paths naturally become the baseline.
+All domain/engine geometry uses **Orca centered PrintObject slice-space expressed in millimeters**.
 
-## 5. Error-driven surface-band reconstruction
-The source mesh intersection is a target material boundary, not a nozzle centerline.
+For printable v1:
+- exactly one PrintObject;
+- exactly one total source ModelInstance;
+- exactly one positive ModelPart volume.
 
-Planner derives one or more printable centerlines inside the material-side residual surface band.
+The Orca adapter MUST reconstruct the centered frame defined by ADR-0012. A direct `PrintObject.trafo() @ ModelVolume.matrix()` transform is insufficient.
 
-Candidate paths may:
-- share one Z;
-- use different Z values;
-- have pairwise Z differences smaller than 0.08 mm.
+No plan is injectable unless source mesh, PrintObject bounding geometry, and simplified path geometry pass the centered-frame parity checks.
 
-No fixed 1/2 or 1/3 subdivision is assumed.
+## 5. ZAA baseline semantics
 
-## 6. Minimum-height rule
-Initial 0.4 mm nozzle value:
-h_min = 0.08 mm.
+The analyzer reads final simplified paths at `posSimplifyPath`.
 
-This is the minimum **effective deposited bead height above local support**, not minimum neighboring path Z separation.
+For a Z-contoured path:
+- Orca path-point Z is a relative offset `d`;
+- absolute slice-space nozzle Z is:
 
-For each candidate:
-h_eff = z_nozzle - z_support.
+[
+Z_{abs}=Layer.print_z + d
+]
 
-Local support comes from the predicted lower material envelope.
+after Orca unscale conversion;
 
-## 7. Final-surface model
-Quality is evaluated from the combined finite-bead envelope of:
+- for non-ironing ZAA segments, Orca locally scales extrusion by:
+
+[
+r_{zaa}=rac{path.height+d}{path.height}.
+]
+
+The baseline predictor MUST include both the Z change and effective local command-flow change.
+
+If ZAA did not apply, ordinary planar paths naturally become the baseline.
+
+## 6. Surface boundary and SubEdge centerlines
+
+A source mesh-plane intersection is a **target material boundary**, not an extrusion centerline.
+
+The engine:
+1. derives a residual surface band;
+2. determines the material side;
+3. lays out one or more printable centerlines inside that material;
+4. evaluates the finite-bead envelope against the source boundary.
+
+A residual band may require:
+- multiple paths at one Z;
+- multiple paths at different Z;
+- a combination.
+
+No fixed half-pitch, 1/2, 1/3, or uniform subdivision rule is permitted.
+
+## 7. Effective bead-height rule
+
+Initial 0.4 mm nozzle research uses:
+
+[
+h_{min}=0.08	ext{ mm}
+]
+
+as a configurable/calibratable **minimum effective deposited bead height above local support**.
+
+For candidate segment (j):
+
+[
+h_{eff,j}=Z_{nozzle,j}-Z_{support,j}.
+]
+
+It is NOT a mandatory pairwise Z separation between neighboring SubEdge paths.
+
+Pairwise feasibility is determined by:
+- finite bead overlap/overbuild;
+- local support;
+- nozzle clearance;
+- path crossing;
+- machine/G-code quantization.
+
+## 8. Segment-local candidate extrusion
+
+A `SubEdgePath` is composed of ordered immutable `SubEdgeSegment` records.
+
+Each segment carries the local:
+- start/end XYZ;
+- support height;
+- effective bead height;
+- width;
+- geometric volumetric flow;
+- commanded volumetric flow;
+- final relative-E value after compatibility conversion/quantization;
+- speed constraint.
+
+A path-wide constant flow MUST NOT be assumed when support height varies.
+
+## 9. Geometric versus commanded flow
+
+For an ideal non-bridge candidate bead of width (w) and effective height (h), the initial geometric rounded-rectangle cross-section is:
+
+[
+q_{geom}
+=
+hleft(w-h(1-pi/4)ight)
+]
+
+in mm³/mm.
+
+For the audited Orca external-wall semantics, commanded candidate flow is:
+
+[
+q_{cmd}
+=
+q_{geom}
+cdot r_{print}
+cdot r_{filament}
+cdot r_{outer}
+]
+
+where:
+- (r_{print}) = `print_flow_ratio`;
+- (r_{filament}) = resolved `filament_flow_ratio`;
+- (r_{outer}) = `outer_wall_flow_ratio` when `set_other_flow_ratios` is enabled, otherwise 1.
+
+The final relative-E command is based on (q_{cmd}) and filament cross-section, then Orca-compatible E quantization.
+
+The documentation MUST distinguish:
+- ideal geometric bead volume;
+- commanded calibrated volume;
+- predicted physical bead geometry.
+
+v1 uses a commanded-volume approximation; empirical bead calibration comes later.
+
+## 10. Final combined surface
+
+Candidate quality is evaluated from the combined finite-bead envelope of:
 - existing lower structural/ZAA beads;
 - candidate SubEdge beads;
 - existing upper structural/ZAA beads.
 
-The structural Orca outer wall is not rewritten in v1.
+v1 does NOT rewrite the original structural outer wall.
 
-SubEdge width/height/flow are candidate variables/parameters constrained by calibrated printable limits.
+A candidate that reduces one local error but causes unacceptable overbuild elsewhere is infeasible.
 
-## 8. Supported geometry
-Printable v1 requires nested/self-supported top-facing geometry:
-higher material sections must remain supported by lower material within tolerance.
+## 11. Supported printable geometry
+
+Printable v1 requires nested/self-supported top-facing geometry.
+
+Higher target material must remain supported by lower predicted material within configured tolerance.
 
 Reject printable injection for:
-- outward-expanding unsupported overhang bands;
-- path crossings;
-- insufficient support height;
-- uncertain nozzle clearance;
-- bridge/support-dependent targets.
+- outward-expanding unsupported/overhang surface bands;
+- support-dependent targets;
+- bridge target extrusion;
+- uncertain nozzle-body clearance;
+- candidate/path crossings;
+- invalid or unresolvable local support.
 
-Analysis-only mode may still report such geometry.
+Unsupported geometry may still be analyzed and previewed as non-injectable.
 
-## 9. Optimization target
-Where feasible require:
-E_max <= configured tolerance.
+## 12. Optimization target
 
-Among feasible candidates minimize a cost including:
-- E_rms / E_p95 / signed bias;
-- added path length;
-- added material;
-- estimated added time;
-- complexity/risk.
+Where feasible:
 
-Required reporting:
-E_max, E_rms, E_p95, bias, material delta, path length, time estimate.
+[
+E_{max}le tolerance
+]
 
-## 10. Preview contract
-Orca standard G-code viewer represents pre-post-process G-code.
+using surface-normal / closest-reference signed error.
 
-Plugin preview displays the exact immutable plan to be injected:
-- baseline paths;
-- candidate SubEdge paths;
-- bead heights/flows;
-- error heatmap;
+Required quality metrics:
+- (E_{max});
+- (E_{rms});
+- (E_{p95});
+- signed mean/bias.
+
+Among feasible candidate sets minimize a documented cost containing:
+- geometric error;
+- candidate path length;
+- added commanded material;
+- estimated print time;
+- complexity/risk penalty.
+
+Optimization MUST be deterministic for identical canonical input/settings.
+
+## 13. Preview contract
+
+Orca standard G-code preview represents the pre-`psGCodePostProcess` file.
+
+Plugin preview displays the exact immutable plan:
+- final structural/ZAA baseline;
+- target material boundary;
+- planned SubEdge centerlines/segments;
+- local bead height/flow ranges;
+- support/nesting diagnostics;
+- error map;
 - metrics;
+- compatibility/injectability gates;
 - plan hash;
 - execution status.
 
-Plan status is stored separately:
-PLANNED / INJECTION_PASS / INJECTION_SKIPPED / INJECTION_FAIL.
+Status:
+- PLANNED
+- INJECTION_PASS
+- INJECTION_SKIPPED
+- INJECTION_FAIL
 
-## 11. Thread/lifetime contract
-SlicingPipeline geometry execution runs on the slicing worker thread.
+Status does not alter plan hash.
 
-MUST NOT call orca.host.ui.* there.
+## 14. Thread and lifetime contract
 
-All live Orca references are copied/normalized inside the adapter and discarded before returning.
+SlicingPipeline geometry callbacks run in the slicing workflow thread.
 
-## 12. G-code execution contract
-v1 targets validated Bambu/Orca single-tool profiles.
+MUST NOT call `orca.host.ui.*` from the geometry callback.
 
-At psGCodePostProcess:
-1. recompute the required resolved-settings ExecutionConfigFingerprint through ctx.config_value();
-2. require exact equality with the plan fingerprint;
-3. parse/validate final G-code;
-4. select exactly one matching current-session plan;
-5. validate supported profile/modal/custom-layer environment;
-4. anchor at the validated structural layer boundary;
-5. use ADR-0007 safe-ceiling travel;
-6. emit candidate paths in safe order;
-7. return exactly to validated saved structural-layer state;
-8. write through temp output and atomically replace only after complete success.
+Live Orca/pybind objects and zero-copy arrays backed by Orca MUST NOT survive `execute(ctx)`.
 
-Original structural extrusion remains byte/semantically unchanged except unavoidable insertion markers/context.
+The adapter copies and normalizes all required information before returning.
 
-No partial injection.
+## 15. Planning/export configuration identity
 
-## 13. Printable v1 environment
-Requires:
-- fresh current-session slice;
-- one printable PrintObject;
-- one printable instance;
-- one ModelPart volume;
-- no negative/modifier volume;
-- one tool/extruder;
-- supported current Bambu 0.4 mm profile family;
+Planning creates a versioned `ExecutionConfigFingerprint` from resolved safety-relevant semantics.
+
+At `psGCodePostProcess`, recompute it with `ctx.config_value()`.
+
+Injection requires exact equality.
+
+The fingerprint covers at minimum all settings that affect:
+- geometry/frame identity;
+- ZAA and flow semantics;
+- seam matching;
+- extrusion conversion;
+- retraction;
+- motion/speed/Zsafe;
+- custom layer/role G-code;
+- printable feature gates.
+
+Missing or unresolved required settings disable injection.
+
+## 16. Final-G-code structural matching
+
+Final G-code is not expected to be point-for-point identical to the `posSimplifyPath` loop.
+
+The matcher MUST account for normal Orca seam processing:
+- cyclic loop start change;
+- seam split;
+- collinear subdivision;
+- configured single seam-gap clipping interval;
+- final G-code coordinate translation/quantization.
+
+Scarf/sloped seams and arc-fitted target geometry are unsupported in printable v1.
+
+Comments/tags may strengthen matching but are not the sole geometry evidence.
+
+Exactly one plan/structural reference must match. Zero or multiple matches => skip.
+
+## 17. Print-space to machine-G-code frame
+
+Plan coordinates MUST NOT be emitted directly.
+
+At postprocess:
+1. match baseline structural geometry;
+2. infer one constant translation ((dx,dy,dz)) from multiple anchors;
+3. require translation consistency within versioned tolerance;
+4. reject rotation/scale/shear/non-constant mapping;
+5. apply the translation only in the G-code adapter.
+
+The translation accounts for final instance/origin/extruder/Z-offset effects.
+
+## 18. Orca-compatible G-code quantization
+
+For the audited Orca source family, the compatibility layer reproduces Orca formatter semantics:
+- XYZ/F: 3 decimals;
+- E: 5 decimals;
+- C++ `std::round` midpoint behavior.
+
+After frame translation and quantization, execution-critical geometry/flow constraints MUST be revalidated.
+
+Unknown formatter behavior for another Orca version disables injection.
+
+## 19. Relative-E and retraction contract
+
+Printable v1 requires:
 - relative E;
-- firmware retraction off;
-- G-code line numbering/checksum off;
+- firmware retraction disabled;
+- an unambiguously parsed, positively retracted insertion state;
+- zero ordinary restart-extra;
+- known retraction/deretraction speeds.
+
+Candidate blocks temporarily unretract/retract exactly the parsed saved amount and finish in the same retracted state.
+
+The original Orca G-code performs its original later unretract.
+
+If retraction state cannot be proven, skip injection.
+
+## 20. Layer-boundary and actual-state restoration
+
+The layer-change marker does not imply that physical machine Z has already reached the new nominal layer height.
+
+At the insertion point, the parser captures the **actual emitted machine state**.
+
+Injected travel:
+- raises vertically to validated `Zsafe`;
+- performs all non-extruding XY travel at `Zsafe`;
+- descends vertically to candidate Z;
+- prints;
+- returns to `Zsafe`.
+
+After the final candidate, restore the exact actual pre-insertion XYZ/E/feed/modal state and resume the original file unchanged.
+
+Do NOT synthesize Orca's deferred layer synchronization.
+
+## 21. Motion/extrusion safety envelope
+
+Printable v1 additionally requires:
+- one tool / one filament execution context;
+- normal non-calibration print;
+- adaptive pressure advance disabled;
+- extrusion-role-change custom G-code empty;
+- line numbers/checksums off;
 - arc fitting off;
 - spiral vase off;
 - ironing off;
 - scarf/sloped seam off;
 - support/raft off;
-- no classic post_process script;
 - no other slicing-pipeline plugin;
-- validated motion-neutral before/layer-change custom G-code environment.
+- no classic post-process script;
+- verbose G-code/comments enabled for initial physical fixtures;
+- fresh current-session plan.
 
-Unsupported configurations are analysis-only.
+Static pressure advance may remain enabled and is inherited unchanged.
 
-## 14. Failure behavior
+Candidate segment speed MUST NOT exceed:
+- resolved outer-wall speed;
+- resolved filament max volumetric speed divided by candidate commanded mm³/mm;
+- optional lower plugin/user cap.
+
+Zsafe uses resolved active Z-hop/travel lift and MUST remain below the active tool printable-height limit.
+
+The plugin never silently changes Orca settings; unsupported settings are reported as analysis-only gates.
+
+## 22. Printable v1 environment
+
+Physical injection is enabled only for an explicitly golden-fixtured Bambu/Orca 0.4 mm single-tool profile family satisfying every requirement above.
+
+The normal Bambu process may enable arc fitting by default; such a profile is analysis-only until arc fitting is explicitly disabled in the user/process configuration and the resulting profile is fixture-validated.
+
+No fixture => no injection.
+
+## 23. G-code file mutation contract
+
+`psGCodePostProcess` uses a streaming, all-or-nothing workflow:
+
+1. validation pass;
+2. exact plan/config/matcher/state validation;
+3. temp-file emission pass;
+4. sanity parse/verification;
+5. atomic replacement only after success.
+
+Original bytes/lines outside intentional insertion markers/blocks remain preserved as far as the line-streaming representation permits.
+
+Idempotence markers prevent duplicate injection.
+
+Expected unsupported/validation failures return plugin `Skipped` and preserve valid Orca output.
+
+`Success` is reserved for successful injection or a validated already-injected no-op.
+
+## 24. Failure behavior
+
 Any uncertainty in:
-- current plan identity;
-- resolved export configuration fingerprint;
-- print-space -> G-code-space coordinate translation;
-- active filament diameter / flow-ratio compatibility;
-- G-code state;
-- layer-boundary anchor;
-- support/clearance;
-- profile compatibility;
-- custom G-code motion;
-causes injection to be skipped with original working G-code preserved.
+- source centered frame;
+- current-session plan identity;
+- export config fingerprint;
+- structural-loop match;
+- execution-frame translation;
+- formatter compatibility;
+- actual machine/modal/retraction state;
+- flow/speed/profile compatibility;
+- support/collision;
+- calibration/custom code;
+- safe ceiling;
+causes injection to be skipped.
 
-## 15. Non-goals v1
-- modifying Orca live perimeter graph;
+The project MUST prefer an unchanged valid Orca G-code over a guessed modification.
+
+## 25. Non-goals v1
+
+- custom Orca/C++ dependency;
+- mutating live Orca perimeters;
 - replacing ZAA;
-- rewriting original structural wall flow;
+- rewriting structural wall extrusion;
 - full non-planar printing;
-- multi-object/multi-volume CSG;
-- multitool;
-- absolute-E injector;
+- multi-object / multi-instance / multi-volume CSG injection;
+- multitool/multifilament injection;
+- absolute-E injection;
 - firmware retract;
-- arc injection;
+- arc G2/G3 candidate output;
+- adaptive-PA emulation;
 - unsupported overhang reconstruction;
-- claiming Orca standard preview contains postprocessed paths.
+- calibration-mode injection;
+- claiming Orca standard preview contains injected paths.
 
-## 16. Architecture
+## 26. Governance
+
 Implementation MUST follow:
-- accepted ADRs;
-- ARCHITECTURE.md;
-- IMPLEMENTATION.md;
-- DOCUMENT_CONTRACT.md.
+- `AGENTS.md`;
+- `docs/DOCUMENT_CONTRACT.md`;
+- Accepted ADRs;
+- `docs/ARCHITECTURE.md`;
+- `docs/IMPLEMENTATION.md`;
+- `docs/TEST_STRATEGY.md`;
+- `docs/QUALITY_GATES.md`;
+- `docs/REVIEW_PROCESS.md`.
 
-Safety/architecture relaxation requires a new Accepted ADR first.
+A repository/API discovery that changes a material contract requires specification/ADR adjudication before implementation continues.
