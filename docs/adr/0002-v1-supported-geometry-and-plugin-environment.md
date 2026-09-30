@@ -15,6 +15,7 @@ Printable v1 injection is limited to:
 
 - exactly one printable PrintObject;
 - exactly one printable ModelInstance;
+- printable injection is further tightened by ADR-0012 to exactly one total source ModelInstance, because Orca centered-frame reconstruction depends on the complete source instance set;
 - exactly one ModelPart volume;
 - no NegativeVolume;
 - no ParameterModifier;
@@ -42,3 +43,6 @@ Initial community testing uses simple calibration and single-part models. Scope 
 
 ## Test impact
 Each rejected condition requires an explicit gate/reason-code test.
+
+
+Expansion: ADR-0012 defines the exact centered-frame reconstruction and stricter total-instance rule.
