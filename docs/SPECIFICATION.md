@@ -227,16 +227,35 @@ A calibration value such as filament_flow_ratio = 0.98 MUST NOT automatically be
 
 Physical bead calibration is a later phase.
 
-## 14. Final combined nominal surface
+## 14. Final surface versus chronological support
 
-Candidate quality is evaluated from the combined nominal finite-bead envelope of:
-- lower existing structural/ZAA beads;
-- candidate SubEdge beads;
-- upper existing structural/ZAA beads.
+v1 maintains two distinct material states.
+
+### FinalSurfaceEnvelope
+
+Used for completed-part geometric error / overbuild scoring.
+
+It may include:
+- all unchanged structural/ZAA beads;
+- all accepted candidate SubEdge beads.
+
+### ChronologicalSupportEnvelope
+
+Used for support, printability, and motion/collision decisions.
+
+It contains only material proven to exist before the candidate/motion being evaluated.
+
+Future upper structural material MUST NOT support an earlier candidate.
+
+A lower-Z candidate may support a later higher-Z candidate only when it is earlier in the immutable execution order and the support geometry is valid.
+
+Same-Z candidate paths MUST NOT rely on each other as required vertical support in v1.
+
+Candidate support dependencies must be acyclic.
 
 v1 does NOT rewrite the original structural outer wall.
 
-A candidate that improves one area but creates unacceptable overbuild elsewhere is infeasible.
+A candidate that improves final error but is unsupported in chronological state, or creates unacceptable final overbuild, is infeasible.
 
 ## 15. Printable geometric domain
 
@@ -479,11 +498,26 @@ Candidate segment speed MUST NOT exceed:
 
 The plugin never silently changes Orca settings.
 
-## 29. Downstream original-motion clearance
+## 29. Final chronological tool-clearance validation
 
-Safe injected travel is not enough because later original Orca motion was generated without the added material.
+Safe-ceiling travel and downstream-only validation are both necessary but not individually sufficient.
 
-Before any file mutation, validate the quantized machine-space candidate bead envelope against unchanged downstream original G-code.
+Before any file mutation, run one chronological FinalToolClearanceValidator over:
+- every plugin-generated raise/travel/descent/extrusion/lift/return motion;
+- every unchanged downstream original Orca motion that can still interact with injected material.
+
+The validator uses the material that actually exists at each simulated time:
+- pre-existing structural material;
+- candidate bead material only after that candidate extrusion completes;
+- no future structural/candidate material before it is printed.
+
+Use a versioned ToolClearanceProfile that describes a conservative physical nozzle/hotend keep-out envelope and safety margins for the exact hardware fixture.
+
+Plugin-generated extrusion may have only the explicitly modeled intended deposition/support contact at the nozzle tip. The non-deposition nozzle/hotend keep-out MUST NOT intersect already printed material.
+
+After each candidate is deposited it becomes an obstacle for later plugin and original Orca motion.
+
+The unchanged downstream Orca G-code is also validated because it was generated without knowledge of the added material.
 
 Use a versioned ToolClearanceProfile that describes a conservative physical nozzle/hotend keep-out envelope and safety margins for the exact hardware fixture.
 
@@ -491,14 +525,18 @@ The profile dimensions require documented manufacturer geometry, measured hardwa
 
 Do NOT infer body clearance from nozzle-orifice diameter alone.
 
-Validate:
+Validate at minimum:
+- plugin vertical descent/raise;
+- plugin Zsafe XY travel;
+- plugin candidate extrusion body clearance;
+- plugin later-candidate motion against earlier candidate material;
 - downstream non-extruding travel;
 - downstream extrusion, including locally lowered ZAA moves;
 - pure Z motion;
 - relevant modal/motion commands;
 until a conservative safe barrier is proven or the remaining supported motion is fully checked.
 
-Any swept tool keep-out intersection with candidate material, unsupported motion, or uncertain clearance => Skipped.
+Any forbidden swept tool keep-out intersection with chronological printed material, unsupported motion, or uncertain clearance => Skipped.
 
 v1 does NOT rewrite later original Orca travel to make a candidate fit.
 
@@ -556,7 +594,7 @@ Any uncertainty in:
 - candidate seam/gap;
 - calibration/custom G-code;
 - Zsafe;
-- downstream original-motion clearance;
+- chronological plugin + downstream-original tool-clearance validation;
 - ToolClearanceProfile;
 - source orientation/material-side ambiguity;
 - unsupported binary/token/newline/filesystem atomic-replace behavior;
@@ -582,7 +620,7 @@ The project always prefers unchanged valid Orca G-code over guessed modification
 - support/overhang reconstruction;
 - first-layer SubEdge refinement;
 - calibration-mode injection;
-- automatic downstream travel replanning;
+- automatic plugin/downstream travel replanning;
 - generic collision claims without hardware keep-out evidence;
 - claiming Orca standard preview contains postprocessed paths.
 
