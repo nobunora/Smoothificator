@@ -423,15 +423,31 @@ Line-number/checksum mode unsupported v1.
 
 Arc target unsupported v1.
 
-## 14. Injection anchor and safe-ceiling execution
+## 14. Execution-frame resolution, injection anchor and safe-ceiling execution
 
-Use ADR-0007.
+Use ADR-0007 and ADR-0009.
+
+### 14.1 Execution-frame resolution
+SubEdgePlan geometry is print-space mm and MUST NOT be emitted directly.
+
+Before validating insertion paths:
+1. match known baseline structural path geometry from the plan to the corresponding final G-code path;
+2. derive dx/dy from multiple corresponding XY samples;
+3. derive dz from planned structural layer Z versus actual machine G-code structural Z;
+4. require one constant translation within configured tolerances;
+5. reject ambiguous, non-constant, rotated/scaled/sheared mappings.
+
+The resolver returns an immutable ExecutionFrameTranslation(dx_mm, dy_mm, dz_mm).
+
+Only orca_plugin/gcode may apply this translation.
+
+### 14.2 Safe-ceiling execution
 
 For each structural interval:
 1. identify validated upper structural layer boundary using reserved tags/known Bambu profile markers;
 2. confirm configured before/layer-change custom G-code is supported/motion-neutral;
 3. capture saved upper-layer state;
-4. choose Zsafe >= upper structural Z + configured travel lift;
+4. choose machine-coordinate Zsafe >= actual upper structural machine Z + configured travel lift;
 5. for every added path:
    - retract/known safe state;
    - raise vertically to Zsafe;
@@ -573,6 +589,7 @@ Only after A-H pass.
 - no regex-only injector;
 - no full-file mandatory in-memory rewrite;
 - no unsupported profile guessing;
+- no direct emission of print-space XY/Z without validated execution-frame translation;
 - no partial writes;
 - deterministic output;
 - tests with every behavior change;
