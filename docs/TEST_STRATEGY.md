@@ -282,9 +282,15 @@ Verify:
 - final actual XYZ/feed/modal/retraction equality;
 - original deferred Orca layer-Z behavior remains untouched.
 
-## Gate R — Downstream original-motion clearance
+## Gate R — Chronological plugin + downstream tool clearance
 
-Using quantized machine-space candidate bead envelopes and ToolClearanceProfile verify:
+Using quantized plugin motion, parsed original motion, chronological material state, and ToolClearanceProfile verify:
+- plugin safe vertical descent;
+- plugin descent/body-envelope collision -> reject;
+- plugin candidate-extrusion body collision -> reject;
+- later plugin candidate colliding with earlier candidate material -> reject;
+- intentional deposition/support contact does not self-reject;
+- future material is not treated as already printed;
 - safe upper structural motion;
 - low-Z ZAA extrusion collision -> reject;
 - original low-Z travel collision -> reject;
@@ -319,7 +325,7 @@ Static PA may remain and must be preserved unchanged.
 Integration:
 - expected unsupported/config mismatch -> Skipped;
 - plan missing/ambiguous -> Skipped;
-- parser/matcher/frame/retraction/downstream-clearance validation -> Skipped;
+- parser/matcher/frame/retraction/final-tool-clearance validation -> Skipped;
 - successful injection -> Success;
 - validated already-injected -> Success/no duplicate;
 - unexpected exception before mutation with original intact -> Skipped + failure status;
@@ -345,7 +351,7 @@ Check:
 - temp cleanup;
 - marker/hash/count;
 - state restoration;
-- downstream-clearance decision preserved;
+- chronological tool-clearance decision preserved;
 - atomic replace only after sanity;
 - repeated export/upload working copies;
 - no duplicate injection.
