@@ -152,6 +152,7 @@ Unsupported configurations are analysis-only.
 ## 14. Failure behavior
 Any uncertainty in:
 - current plan identity;
+- print-space -> G-code-space coordinate translation;
 - G-code state;
 - layer-boundary anchor;
 - support/clearance;
