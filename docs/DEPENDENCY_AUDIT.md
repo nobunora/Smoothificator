@@ -1,5 +1,7 @@
 # Pre-implementation Dependency and Feasibility Audit
 
+> Historical partial audit. Superseded for readiness decisions by [FULL_CONSISTENCY_AUDIT_2026-09-30.md](FULL_CONSISTENCY_AUDIT_2026-09-30.md). This file is retained as the chronological record of earlier findings.
+
 Date: 2026-09-29
 Status: Completed and reconciled before Phase 0.5 implementation (final consistency pass 2026-09-30).
 
