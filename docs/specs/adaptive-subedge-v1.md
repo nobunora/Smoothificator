@@ -8,9 +8,9 @@
 - Plugin/runtime requirements: `docs/PLUGIN_REQUIREMENTS.md`
 - Error/physical model: `docs/ERROR_MODEL.md`
 - Test strategy: `docs/TEST_STRATEGY.md`
-- Full audit: `docs/FULL_CONSISTENCY_AUDIT_2026-09-30.md`
-- Audited revision manifest: `docs/AUDIT_REVISION_2026-09-30.md`
-- Audited revision manifest blob SHA: `2f21857a37f91b4bdadbaaa85b4600addc7c7a07`
+- Full audit: `docs/FULL_CONSISTENCY_AUDIT_2026-10-01.md`
+- Audited revision manifest: `docs/AUDIT_REVISION_2026-10-01.md`
+- Audited revision manifest blob SHA: `91ec45f779718e0305c61b47cf0717996040281b`
 - ADRs: `docs/adr/0001-*.md` through `docs/adr/0031-*.md`
 - ADR-0010 is Superseded by ADR-0015.
 
@@ -71,6 +71,8 @@ Required invariants:
 - runtime execution status is separate from the immutable plan;
 - execution and plugin-settings fingerprints have distinct ownership;
 - `ToolClearanceProfile` is explicit plugin/hardware configuration, not inferred from nozzle diameter;
+- source orientation/material side is an explicit validated contract rather than raw-normal trust;
+- later G-code processing is binary/byte-preserving by contract;
 - serializer/hash is deterministic and excludes runtime-only state;
 - expected failures use typed reason codes;
 - architecture rules are mechanically testable;
