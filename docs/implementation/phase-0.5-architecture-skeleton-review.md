@@ -1,3 +1,5 @@
+> Historical review — Superseded for implementation readiness by the 2026-10-01 revalidation against `docs/AUDIT_REVISION_2026-10-01.md`. Retained as chronological evidence.
+
 # Phase 0.5 — Architecture Skeleton Repository Review
 
 ## Specification
