@@ -232,13 +232,21 @@ Zsafe uses:
 
 Zsafe must remain inside active tool printable-height limit.
 
-## 18. Downstream original-motion clearance
+## 18. Final chronological tool-clearance validation
 
-Every physical candidate requires final validation against unchanged original Orca motion after the insertion point.
+Every physical candidate requires one final chronological swept-volume validation covering:
+- all plugin-generated candidate/travel/return motions;
+- unchanged original Orca motion after each insertion point.
+
+The validator advances printed material in execution order and distinguishes final-surface material from material that actually exists at that moment.
 
 Use a versioned ToolClearanceProfile whose dimensions come from documented manufacturer geometry, measurement, or another explicit physical source.
 
-Validate swept tool keep-out against quantized candidate bead envelopes for:
+Validate swept tool keep-out against chronological printed material for:
+- plugin vertical raise/descent;
+- plugin Zsafe travel;
+- plugin candidate extrusion body clearance;
+- later plugin candidate motion versus earlier candidate material;
 - downstream travel;
 - downstream extrusion including ZAA lowered paths;
 - relevant pure-Z and modal/motion commands.
@@ -247,7 +255,7 @@ Unknown motion or insufficient clearance => Skipped.
 
 No ToolClearanceProfile => analysis/preview only.
 
-v1 does not rewrite later original travel to repair a collision.
+v1 does not replan unsafe plugin or later original motion in postprocess; validation only accepts or rejects.
 
 ## 19. File processing
 
@@ -300,7 +308,8 @@ No printer/profile family becomes injectable until fixtures record:
 - execution-frame translation;
 - quantization;
 - speed/Zsafe bounds;
-- downstream-clearance expectations;
+- chronological plugin/downstream tool-clearance expectations;
+- candidate support dependency/order expectations;
 - expected injected output;
 - idempotence;
 - representative failure cases.
