@@ -10,7 +10,14 @@ Target Orca builds containing:
 
 Pin exact tested Orca commit/version per release because SlicingPipeline is experimental.
 
-## 2. Plugin capabilities
+## 2. Python/runtime requirement
+Plugin packaging MUST declare:
+- Requires-Python >= 3.12 for the currently audited Orca plugin runtime;
+- NumPy as an explicit dependency for bound array access and geometry processing.
+
+Exact tested dependency versions are pinned in release/build metadata after Phase 0.5 environment verification.
+
+## 4. Plugin capabilities
 One package registers:
 1. SlicingPipeline capability
    - posSimplifyPath analyzer
@@ -32,7 +39,7 @@ Stock Orca must expose:
 
 Adapter normalizes all data before domain use.
 
-## 4. ZAA normalization
+## 5. ZAA normalization
 For ContourZ paths:
 - raw point.z is layer-relative offset;
 - absolute Z = layer.print_z + unscale(point.z);
@@ -40,7 +47,7 @@ For ContourZ paths:
 
 Any profile/source change that invalidates this assumption requires compatibility review.
 
-## 5. Printable v1 geometry gates
+## 6. Printable v1 geometry gates
 Injection requires:
 - exactly one printable PrintObject;
 - exactly one printable instance;
@@ -55,7 +62,7 @@ Injection requires:
 
 Unsupported geometry may be analyzed but not injected.
 
-## 6. Printable v1 plugin-environment gates
+## 7. Printable v1 plugin-environment gates
 Requires:
 - fresh slice in current plugin load/session;
 - no classic post_process script;
@@ -63,7 +70,7 @@ Requires:
 
 Missing current-session plan => skip and request re-slice.
 
-## 7. Printable v1 Bambu/G-code gates
+## 8. Printable v1 Bambu/G-code gates
 Requires a repository golden-fixture family for the exact supported Orca/profile.
 
 Initial target:
@@ -78,21 +85,21 @@ Initial target:
 
 The supported exact machine/profile list is not active until corresponding fixtures/tests exist.
 
-## 8. Surface-band semantics
+## 9. Surface-band semantics
 Source mesh boundary is not a print centerline.
 
 Planner must derive centerlines inside material and may create several paths at one/different Z.
 
 0.08 mm initial limit applies to effective bead height above local support, not pairwise candidate Z distance.
 
-## 9. Execution semantics
+## 10. Execution semantics
 v1 only **adds** validated SubEdge paths.
 
 It does not rewrite original Orca structural wall flow or XY.
 
 Final-surface optimization must account for overlap/overbuild with unchanged structural/ZAA beads.
 
-## 10. Execution-frame mapping and safe travel
+## 11. Execution-frame mapping and safe travel
 Plan geometry is print-space mm. Final G-code uses instance/origin/extruder/Z-offset adjusted machine coordinates.
 
 Before emission, injector MUST derive and validate one constant (dx,dy,dz) translation from matched Orca structural geometry per ADR-0009.
@@ -103,7 +110,7 @@ All non-extruding XY moves for injected paths occur at validated machine-coordin
 
 Injector restores saved upper structural-layer state before Orca resumes.
 
-## 11. Cross-hook state
+## 12. Cross-hook state
 PlanStore:
 - process-local
 - thread-safe
@@ -112,14 +119,19 @@ PlanStore:
 - candidate enumeration for final G-code matching
 - no Orca live references
 
-At export exactly one plan must match. Zero/multiple => skip.
+At export:
+1. recompute the versioned ExecutionConfigFingerprint using ctx.config_value();
+2. require exact equality with the plan fingerprint;
+3. then require exactly one geometry/G-code plan match.
 
-## 12. Preview
+Missing/mismatched config, zero match, or multiple matches => skip.
+
+## 13. Preview
 Orca standard G-code preview is pre-postprocess.
 
 Plugin preview uses exact immutable plan and separate execution status.
 
-## 13. Extrusion conversion
+## 14. Extrusion conversion
 Candidate E generation MUST match Orca's single-filament volumetric conversion:
 
 E_per_mm3 = filament_flow_ratio / filament_cross_section
@@ -128,7 +140,7 @@ Do not assume flow ratio = 1.0.
 
 The planned filament parameters must match the final supported profile fingerprint.
 
-## 14. File processing
+## 15. File processing
 G-code postprocessor must be:
 - stateful parser based
 - streaming/multi-pass
@@ -139,12 +151,12 @@ G-code postprocessor must be:
 
 No full-file regex substitution.
 
-## 15. Packaging
+## 16. Packaging
 Target pure-Python wheel.
 
 No native/custom Orca dependency in v1.
 
-## 16. Golden-fixture requirement
+## 17. Golden-fixture requirement
 Before any physical support for a profile:
 - exact Orca version/commit
 - exact printer/process profile metadata
@@ -157,7 +169,7 @@ Before any physical support for a profile:
 
 No fixture => analysis-only.
 
-## 17. Compatibility default
+## 18. Compatibility default
 Unknown Orca/profile/dialect/state -> injection disabled.
 
 Never best-effort mutate.
