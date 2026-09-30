@@ -203,7 +203,7 @@ Unknown/incompatible version facts fail closed.
 `orca_plugin/gcode/` is execution-only.
 
 It owns:
-- streaming lexical/parser state;
+- binary line-stream lexical/parser state with raw-byte preservation;
 - actual emitted machine-state reconstruction;
 - plan selection/matching;
 - downstream-original-motion clearance simulation against candidate material;
@@ -557,7 +557,19 @@ It checks future unchanged Orca motion because Orca generated that motion before
 
 Software clearance is a conservative proxy. Physical hotend/nozzle envelope calibration belongs to printer-fixture evidence, not the geometry engine.
 
-## 30. File and change discipline
+## 30. Binary G-code ownership
+
+G-code parser/emitter follows ADR-0031:
+- binary line stream;
+- untouched raw bytes preserved exactly;
+- local newline convention preserved for insertions;
+- unsupported non-ASCII command bytes fail closed;
+- opaque non-ASCII comment bytes may be preserved when they do not affect interpretation;
+- temp file/atomic replacement semantics are compatibility-tested per platform.
+
+No module is allowed to normalize the full G-code text encoding/newlines.
+
+## 31. File and change discipline
 
 - one responsibility per file/function;
 - target <400 logical lines;
