@@ -9,7 +9,8 @@ Check:
 - forbidden imports;
 - immutable boundary DTOs;
 - canonical serializer ownership;
-- no live Orca type leakage into adaptive_subedge domain/engine.
+- no live Orca type leakage into domain/engine;
+- only canonical ADR numbers/files exist.
 
 Blocks all later phases.
 
@@ -17,106 +18,133 @@ Blocks all later phases.
 Owner: tests/unit/domain + tests/unit/engine/
 
 Check:
-- command-Z/effective-height arithmetic;
-- Orca rounded-rectangle flow reference values;
-- invalid width/height;
-- per-segment ZAA top-wall remaining height;
-- no-refinement identity schedule;
+- Orca rounded-rectangle candidate flow formula;
+- effective bead height above local support;
+- 0.08 mm rule applies to bead height, not pairwise Z;
+- ZAA local effective flow ratio parity;
+- invalid width/height/flow;
 - deterministic hashing.
 
-## C. Geometry engine tests
+## C. Surface-band geometry tests
 Owner: tests/analytic/
 
 Check:
-- mesh plane sections;
-- fixed-angle surfaces;
-- smooth 1-30 degree surface;
-- finite-bead envelope;
-- normal error metrics;
-- optimizer constraints;
-- support/non-crossing logic.
+- mesh-plane intersection as boundary, not centerline;
+- centerline offset/layout inside material;
+- multiple paths at same Z;
+- multiple paths at different Z;
+- shallow-angle terrace coverage;
+- nesting/self-support;
+- outward-expanding rejection.
 
-No Orca dependency.
+## D. Final-surface/error tests
+Check combined finite-bead surface:
+- lower structural/ZAA beads;
+- candidate beads;
+- upper structural/ZAA beads unchanged.
 
-## D. Orca adapter contract tests
-Owner: tests/integration/orca_adapter/
+Verify:
+- E_max/E_rms/E_p95/bias;
+- overlap/overbuild penalties;
+- candidate flow optimization;
+- no structural-wall rewrite.
 
-Check on pinned Orca:
+## E. Orca adapter contract tests
+Pinned Orca:
 - posSimplifyPath fires with ZAA on;
 - posSimplifyPath fires with ZAA off;
-- path Z relative-offset normalization;
-- source mesh transforms;
+- ContourZ relative-Z -> absolute-Z;
+- GCode ZAA flow ratio parity;
+- mesh transforms;
 - feature gates;
-- no live reference escape.
+- no live reference escape;
+- cache/no-plan behavior.
 
-## E. G-code parser dry-run tests
-Owner: tests/fixtures/gcode + tests/unit/gcode/
+## F. Plan/preview tests
+Check:
+- immutable plan;
+- separate runtime status;
+- stable hash excludes runtime ObjectIDs/timestamps;
+- preview hash equals injector plan hash;
+- UI does not invoke optimizer/live Orca.
 
-Each supported profile gets golden fixtures.
+## G. Bambu G-code fixture tests
+Each supported profile fixture records:
+- exact Orca version/commit;
+- machine/process profile;
+- relative E;
+- firmware retract off;
+- line-number mode off;
+- arcs off;
+- layer-change custom code;
+- structural boundary markers.
+
+If any required property changes, injection support for that fixture is invalid until reviewed.
+
+## H. Streaming parser tests
+Check:
+- G90/G91 tracking;
+- M82/M83 tracking;
+- E/feed/retraction/tool state;
+- reserved layer tags;
+- object/type comments;
+- supported Bambu custom commands;
+- unknown critical command rejection;
+- no full-file memory requirement.
+
+No writes.
+
+## I. Plan matcher tests
+Check:
+- exactly one plan;
+- zero plan;
+- multiple plans;
+- stale plan;
+- runtime ObjectID changes;
+- config/profile mismatch.
+
+## J. Emitter tests
+Check ADR-0007:
+- Zsafe raise before any non-extruding XY;
+- vertical descend to candidate Z;
+- relative-E volume conversion;
+- retract/unretract state;
+- lower-risk ordering;
+- return at Zsafe;
+- restore saved upper structural state;
+- no original structural extrusion modification;
+- marker/idempotence.
+
+## K. Atomic postprocess tests
+Three passes:
+1. validate
+2. temp-file emit
+3. sanity parse
 
 Check:
-- G90/G91;
-- M82/M83;
-- E/retraction/feed/tool state;
-- layer and wall role boundaries;
-- unknown state-changing command rejection;
-- arc target rejection;
-- wall ordering.
-
-No file writes.
-
-## F. Plan matcher tests
-Check:
-- exactly one plan match;
-- zero match;
-- multiple match;
-- runtime ObjectID changes do not break stable match;
-- stale plan rejected.
-
-## G. Rewrite tests
-Check:
-- planar top wall E rewrite;
-- varying-Z ZAA top wall per-segment E rewrite;
-- no-refinement byte identity;
-- comments/XY preserved;
-- relative-E arithmetic.
-
-## H. Emitter tests
-Check:
-- intermediate passes sorted lower-Z first;
-- E from mm3/mm and filament diameter;
-- safe state transitions;
-- no unsupported command invention.
-
-## I. Atomic injector tests
-Check:
-- full parse before write;
-- temp/prepared output validation;
 - original unchanged on every failure;
-- idempotent marker behavior;
-- duplicate postprocess invocation.
+- temp cleanup;
+- atomic replace;
+- repeated export/upload working copies;
+- already-injected file no-op.
 
-## J. Preview tests
-Check:
-- same plan hash as injector;
-- status stored outside immutable plan;
-- no optimizer invocation;
-- no live Orca dependency.
+## L. Physical test gate
+Physical printing forbidden until A-K pass for exact supported fixture.
 
-## K. Physical test gates
-Physical printing is forbidden until A-J pass for the exact Orca/profile fixture.
-
-Physical sequence:
-1. simple 5-degree coupon;
+Sequence:
+1. simple 5 degree coupon;
 2. 10/20 degree coupons;
-3. smooth slope;
-4. broader benchmark.
+3. continuous smooth coupon;
+4. benchmark.
 
-Any unexpected over-extrusion, collision, delamination, or severe dimensional error pauses printer testing and returns project to model/spec review.
+Any nozzle contact, severe overbuild, delamination, or dimensional failure pauses physical testing and returns to model/spec review.
 
-## Compatibility expansion rule
-Every newly supported Orca version, printer profile, G-code mode, object topology or wall feature requires:
-- fixture;
-- gate tests;
-- regression run;
-- ADR if it relaxes a safety/architecture assumption.
+## M. Compatibility expansion
+Every newly supported:
+- Orca version
+- printer profile
+- G-code mode
+- object topology
+- support/overhang mode
+- extrusion mode
+requires fixtures, regression tests, and ADR when safety semantics change.
