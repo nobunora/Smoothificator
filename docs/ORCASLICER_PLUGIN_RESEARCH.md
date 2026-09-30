@@ -1,159 +1,328 @@
-# OrcaSlicer Plugin / Geometry API Research
+# OrcaSlicer Plugin / Geometry / G-code Research
 
-Research target: OrcaSlicer main and official plugin sources, audited through 2026-09-30.
+Audit baseline: OrcaSlicer main commit `789f848694b955d293ca6b277d1c8046aa6f7436` (2026-09-29).
 
-## 1. Feasibility conclusion
-A conservative printable v1 is feasible on **stock OrcaSlicer** using:
-- posSimplifyPath for geometry analysis;
-- psGCodePostProcess for final working-file injection;
-- Script capability for preview.
+This document records source evidence. Normative decisions live in Accepted ADRs and higher-precedence specifications.
 
-No custom Orca build is required.
+## 1. Stock-Orca feasibility
 
-## 2. Hook selection
-Print.cpp shows:
-- posContouring hook only fires when need_z_contouring() is true;
-- simplify_extrusion_path() occurs later;
-- posSimplifyPath fires after simplification for freshly processed objects.
+A conservative printable v1 remains technically feasible without a custom Orca build by combining:
+- `posSimplifyPath` for read-only post-ZAA/post-simplification geometry analysis;
+- `psGCodePostProcess` for final working-file modification;
+- a Script capability for preview.
 
-Therefore posSimplifyPath is the canonical analyzer hook.
+No source-level blocker was found inside the deliberately narrow v1 scope, but multiple implementation assumptions required correction during the audit.
 
-Cache-loaded plugin-final objects intentionally do not re-fire it. Missing current-session plan => no injection.
+## 2. Hook ordering
 
-## 3. Plugin package/UI capability
-PyPluginPackage permits register_capability() for each capability class.
+Source: `src/libslic3r/Print.cpp`.
 
-Official sandbox plugins demonstrate ScriptPluginCapabilityBase and orca.host.ui.create_window.
+Findings:
+- `posContouring` plugin execution is conditional on `need_z_contouring()`;
+- `simplify_extrusion_path()` runs later;
+- `posSimplifyPath` runs after path simplification for freshly processed objects;
+- cache-loaded plugin-final objects may not re-fire geometry hooks.
 
-One plugin package can therefore provide:
-- SlicingPipeline analyzer/injector capability;
-- Script preview capability.
+Conclusion:
+- canonical analyzer = `posSimplifyPath`;
+- missing current-session plan at export => no injection.
 
-## 4. Readable slicing graph
-Bindings expose:
-- Print / PrintObject
-- Layer / LayerRegion
-- source Model snapshot / ModelObject
-- ModelVolume mesh and transforms
-- Surface/ExPolygon
-- extrusion tree
-- ExtrusionPath 3D points
-- width / height / mm3_per_mm
-- resolved config
+ADR: 0001.
 
-This is enough for read-only planning.
+## 3. Plugin postprocess context
 
-## 5. Coordinate finding
-PluginHostSlicing exposes path points in scaled native coordinates.
+Sources:
+- `SlicingPipelinePluginCapability.cpp`;
+- `PostProcessor.cpp`;
+- official sandbox G-code-stamp plugin.
 
-ContourZ.cpp stores point Z as relative offset d, not absolute layer Z.
+At `psGCodePostProcess`:
+- no live Print/PrintObject;
+- `ctx.gcode_path` points to working export;
+- `ctx.config_value()` still resolves final full config;
+- plugin edits working file in place;
+- postprocess can execute more than once for separate export/upload copies;
+- standard Orca preview does not include plugin postprocessed paths.
 
-Adapter must use:
-Z_abs = layer.print_z + unscale(d)
+PluginResult behavior from Orca postprocessor:
+- `RecoverableError` / `FatalError` can abort the export pipeline;
+- routine Adaptive Sub-Edge unsupported/validation conditions should therefore return `Skipped`.
 
-## 6. ZAA G-code flow finding
-GCode.cpp explicitly handles path.z_contoured:
+ADR: 0011, 0019.
 
-For each line endpoint:
-- z_diff = unscale(line.b.z())
-- z = nominal_z + z_diff
-- for non-ironing:
-  extrusion_ratio = (path.height + z_diff) / path.height
-- emitted E = nominal dE * extrusion_ratio
+## 4. Multiple capabilities
 
-Therefore a correct predictor needs local Z **and local effective flow**.
+Sources:
+- `PyPluginPackage`;
+- official Script/Inspector sandbox examples.
 
-This source verification supports ADR-0006.
+One plugin package may register multiple capability classes.
 
-## 7. Mesh bindings
-ModelVolume.mesh():
-- immutable mesh snapshot;
-- local coordinates in mm.
+Therefore one package can provide:
+- SlicingPipeline analyzer/injector;
+- Script/UI preview.
 
-Bindings expose:
-- ModelVolume.matrix() volume->object
-- PrintObject.trafo() object->print
+## 5. Readable geometry and mutability
 
-v1 limits printable mode to one ModelPart volume, avoiding arbitrary multi-volume CSG reconstruction.
+`PluginHostSlicing.cpp` exposes read access to:
+- Print / PrintObject;
+- Layer / LayerRegion;
+- source Model snapshot;
+- ExtrusionPath 3D points;
+- width / height / mm3_per_mm / role;
+- resolved config.
 
-## 8. Mutable geometry limits
-LayerRegion.slices is mutable at posSlice.
+Generated perimeter/path geometry is not freely appendable/mutable from public Python bindings.
 
-Generated perimeters/ExtrusionPath geometry is read-only from public Python bindings.
+This is not a v1 blocker because v1 plans geometry read-only and injects additive commands at final G-code.
 
-This is not a v1 blocker because v1 injects only new SubEdge G-code after export rather than mutating live paths.
+## 6. Source mesh centered coordinate frame
 
-## 9. psGCodePostProcess
-Official source/sample confirms:
-- runs from export path after classic post_process scripts;
-- ctx.print/ctx.object are None;
-- ctx.gcode_path is working file;
-- ctx.host/output_name are available;
-- plugin edits file in place;
-- may run multiple times on separate working copies;
-- result does not appear in standard Orca preview.
+Sources:
+- `PrintObject.cpp`;
+- `PrintObjectSlice.cpp`;
+- `PrintApply.cpp`;
+- `Model.cpp`;
+- PluginHostModel bindings.
 
-## 10. Why final G-code is not used for geometry design
-The geometry plan is created at posSimplifyPath where:
-- source mesh is available;
-- structural/ZAA paths are available;
-- local effective flow can be reconstructed.
+Critical finding:
+the earlier direct source transform
 
-Final G-code is execution target only.
+`PrintObject.trafo() @ ModelVolume.matrix()`
 
-If no matching immutable current-session plan exists, injector skips.
+does NOT reproduce Orca's sliced frame.
 
-## 11. Bambu layer-boundary research
-Source/profile audit behind ADR-0007 found the supported Bambu layer-change environment can be identified around structural layer transition markers.
+Orca slicing uses `PrintObject::trafo_centered()`, which subtracts XY `m_center_offset`.
 
-v1 safe execution:
-- validated profile/custom layer G-code only;
-- safe-ceiling lift before any injected lateral travel;
-- vertical descent to candidate;
-- restore saved upper-layer state before resuming Orca.
+The offset is derived from the raw ModelPart bounding box after applying the source ModelInstance transform with translation removed.
 
-Unknown/motion-producing custom layer code disables injection.
+Python does not expose `trafo_centered()`, but exposes enough inputs to reconstruct it for the one-instance/one-volume v1 scope.
 
-## 12. G-code-mode reduction
-ADR-0008 intentionally limits physical v1 to:
-- relative E
-- firmware retract off
-- line numbers/checksum off
-- arc fitting off
-- single tool
-- spiral/ironing/scarf/support/raft off
+ADR: 0012.
 
-Parser may observe other modes but must not inject outside supported contract.
+## 7. ZAA Z semantics
 
-## 13. File-size finding
-Large G-code may be hundreds of MB.
+Source: `ContourZ.cpp`.
 
-Injector architecture should stream:
-1. validation pass;
-2. temp emission pass;
-3. sanity pass;
-then atomic replace.
+ContourZ stores path-point Z as a relative offset (d).
 
-Do not make full-file memory loading a requirement.
+Absolute centered-slice nozzle Z:
 
-## 14. Remaining technical risk
-Largest remaining risk is correct and robust G-code state/anchor handling, not Orca geometry access.
+[
+Z=Layer.print_z+d.
+]
 
-This risk is isolated in orca_plugin/gcode and gated by golden fixtures before physical printing.
+External perimeters are prevented from positive local d but may be lowered.
 
+ADR: 0006.
 
-## 15. Print-space vs final G-code coordinate finding
-GCode::point_to_gcode() applies the current instance origin (m_origin) and active extruder XY offset. PrintApply separates instance XY translation into PrintInstance.shift, and GCode sets m_origin from that shift. GCode::change_layer() also applies printer z_offset to structural machine Z.
+## 8. ZAA local E semantics
 
-Therefore plugin plan coordinates cannot be emitted directly.
+Source: `GCode.cpp::_extrude`.
 
-ADR-0009 requires final-G-code anchor matching to derive/validate one constant translation (dx,dy,dz) for the v1 one-instance/one-tool case before emission.
+For `path.z_contoured` non-ironing segments:
 
-## 16. Volumetric-to-E conversion finding
-Extruder.cpp caches:
+[
+r_{zaa}=(path.height+d)/path.height
+]
 
-m_e_per_mm3 = filament_flow_ratio / filament_crossection
+and emitted E is multiplied by this local ratio.
 
-Therefore injected candidate E must include the active filament_flow_ratio rather than assuming E = volume / area.
+Therefore a correct baseline model needs:
+- local Z;
+- local effective height;
+- local geometry-directed volume ratio.
 
-ADR-0010 defines the v1 conversion and required parity tests.
+ADR: 0006, 0022.
+
+## 9. Orca external-wall flow chain
+
+Source: `GCode.cpp::_extrude` and `Extruder.cpp`.
+
+Critical finding:
+ADR-0010's original formula was incomplete.
+
+For supported external-perimeter semantics, effective commanded volumetric line flow includes:
+- `print_flow_ratio`;
+- `filament_flow_ratio`;
+- optional `outer_wall_flow_ratio` when `set_other_flow_ratios` is enabled.
+
+Extruder E conversion includes filament cross-section.
+
+Small Area Flow Compensation is not applied to external-perimeter role in the audited source.
+
+ADR-0015 supersedes ADR-0010's complete formula.
+
+## 10. Geometry versus calibration flow
+
+Global flow ratios are execution/calibration controls.
+
+Treating them as direct geometric width multipliers is not physically justified without empirical calibration.
+
+v1 therefore distinguishes:
+- nominal geometric bead volume used for ideal surface prediction;
+- commanded calibrated volume used for G-code and volumetric limits.
+
+ADR: 0022.
+
+## 11. Loop seam processing before final G-code
+
+Source: `GCode::extrude_loop()`.
+
+Before final extrusion:
+- Orca places/splits the seam;
+- applies normal seam-gap clipping;
+- may subdivide paths during processing;
+- may emit wipe moves.
+
+The default `seam_gap` in audited PrintConfig is 10%.
+
+Therefore ordered `posSimplifyPath` point hashes are not stable final-G-code identifiers.
+
+ADR: 0016.
+
+## 12. Layer-change physical-state behavior
+
+Source: `GCode::change_layer()` and GCodeWriter lift handling.
+
+Critical finding:
+normal layer change updates Orca's internal nominal Z but does not guarantee an immediate physical Z G-code move. Z/lift synchronization may be deferred until later motion.
+
+Therefore postprocess restoration must return to the actual parsed emitted machine state at the insertion point, not force nominal upper-layer Z.
+
+ADR: 0013.
+
+## 13. Retraction/wipe state
+
+Sources:
+- GCode/GCodeWriter/Extruder retraction logic;
+- Bambu machine/filament profiles.
+
+Bambu profiles commonly:
+- retract on layer change;
+- allow filament-specific retraction overrides;
+- may use wipe.
+
+Blindly emitting configured full retracts could double-retract.
+
+v1 uses parsed actual retracted state and restores it exactly.
+
+ADR: 0018.
+
+## 14. G-code coordinate frame
+
+Source: `GCode::point_to_gcode()`, `set_origin()`, `change_layer()`.
+
+Final machine coordinates include effects such as:
+- PrintInstance shift/current GCode origin;
+- active extruder XY offset;
+- printer Z offset.
+
+Plan centered-slice coordinates MUST NOT be emitted directly.
+
+Final matcher derives one validated constant translation for the one-instance/one-tool v1 scope.
+
+ADR: 0009.
+
+## 15. G-code formatter precision
+
+Source: `GCodeFormatter`.
+
+Audited formatter behavior:
+- XYZ/F: 3 decimal digits;
+- E: 5 decimal digits;
+- C++ `std::round` semantics.
+
+Python built-in round has different midpoint behavior.
+
+Final candidate validity must be rechecked after Orca-compatible quantization.
+
+ADR: 0017, 0021.
+
+## 16. Final E derivation timing
+
+Because final XYZ quantization can alter a short segment's emitted length, the immutable geometry-time plan must not store authoritative final E.
+
+Final E is derived after:
+- execution-frame mapping;
+- XYZ quantization;
+- emitted-length recomputation.
+
+ADR: 0021.
+
+## 17. Bambu layer-change templates
+
+Audited Bambu common machine templates use motion-neutral progress/notification layer-change G-code for the initial family inspected.
+
+However calibration modes can add extra layer-boundary behavior after normal markers.
+
+Therefore:
+- profile custom code is fingerprinted/validated;
+- calibration/tower G-code is unsupported in v1.
+
+ADR: 0007, 0013, 0020.
+
+## 18. Bambu profile defaults affecting v1
+
+Audited profile observations include:
+- global Orca default relative E = enabled;
+- Bambu machine common retract-on-layer-change = enabled;
+- Bambu process common may enable arc fitting;
+- default seam_gap = 10%;
+- Bambu filament profiles may use flow ratio != 1 and filament-specific retraction/wipe settings.
+
+Consequences:
+- nonzero seam gap is supported by matcher rather than forcing 0;
+- arc fitting remains a visible unmet injection gate unless disabled;
+- flow/retraction must use resolved semantics rather than hard-coded defaults.
+
+## 19. Pressure advance and role-change behavior
+
+`GCode::_extrude()` may evaluate adaptive pressure advance and may execute machine/filament/process extrusion-role-change custom G-code.
+
+Injected paths bypass that orchestration.
+
+v1 therefore:
+- rejects adaptive PA;
+- requires extrusion-role-change custom G-code empty;
+- may inherit static pressure advance unchanged.
+
+ADR: 0020.
+
+## 20. Candidate speed and machine Z limits
+
+Relevant full config exposes:
+- outer-wall speed;
+- filament max volumetric speed;
+- travel / Z-travel speed;
+- Z hop;
+- printable height / extruder printable height.
+
+v1 uses these resolved profile values rather than hard-coded motion rates/lifts.
+
+ADR: 0020.
+
+## 21. Large G-code files
+
+Full-file in-memory rewrite is not required.
+
+v1 uses:
+1. streaming validation;
+2. streaming temp emission;
+3. streaming sanity validation;
+4. atomic replacement.
+
+## 22. Remaining highest-risk engineering areas
+
+No currently known stock-Orca API impossibility remains for the narrowed v1.
+
+The highest-risk implementation areas are:
+- exact centered-frame parity;
+- geometry-aware final-G-code matching;
+- parser/retraction/modal-state correctness;
+- execution-frame/quantization parity;
+- finite-bead physical model accuracy.
+
+The first four are software contracts with deterministic fixtures.
+
+The last remains a physical-model hypothesis and requires coupon calibration before production-quality claims.
