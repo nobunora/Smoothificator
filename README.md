@@ -2,69 +2,78 @@
 
 Error-driven adaptive outer-surface reconstruction for OrcaSlicer.
 
-This fork investigates a **stock-Orca plugin** that uses Orca's final simplified outer-wall geometry (including ZAA where Orca applies it), measures remaining surface error, then refines only the outer wall where the requested tolerance is not met.
+This fork investigates a **stock-Orca plugin** that reads Orca's final simplified outer-wall geometry (including ZAA where Orca applied it), measures remaining surface error, then adds only the extra surface-band paths needed to reduce that error.
 
 > Status: specification / pre-implementation audit complete. Legacy Smoothificator scripts are preserved as upstream reference.
 
 ## Canonical architecture
+
 ```text
 Stock Orca
   -> normal slicing / ZAA
   -> path simplification
-  -> posSimplifyPath: copy final geometry
-  -> Analyzer creates immutable SubEdgePlan
+  -> posSimplifyPath:
+       copy final geometry
+       normalize ZAA Z + local flow
+       build immutable SubEdgePlan
        -> Plugin Preview uses same plan
   -> normal Orca G-code generation
   -> psGCodePostProcess:
-       match plan
-       rewrite upper outer-wall flow
-       inject intermediate passes
+       match exactly one plan
+       inject additive SubEdge paths
+       restore validated machine state
   -> file/printer
 ```
 
 No custom Orca build is required for v1.
 
-## Important design correction
-Sub-edges are **not simply extra material**.
+## Core ideas
 
-For a refined structural-layer interval, outer-wall extrusion is redistributed across:
-- optimized intermediate passes; and
-- the original upper outer-wall path with reduced remaining effective height.
-
-This avoids over-extruding the original upper wall.
-
-## Core rules
-- final post-simplification geometry is the baseline;
-- ZAA is automatically included when Orca applied it;
-- Z values are freely optimized;
-- v1 uses one common Z schedule for an entire matched external-wall loop;
-- non-crossing intermediate passes print lower-Z first;
-- initial 0.4 mm-nozzle minimum pass height is 0.08 mm;
-- all domain coordinates are absolute print-space mm;
-- Preview and Injection share one deterministic plan/hash;
-- G-code execution is parser-based, stateful, atomic, idempotent and all-or-nothing.
+- ZAA is used first where Orca applies it.
+- Source mesh intersections are **material boundaries**, not nozzle centerlines.
+- The planner derives one or more printable centerlines inside the residual surface band.
+- Multiple paths may share one Z or use different Z values.
+- The initial 0.08 mm constraint applies to **effective bead height above local support**, not pairwise path-Z spacing.
+- Candidate flow is optimized with a finite-bead model.
+- Original Orca structural/ZAA extrusion remains unchanged in v1.
+- Final quality is predicted from structural beads + candidate SubEdge beads together.
+- Preview and injection share one deterministic plan/hash.
+- G-code injection is parser-based, streaming, validated, idempotent, atomic and all-or-nothing.
 
 ## Preview
+
 Orca standard G-code viewer shows pre-post-process G-code.
 
-The plugin provides a separate preview of the exact immutable plan, including:
-- intermediate contours;
-- rewritten upper wall;
-- pass Z/heights;
-- residual error;
+The plugin provides a separate preview from the exact immutable plan:
+- baseline/ZAA paths;
+- target surface boundary;
+- planned centerlines;
+- bead height/flow;
+- support/nesting diagnostics;
+- residual-error map;
 - predicted metrics;
 - injection status.
 
 ## v1 safety scope
-Physical injection starts intentionally narrow: one object, one instance, one positive model volume, one tool, By-Layer printing, absolute XYZ, relative E, arc fitting/scarf/fuzzy/vase disabled, and no other mutating postprocessor.
+
+Physical injection is intentionally narrow:
+- one object / one printable instance / one ModelPart volume;
+- current validated Bambu 0.4 mm single-tool profile family;
+- relative E;
+- firmware retract, arc fitting, line numbering, spiral, ironing, scarf, support/raft disabled;
+- no classic post-process script;
+- no other slicing-pipeline plugin;
+- nested/self-supported target geometry;
+- fresh current-session slice.
 
 Unsupported configurations may be analyzed but are not injected.
 
 ## Documentation
+
 - [Specification](docs/SPECIFICATION.md)
 - [Implementation specification](docs/IMPLEMENTATION.md)
 - [Architecture](docs/ARCHITECTURE.md)
-- [Pre-implementation audit](docs/PRE_IMPLEMENTATION_AUDIT.md)
+- [Dependency/feasibility audit](docs/DEPENDENCY_AUDIT.md)
 - [Surface/flow model](docs/ERROR_MODEL.md)
 - [ZAA integration](docs/ZAA_INTEGRATION.md)
 - [Plugin requirements](docs/PLUGIN_REQUIREMENTS.md)
@@ -76,4 +85,5 @@ Unsupported configurations may be analyzed but are not injected.
 - [ADR process](docs/ADR_PROCESS.md)
 
 ## License
+
 GNU GPL terms and upstream copyright notices are retained.
