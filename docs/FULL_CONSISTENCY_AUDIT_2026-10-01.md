@@ -39,7 +39,7 @@ Evidence/history:
 - legacy Smoothificator scripts
 
 Decision records:
-- every ADR 0001 through 0031
+- every ADR 0001 through 0033
 - ADR-0010 is Superseded by ADR-0015
 - all other current canonical ADR identifiers are unique
 
@@ -214,6 +214,24 @@ Resolution: affected normative formula text rewritten in plain deterministic tex
 ### F-30 — Audit/handoff revision became stale after the final technical fixes
 Resolution: this 2026-10-01 audit and a new 2026-10-01 blob manifest replace the old readiness revision. Historical 2026-09-30 evidence remains preserved.
 
+### F-31 — Final completed material was ambiguous with material available for support
+Severity: Critical
+
+Finding:
+A candidate could accidentally be considered supported by the future upper structural layer or by another candidate that had not been printed yet.
+
+Resolution:
+ADR-0032 separates FinalSurfaceEnvelope from ChronologicalSupportEnvelope, freezes candidate execution order, and requires an acyclic support dependency graph. Future material cannot satisfy support.
+
+### F-32 — Tool clearance covered downstream Orca motion but not all plugin-generated motion
+Severity: Critical
+
+Finding:
+Zsafe lateral travel alone does not prove vertical descent, candidate extrusion, vertical lift, or later plugin candidate motion clear the real nozzle/hotend body.
+
+Resolution:
+ADR-0033 defines one chronological FinalToolClearanceValidator over both plugin-generated motion and resumed original Orca motion using the same ToolClearanceProfile and printed-material timeline.
+
 ## 5. Technical feasibility review
 
 ### Stock Orca plugin architecture
@@ -274,7 +292,7 @@ Each is owned by a later ROADMAP gate.
 ## 7. Documentation consistency result
 
 After final convergence:
-- ADR identifiers: unique 0001–0031;
+- ADR identifiers: unique 0001–0033;
 - ADR-0010: Superseded by ADR-0015;
 - canonical hook: posSimplifyPath;
 - canonical executor: psGCodePostProcess;
