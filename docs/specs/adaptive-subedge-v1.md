@@ -10,7 +10,7 @@
 - Test strategy: `docs/TEST_STRATEGY.md`
 - Full audit: `docs/FULL_CONSISTENCY_AUDIT_2026-10-01.md`
 - Audited revision manifest: `docs/AUDIT_REVISION_2026-10-01.md`
-- Audited revision manifest blob SHA: `91ec45f779718e0305c61b47cf0717996040281b`
+- Audited revision manifest blob SHA: `06079655a3849d5d75df92244722ee03ae3a5632`
 - ADRs: `docs/adr/0001-*.md` through `docs/adr/0033-*.md`
 - ADR-0010 is Superseded by ADR-0015.
 
