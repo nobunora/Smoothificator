@@ -49,7 +49,7 @@ Read all non-superseded ADRs relevant to the task.
 As of this audit:
 - ADR-0001 through ADR-0009;
 - ADR-0010 is superseded by ADR-0015;
-- ADR-0011 through ADR-0029, subject to explicit supersession notes.
+- ADR-0011 through ADR-0031, subject to explicit supersession notes.
 
 Later ADRs override earlier clauses only where stated.
 
@@ -69,6 +69,7 @@ adaptive_subedge/
     flow_model.py
     error_estimator.py
     mesh_section.py
+    material_side.py
     surface_band.py
     candidate_generator.py
     z_optimizer.py
@@ -175,6 +176,8 @@ Printable eligibility requires:
 - exactly one total source ModelInstance;
 - exactly one positive ModelPart volume;
 - no NegativeVolume/ParameterModifier or equivalent CSG/modifier volume;
+- finite valid triangle coordinates/indices;
+- manifold topology plus deterministic orientation/material-side validation;
 - one tool / one filament execution context;
 - target geometry nested/self-supported;
 - target not bridge/support-dependent.
@@ -413,7 +416,7 @@ At posSimplifyPath:
 
 1. check cancellation;
 2. validate one-object/one-total-instance/one-ModelPart topology;
-3. validate finite/manifold source mesh and candidate-section assumptions;
+3. validate finite/manifold source mesh, shared-edge orientation/global material side, mirrored-transform semantics, and candidate-section assumptions;
 4. resolve semantic Orca config;
 5. validate plugin Settings and ToolClearanceProfile metadata;
 6. build ExecutionConfigFingerprint and PluginSettingsFingerprint;
@@ -545,6 +548,8 @@ Preview may not mutate or regenerate the plan.
 ## 23. Streaming G-code parser
 
 No regex-only mutation.
+
+Read the working file as a binary line stream. Preserve raw line bytes. Parse only the ASCII-compatible command/token subset required by the supported fixture. Do not decode with errors=replace and do not normalize newlines.
 
 Track at minimum:
 - G90/G91;
@@ -768,9 +773,11 @@ Pass 1 — validation:
 No file mutation.
 
 Pass 2 — temp emission:
-- re-open original;
-- stream original lines/bytes in order;
-- inject only fully prevalidated blocks at exact anchors.
+- re-open original in binary mode;
+- create temp in the same directory;
+- copy original raw bytes/line endings exactly;
+- inject only fully prevalidated blocks at exact anchors using the validated local newline convention;
+- preserve required original file mode/permissions.
 
 Pass 3 — sanity:
 - stream-parse temp;
@@ -861,6 +868,8 @@ No physical printing until all software/fixture gates and independent review req
 - no regex-only injector;
 - no mandatory full-file in-memory rewrite;
 - no partial output commit;
+- no text-mode G-code rewrite or newline normalization;
+- no raw-source-normal material-side assumption;
 - no hidden settings changes;
 - no unsupported-profile guessing;
 - deterministic output for identical validated inputs;
