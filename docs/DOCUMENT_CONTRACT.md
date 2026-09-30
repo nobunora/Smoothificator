@@ -12,7 +12,7 @@ Highest to lowest:
 5. **PLUGIN_REQUIREMENTS.md** — Orca/runtime/package compatibility constraints.
 6. **ERROR_MODEL.md / ZAA_INTEGRATION.md** — normative technical models where referenced by implementation.
 7. **ROADMAP.md / TEST_STRATEGY.md** — sequencing and release gates.
-8. **ORCASLICER_PLUGIN_RESEARCH.md / PRE_IMPLEMENTATION_AUDIT.md / SMOOTHIFICATOR_ANALYSIS.md** — evidence/history; may describe rejected or superseded approaches.
+8. **ORCASLICER_PLUGIN_RESEARCH.md / DEPENDENCY_AUDIT.md / SMOOTHIFICATOR_ANALYSIS.md** — evidence/history; may describe rejected or superseded approaches.
 9. **README.md** — summary only.
 
 If a lower-precedence document conflicts with a higher one, follow the higher document and file a documentation-fix change before implementing behavior.
