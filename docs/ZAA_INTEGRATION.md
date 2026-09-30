@@ -1,87 +1,115 @@
 # ZAA Integration Strategy
 
-## 1. Role of ZAA
-Orca Z Contouring/ZAA is the first low-cost improvement stage.
+## 1. Role
 
-Adaptive Sub-Edge reads the final simplified structural paths after ZAA has had a chance to act. It does not reproduce ZAA itself.
+Orca Z Contouring/ZAA remains the first low-cost surface-improvement stage.
 
-## 2. Analyzer hook
-Use posSimplifyPath.
+Adaptive Sub-Edge reads the final simplified structural geometry after ZAA has run when applicable. It does not reproduce or replace ZAA.
 
-posContouring is conditional on Orca deciding Z contouring is needed and therefore is not sufficient for a general analyzer.
+## 2. Analysis point
 
-## 3. ZAA Z semantics
-ContourZ stores path point Z as layer-relative offset d.
+Use `posSimplifyPath`.
+
+`posContouring` is unsuitable as the general analyzer because it is conditional on Orca deciding that contouring is needed and it occurs before final path simplification.
+
+## 3. Z semantics
+
+ContourZ stores each path point's Z component as relative offset (d).
 
 Adapter reconstructs:
-Z_abs = layer.print_z + unscale(d)
 
-Engine only receives absolute print-space Z.
+[
+Z_{abs}=Layer.print_z+d
+]
 
-## 4. ZAA flow semantics
-Orca GCode.cpp emits Z-contoured non-ironing extrusion with:
+after unscale conversion.
 
-extrusion_ratio = (path.height + d) / path.height
+Domain/engine uses absolute centered-slice Z only.
 
-Therefore local effective flow is:
-effective_mm3_per_mm = path.mm3_per_mm * extrusion_ratio
+## 4. Local ZAA geometric-volume semantics
 
-Baseline prediction MUST use this local variation.
+Audited Orca G-code applies:
 
-Treating ZAA path mm3_per_mm as spatially constant is incorrect.
+[
+r_{zaa}=rac{path.height+d}{path.height}
+]
 
-## 5. Hybrid workflow
-1. Orca slice/perimeters.
-2. ZAA where Orca applies it.
-3. Orca path simplification.
-4. posSimplifyPath snapshot.
-5. Normalize absolute Z and local effective flow.
-6. Predict existing finite-bead surface.
-7. Measure residual error.
-8. Derive residual surface bands.
-9. Add candidate SubEdge beads only where useful.
-10. Score final combined surface including unchanged structural/ZAA beads.
-11. Export normal Orca G-code.
-12. Add planned SubEdge G-code at validated layer boundaries.
+for non-ironing Z-contoured segment extrusion.
 
-## 6. What SubEdge adds
-ZAA changes existing path Z/flow within Orca's existing topology.
+For nominal geometry modeling, this local ZAA ratio is paired with local effective height (path.height+d).
 
-Adaptive Sub-Edge can add new printable centerlines to cover material/surface bands unavailable to the existing path topology.
+It is distinct from global user/material calibration multipliers such as filament_flow_ratio.
 
-Candidate paths can be:
-- same-Z neighbors;
-- different-Z neighbors;
-- several paths across one shallow terrace.
+## 5. Global commanded-flow semantics
 
-## 7. No structural-wall rewrite in v1
-The original ZAA/structural wall remains exactly Orca's path.
+Commanded G-code material additionally includes Orca's global/external-wall flow modifiers per ADR-0015.
 
-Overbuild risk is controlled by:
-- optimizing candidate width/height/flow;
-- predicting the final combined bead envelope;
-- rejecting candidates that exceed error/overbuild limits.
+These affect E generation and volumetric-speed limits.
 
-This is intentionally simpler and safer for stock-Orca post-process testing than rewriting existing G-code extrusion.
+They do not directly redefine the ideal nominal bead geometry in v1; empirical physical correction is deferred per ADR-0022.
 
-## 8. Minimum bead-height rule
-0.08 mm initial value applies to candidate effective bead height above local support.
+## 6. Hybrid workflow
 
-It is not a mandatory difference between candidate nozzle Z values.
+1. normal Orca slice/perimeters;
+2. ZAA if Orca applies it;
+3. Orca path simplification;
+4. `posSimplifyPath` centered-frame snapshot;
+5. normalize local ZAA Z + geometry-directed volume;
+6. build nominal finite-bead baseline;
+7. evaluate residual surface-normal error;
+8. derive printable residual surface bands;
+9. plan additional SubEdge centerlines/segment flow;
+10. score structural + candidate nominal bead envelope;
+11. export normal Orca G-code;
+12. validate final execution config/state/structural matching;
+13. inject only the immutable candidate plan.
 
-## 9. Collision/travel distinction
-Candidate extrusion paths are generated only in nested/self-supported regions.
+## 7. Different solution spaces
 
-Execution uses safe-ceiling non-extruding travel per ADR-0007.
+ZAA:
+- changes existing path Z;
+- retains existing topology;
+- locally scales extrusion for the altered height;
+- very low time/material overhead.
 
-No low-Z lateral travel between candidates in printable v1.
+Adaptive Sub-Edge:
+- adds new centerlines where existing topology cannot represent the desired surface;
+- may place several paths at the same/different Z;
+- uses explicit residual-error/support model;
+- incurs additional time/material.
 
-## 10. Success criterion
-Benchmark:
-- normal
-- fine conventional layer
-- ZAA-only
-- ZAA + Adaptive Sub-Edge
+## 8. Structural G-code remains unchanged
 
-Primary target:
-Where ZAA-only misses requested surface tolerance, ZAA + SubEdge should improve error with less time penalty than globally using a fine layer height.
+Printable v1 does not rewrite the original ZAA/structural wall.
+
+Candidate flow is optimized so the combined nominal finite-bead surface does not create unacceptable overbuild.
+
+## 9. 0.08 mm rule
+
+Initial 0.08 mm applies to candidate effective bead height above local support.
+
+It is not a required difference between neighboring path Z coordinates.
+
+## 10. Matching ZAA paths to final G-code
+
+ZAA geometry is still subject to normal seam processing before final G-code.
+
+Final structural matching therefore follows ADR-0016:
+- seam start invariant;
+- subdivision invariant;
+- configured seam-gap allowance;
+- no raw ordered-point equality.
+
+## 11. Benchmark question
+
+Compare:
+- conventional normal layer;
+- conventional fine layer;
+- ZAA-only;
+- ZAA + Adaptive Sub-Edge.
+
+Target claim to test:
+
+Where ZAA-only exceeds the requested surface-error tolerance, Adaptive Sub-Edge can reduce that residual error with less global time cost than reducing layer height everywhere.
+
+This remains a hypothesis until simulation and physical benchmarks support it.
