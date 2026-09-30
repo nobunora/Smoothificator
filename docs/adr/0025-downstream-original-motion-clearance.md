@@ -60,16 +60,16 @@ The validator operates on material volume/envelope, not centerlines alone.
 
 ### Physical nozzle/hotend keep-out model
 
-Define a versioned `NozzleKeepoutProfile` in plugin settings / compatibility configuration.
+Define a versioned `ToolClearanceProfile` in plugin settings / compatibility configuration.
 
 For physical injection it MUST provide, at minimum:
-- a conservative radial keep-out as a function of vertical distance above the nozzle tip, represented by a piecewise-linear radius profile or an equivalent explicitly documented envelope;
+- a conservative tool/nozzle radial keep-out as a function of vertical distance above the nozzle tip, represented by a piecewise-linear radius profile or an equivalent explicitly documented envelope;
 - modeled axial height;
 - additional radial safety margin;
 - additional vertical safety margin;
 - profile id/version and target printer/hotend/nozzle family.
 
-The profile MUST NOT be silently inferred from nozzle diameter alone.
+The profile MUST NOT be silently inferred from nozzle diameter alone. Its dimensions must come from manufacturer geometry, measured hardware, or another documented physical source.
 
 Before first physical injection, the chosen keep-out profile must be:
 - explicitly documented in the fixture record;
@@ -126,7 +126,7 @@ It runs before temp-file emission/atomic replacement.
 ## Architecture
 
 Add:
-- domain/settings `NozzleKeepoutProfile`;
+- domain/settings `ToolClearanceProfile`;
 - `orca_plugin/gcode/downstream_clearance.py`.
 
 The engine may use a simplified compatible keep-out abstraction for early pruning, but the authoritative execution check is in the G-code layer after final matching/quantization.
