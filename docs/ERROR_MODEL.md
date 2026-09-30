@@ -132,6 +132,14 @@ For each candidate segment:
 4. reject insufficient contact/support;
 5. evaluate bead overlap with structural and candidate material.
 
+Candidate execution order is deterministic by structural interval, command Z, and stable tie-break.
+
+A lower-Z earlier candidate may support a later higher-Z candidate when overlap/contact is valid.
+
+Same-Z candidates must not rely on each other as required vertical support in v1.
+
+Support dependencies must be acyclic.
+
 Printable v1 requires nested/self-supported top-facing surface bands.
 
 ## 9. Material boundary versus nozzle centerline
@@ -160,7 +168,7 @@ The deterministic seam/start and gap:
 
 ## 11. Final combined nominal surface
 
-For scoring, combine:
+For completed-part error/overbuild scoring, FinalSurfaceEnvelope combines:
 - lower structural/ZAA geometric beads;
 - all candidate geometric beads;
 - upper structural/ZAA geometric beads.
