@@ -1,214 +1,246 @@
 # Architecture and Responsibility Boundaries
 
-This document is normative. Its purpose is to make future changes local, reviewable and testable.
+This document is normative. Its goal is change locality, testability, and safety.
 
 ## 1. Dependency direction
 
-Dependencies MUST point inward:
+Dependencies point inward:
 
 Orca adapters / UI / G-code I/O -> Application -> Engine -> Domain
 
-The domain and engine MUST NOT import Orca APIs, UI APIs, filesystem APIs, or G-code parser modules.
+Domain and engine never import Orca, UI, filesystem, or G-code modules.
 
-## 2. Canonical package ownership
+## 2. Canonical packages
 
-### adaptive_subedge/domain/
-Immutable vocabulary only:
-- geometry DTOs
+adaptive_subedge/domain/
+- geometry.py
+- metrics.py
+- plan.py
+- settings.py
+- status.py
+- errors.py
+
+adaptive_subedge/engine/
+- bead_model.py
+- flow_model.py
+- error_estimator.py
+- mesh_section.py
+- surface_band.py
+- candidate_generator.py
+- z_optimizer.py
+- support.py
+- collision.py
+- cost_model.py
+
+adaptive_subedge/application/
+- analyzer.py
+- plan_store.py
+- execution_status.py
+- serialization.py
+- hashing.py
+- migrations/
+
+adaptive_subedge/ports/
+- mesh_section_provider.py
+- plan_repository.py
+- cancellation.py
+
+orca_plugin/adapters/
+- geometry_snapshot.py
+- orca_config.py
+- transforms.py
+- fingerprint.py
+
+orca_plugin/capabilities/
+- slicing.py
+- preview.py
+
+orca_plugin/ui/
+- preview_model.py
+- preview_renderer.py
+
+orca_plugin/gcode/
+- lexer.py
+- parser.py
+- state.py
+- matcher.py
+- anchors.py
+- validation.py
+- emitter.py
+- injector.py
+- atomic_writer.py
+
+## 3. Responsibility boundaries
+
+### Domain
+Immutable value objects only:
+- GeometrySnapshot DTOs
 - ErrorMetrics
-- WallPass / WallPassSchedule
-- OriginalWallRewrite
+- SurfaceBand / SubEdgePath
 - SubEdgePlan
 - InsertionAnchor
-- Settings/value constraints
+- Settings
 - status/reason enums
-- typed expected-failure classes
 
-### adaptive_subedge/engine/
+No Orca or G-code knowledge.
+
+### Engine
 Pure algorithms:
-- finite-bead model
-- error estimation
-- mesh sectioning
-- candidate generation
-- surface-only extraction
-- Z/pass optimization
-- support/clearance validation
-- cost scoring
-- flow-area calculation
+- source-surface sectioning
+- target-boundary to printable centerline layout
+- finite-bead prediction
+- ZAA/local-flow normalization inputs
+- residual-error estimation
+- candidate path/flow optimization
+- support/clearance/collision scoring
+- cost model
 
-MUST NOT know Orca hook names or G-code syntax.
+No Orca hooks, G-code syntax, UI, or PlanStore.
 
-### adaptive_subedge/application/
-Workflow and stable state:
-- analyze_snapshot(snapshot, settings) -> SubEdgePlan
+### Application
+Orchestration:
+- analyze_snapshot(snapshot, settings)
 - plan validation
-- canonical serialization/hashing
+- deterministic serialization/hashing
 - PlanStore
-- execution-status repository
-- cancellation abstraction
+- execution status
 
-### adaptive_subedge/ports/
-Narrow interfaces for replaceable services:
-- MeshSectionProvider
-- PlanRepository
-- CancellationToken
-- optional SurfacePredictor interface
+### Orca adapter
+Only layer allowed to import Orca geometry/slicing bindings.
 
-### orca_plugin/adapters/
-The ONLY code allowed to import Orca geometry/slicing bindings.
+It:
+- copies live ctx data;
+- transforms coordinates;
+- converts path-local Z offsets to absolute Z;
+- reconstructs effective local ZAA flow metadata;
+- maps config/gates;
+- builds stable fingerprints.
 
-Responsibilities:
-- copy live ctx.print/ctx.object data
-- convert Orca scaled/path-local coordinates into canonical coordinates
-- map Orca config/settings
-- capture source mesh + transforms
-- build stable source fingerprints
+No live Orca object may escape this layer.
 
-All live Orca references terminate here.
+### G-code adapter
+Execution only:
+- parse final G-code;
+- select exactly one matching plan;
+- validate machine state/anchors;
+- emit additive SubEdge paths;
+- restore state;
+- atomically replace working file.
 
-### orca_plugin/capabilities/
-Thin Orca entrypoints:
-- slicing.py handles posSimplifyPath and psGCodePostProcess
-- preview.py is a Script/UI-safe capability
+It MUST NOT optimize geometry or alter Orca's original structural extrusion in v1.
 
-No geometry algorithms.
+### UI
+Consumes plan/status read models only. No optimization, G-code parsing, or live Orca access.
 
-### orca_plugin/ui/
-Rendering only:
-- PreviewModel creation from immutable plan/status data
-- HTML/window rendering
-- user-visible diagnostics
+## 4. Canonical coordinate frame
 
-MUST NOT optimize or mutate plans.
+All domain geometry uses **absolute print-space millimeters**.
 
-### orca_plugin/gcode/
-Execution adapter:
-- lexer/parser/state machine
-- plan matching
-- anchors
-- original-wall rewrite
-- sub-edge emission
-- validation
-- atomic file replacement
-
-MUST NOT import optimizer/candidate-generation modules.
-
-## 3. Canonical coordinate system
-
-All domain/engine geometry is **absolute print-space millimeters**.
-
-The Orca adapter MUST normalize before any domain object is constructed.
-
-Important Orca detail:
-- ExtrusionPath XY points are scaled print-object path coordinates.
-- ContourZ stores point Z as a **layer-relative offset**.
-- Therefore:
-  Z_abs_mm = layer.print_z + orca.slicing.unscale(point_z)
+Orca path binding:
+- XY: scaled path coordinates -> unscale to mm.
+- Z: ContourZ stores a layer-relative offset d.
+- absolute Z:
+  Z_abs = layer.print_z + unscale(path_point.z)
 
 Source mesh:
-- ModelVolume.mesh() vertices are volume-local mm.
-- For v1's single positive volume, transform to print space using the audited volume-to-object and PrintObject object-to-print transforms.
-- GUI/world-model references MUST NOT be used from a slicing hook.
+- ModelVolume.mesh() is volume-local mm.
+- v1 uses one ModelPart volume.
+- adapter applies audited volume->object and PrintObject object->print transforms.
 
-No engine module may perform Orca scaling/unscaling.
+Coordinate conversion is forbidden outside the Orca adapter.
 
-## 4. Data ownership
+## 5. ZAA local-flow normalization
 
-### Live Orca data
-Owner: Orca.
-Lifetime: execute(ctx) only.
-Never stored.
+For a Z-contoured non-ironing segment:
+- d = path-relative Z offset at segment endpoint;
+- command Z = nominal layer Z + d;
+- Orca G-code scales extrusion by:
+  (path.height + d) / path.height.
 
-### GeometrySnapshot
-Owner: plugin application.
-Copy-owned, immutable at boundary.
-Large NumPy arrays MUST be copied and marked non-writeable before storage.
+The snapshot MUST carry enough data to reproduce this local effective extrusion in the finite-bead model.
 
-### Work buffers
-Owner: one engine call.
-May be mutable locally only.
+Engine must not assume one constant mm3_per_mm for a ZAA path.
 
-### SubEdgePlan
-Owner: application.
-Frozen, canonical serialized, deterministic hash.
-Contains geometry/execution intent only.
+## 6. Data ownership
 
-### PlanExecutionStatus
-Owner: application infrastructure.
-Mutable status separate from SubEdgePlan:
-PLANNED / INJECTION_PASS / INJECTION_SKIPPED / INJECTION_FAIL.
+Live Orca data:
+- owned by Orca;
+- valid only during execute(ctx);
+- never stored.
 
-Changing status MUST NOT change plan_hash.
+GeometrySnapshot:
+- plugin-owned copy;
+- large arrays copied and marked read-only.
 
-### PlanStore
-Thread-safe bounded process-local store of immutable plans plus separate status records.
+Engine work buffers:
+- local mutable arrays allowed;
+- never global.
 
-### G-code document/state
-Owned by one injector invocation.
-Never shared with optimizer/UI.
+SubEdgePlan:
+- frozen/immutable;
+- deterministic hash;
+- geometry/execution intent only.
 
-## 5. Plan decomposition
+PlanExecutionStatus:
+- separate mutable status record;
+- status changes never alter plan hash.
 
-A refined structural interval is represented as a WallPassSchedule.
+PlanStore:
+- process-local;
+- thread-safe;
+- bounded;
+- stores immutable plans and separate status records.
 
-It MUST contain:
-- interval Z0/Z1
-- original outer-wall reference/anchor
-- zero or more intermediate WallPass records
-- one OriginalWallRewrite describing the reduced remaining top-pass extrusion
-- common schedule ordering
+G-code parser state:
+- one injector invocation only.
 
-Each WallPass uses:
-- absolute command_z_mm
-- effective_height_mm
-- XY contour
-- width_mm
-- mm3_per_mm
-- ordering index
+## 7. SubEdgePlan semantics
 
-The plan MUST NOT represent sub-edges as additive material while leaving the top outer wall unchanged.
+A SubEdgePlan contains only **additional** printable paths for v1.
 
-## 6. Mutation policy
+Each SubEdgePath contains:
+- path id
+- structural interval id
+- absolute nozzle Z profile or constant Z, as defined by candidate
+- printable centerline geometry in print-space mm
+- effective bead height relative to local support
+- width
+- mm3_per_mm / volume-per-length
+- speed policy
+- order group
+- source error region
+- insertion anchor/fingerprint
 
-Allowed mutation only:
-- local numerical work buffers
-- parser state during parsing
-- private synchronized PlanStore indexes/status
-- construction of a new output file
+The original Orca structural outer wall remains unchanged in v1.
 
-Public cross-boundary domain objects are immutable.
+Final quality is evaluated from the combined envelope:
+- lower structural/ZAA beads
+- candidate sub-edge beads
+- upper structural/ZAA beads
 
-No function may mutate an input SubEdgePlan.
+## 8. Surface-band model
 
-## 7. Dependency matrix
+A mesh-plane intersection is a **material boundary**, not automatically a nozzle centerline.
 
-Allowed:
-- domain -> stdlib / value-array types
-- engine -> domain
-- application -> domain + engine + ports
-- Orca adapter -> domain/application interfaces + Orca
-- G-code adapter -> domain/application interfaces
-- UI -> domain/application read models
-- capabilities -> adapters/application/G-code/UI entrypoints
+Engine derives a printable surface band inside the material side and lays out one or more centerlines.
 
-Forbidden:
-- domain/engine -> orca_plugin
-- engine -> G-code
-- G-code -> optimizer/candidate generation/source mesh analysis
-- UI -> live Orca graph
-- UI -> plan generation
-- injector -> engine
-- adapters -> UI
+Multiple centerlines may exist:
+- at the same Z;
+- at different Z;
+- with small pairwise Z differences.
 
-CI MUST enforce these boundaries.
+Feasibility is based on local support height, bead overlap, nozzle clearance, and nesting—not a fixed neighbor-Z rule.
 
-## 8. Stable interfaces
+## 9. Interfaces
 
 MeshSectionProvider:
-section(z_mm, region) -> tuple[Contour,...]
+section(z_mm, region) -> boundary geometry
+
+SurfaceBandPlanner:
+plan(reference_boundary, support_surface, settings) -> candidate centerlines
 
 SurfacePredictor:
-predict(pass_schedule, bead_profile) -> SurfaceEnvelope
+predict(structural_beads, candidate_beads) -> SurfaceEnvelope
 
 ErrorEstimator:
 estimate(reference, predicted) -> ErrorField + ErrorMetrics
@@ -223,91 +255,47 @@ ExecutionStatusRepository:
 set(plan_hash,status,reason), get(plan_hash)
 
 GCodeParser:
-parse(text/bytes) -> ParsedDocument + checkpoints
+parse_stream(source) -> events/state checkpoints
 
 PlanMatcher:
-match(document, candidate_plans) -> exactly one plan or typed failure
+match(document_metadata, candidate_plans) -> exactly one plan or typed failure
 
 PlanInjector:
-prepare(document, plan) -> PreparedInjection
-No filesystem write.
-
-AtomicWriter:
-replace_if_valid(path, prepared)
+emit(source, temp_output, plan) -> InjectionResult
 
 PreviewRenderer:
-render(preview_model) -> UI payload
+render(plan,status) -> UI payload
 
-## 9. Error taxonomy
+## 10. Dependency rules
 
-Expected failures use typed exceptions/reason codes:
-- UnsupportedOrcaVersion
-- SnapshotError
-- GeometryUnsupported
-- OptimizationInfeasible
-- PlanMissing
-- PlanAmbiguous
-- PlanMismatch
-- GCodeUnsupported
-- AnchorMismatch
-- InjectionValidationError
-- InjectionAlreadyPresent
-- UserCancelled
+Forbidden:
+- domain/engine -> orca_plugin
+- engine -> G-code
+- G-code -> optimizer/source mesh
+- UI -> live Orca
+- UI -> optimizer
+- injector -> engine
+- adapters -> UI
 
-Unexpected exceptions are caught at the capability boundary, logged, and result in no injection.
+CI MUST enforce import boundaries.
 
-## 10. Configuration ownership
-
-One validated Settings object.
-
-Adapters map Orca/user config into Settings exactly once per analysis.
-
-Engine modules MUST NOT query Orca config.
-
-Settings changes alter settings_hash and invalidate reuse.
-
-## 11. Serialization and determinism
+## 11. Serialization/determinism
 
 Canonical plan serialization exists only in application/serialization.py.
 
-plan_hash MUST exclude:
+plan_hash excludes:
 - timestamps
-- process-local addresses
-- nondeterministic Orca ObjectIDs
+- memory addresses
+- process-local Orca ObjectIDs
 
-Stable geometry should be represented using canonical fixed-unit integers/quantized values or deterministic binary encodings, not locale-dependent float formatting.
+Use deterministic fixed-unit/quantized values or deterministic binary representation. Never locale-dependent float formatting.
 
-Migrations live under application/migrations/.
+## 12. File and change rules
 
-## 12. Performance
-
-Correctness before optimization.
-
-Copied mesh/path arrays may remain NumPy but MUST be read-only after snapshot construction.
-
-Engine may vectorize/parallelize while preserving deterministic output.
-
-No hidden global algorithm caches.
-
-## 13. File cohesion
-
-Guidelines:
 - one responsibility per file
-- target < 400 logical lines
-- split > 600 lines unless generated/static table
+- target <400 logical lines
+- split >600 unless generated/static data
 - no generic utils.py
-- helpers remain private until genuinely reused
-- shared helpers go into narrowly named modules
-
-## 14. Change procedure
-
-Before behavior changes:
-1. identify owning module
-2. update boundary contract/test
-3. avoid unrelated modules
-4. if interface/safety architecture changes, write/update ADR first
-5. update normative docs
-6. run owner unit tests
-7. run integration/regression tests
-
-Cross-layer shortcuts require an ADR.
+- safety/architecture changes require Accepted ADR first
+- owner-module tests before integration tests
+- lower-precedence docs never override accepted ADRs
