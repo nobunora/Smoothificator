@@ -113,9 +113,11 @@ All live Orca references are copied/normalized inside the adapter and discarded 
 v1 targets validated Bambu/Orca single-tool profiles.
 
 At psGCodePostProcess:
-1. parse/validate final G-code;
-2. select exactly one matching current-session plan;
-3. validate supported profile/modal/custom-layer environment;
+1. recompute the required resolved-settings ExecutionConfigFingerprint through ctx.config_value();
+2. require exact equality with the plan fingerprint;
+3. parse/validate final G-code;
+4. select exactly one matching current-session plan;
+5. validate supported profile/modal/custom-layer environment;
 4. anchor at the validated structural layer boundary;
 5. use ADR-0007 safe-ceiling travel;
 6. emit candidate paths in safe order;
@@ -152,6 +154,7 @@ Unsupported configurations are analysis-only.
 ## 14. Failure behavior
 Any uncertainty in:
 - current plan identity;
+- resolved export configuration fingerprint;
 - print-space -> G-code-space coordinate translation;
 - active filament diameter / flow-ratio compatibility;
 - G-code state;
