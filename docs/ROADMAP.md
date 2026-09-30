@@ -69,6 +69,7 @@ Exit:
 
 Implement:
 - finite/manifold mesh validity gates;
+- source orientation/material-side validation and mirrored-transform parity;
 - orientation/material-side validation including mirrored transforms;
 - mesh plane sections;
 - material boundary representation;
@@ -162,7 +163,7 @@ Verify all Gate J assumptions in TEST_STRATEGY.
 
 No physical injector support until fixtures exist.
 
-## Phase 4B — streaming parser dry-run
+## Phase 4B — binary streaming parser dry-run
 
 Read-only:
 - modal state;
@@ -170,7 +171,8 @@ Read-only:
 - E/retraction debt;
 - layer/custom-code markers;
 - calibration/unknown-motion rejection;
-- plugin idempotence markers.
+- plugin idempotence markers;
+- raw-byte/newline preservation contract.
 
 Exit:
 - manually verified parser report matches fixture;
