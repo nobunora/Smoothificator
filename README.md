@@ -71,6 +71,8 @@ Unsupported configurations may be analyzed but are not injected.
 - [Orca API research](docs/ORCASLICER_PLUGIN_RESEARCH.md)
 - [Upstream analysis](docs/SMOOTHIFICATOR_ANALYSIS.md)
 - [Roadmap](docs/ROADMAP.md)
+- [Test strategy](docs/TEST_STRATEGY.md)
+- [Documentation precedence](docs/DOCUMENT_CONTRACT.md)
 - [ADR process](docs/ADR_PROCESS.md)
 
 ## License
