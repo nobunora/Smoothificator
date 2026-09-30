@@ -74,10 +74,12 @@ Printable v1 requires:
 - non-empty finite vertices/triangles;
 - valid triangle indices;
 - current bound ModelVolume reports manifold;
+- shared-edge winding/material orientation can be validated consistently;
+- global outward/material side can be determined deterministically, including mirrored transforms;
 - non-degenerate transformed bounds;
 - every required candidate-Z section used for a printable path has an unambiguous closed material boundary.
 
-The plugin does not create an independent mesh-repair authority.
+The plugin does not create an independent mesh-repair authority. Raw source normals are not trusted until orientation/material-side validation passes.
 
 A model Orca can slice may still be analysis-only for this plugin.
 
@@ -524,11 +526,12 @@ Pass 1:
 - validate retraction, motion, and downstream clearance.
 
 Pass 2:
-- stream original into temp;
-- inject only fully prevalidated blocks at exact anchors.
+- stream the original as raw binary lines into a same-directory temp file;
+- preserve every untouched original byte and original newline convention;
+- inject only fully prevalidated ASCII-compatible blocks at exact anchors.
 
 Pass 3:
-- stream-sanity-check temp;
+- binary-stream sanity-check temp;
 - verify markers, order, state restoration, integrity.
 
 Only then atomically replace ctx.gcode_path.
@@ -540,7 +543,7 @@ Success => successful injection or validated already-injected no-op.
 ## 32. Failure behavior
 
 Any uncertainty in:
-- source mesh validity;
+- source mesh validity/orientation/material side;
 - centered frame;
 - plugin settings identity;
 - Orca export config identity;
