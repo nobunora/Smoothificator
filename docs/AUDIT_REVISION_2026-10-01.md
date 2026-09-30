@@ -10,17 +10,17 @@ Orca source audit baseline:
 - `AGENTS.md` — `dac97cb887b6e5765c067a901be70154a0850385`
 - `docs/DOCUMENT_CONTRACT.md` — `4d92e0c6e1bb5a256bc9de03aa776bc05381658a`
 - `docs/ADR_PROCESS.md` — `587fd4c7b0971c4e927482b5016c645e74c4e070`
-- `docs/SPECIFICATION.md` — `c3c092ce578ad497518833c3f42d890038dcfb1a`
-- `docs/ARCHITECTURE.md` — `3ab1817cdf28856ed922ae962e7205d4c1dd52ea`
-- `docs/IMPLEMENTATION.md` — `2f1af1b44114f155e03186dd73436a3a781cb9f2`
-- `docs/PLUGIN_REQUIREMENTS.md` — `6f240c0e5c322869b67c311c6ef30416f40a513f`
-- `docs/ERROR_MODEL.md` — `98247d5ced3c2cc7941f7931f90e3448832d485f`
+- `docs/SPECIFICATION.md` — `525c1646640db709de417c5d1920b0c36adef15e`
+- `docs/ARCHITECTURE.md` — `0d046eab8498e7deae3c4d829d2f21c595cb663b`
+- `docs/IMPLEMENTATION.md` — `b6bf42d55a36bf7b3322b8ba51ab187aded47ee4`
+- `docs/PLUGIN_REQUIREMENTS.md` — `058065da1c5442c26baacb140d5f1f728a86be22`
+- `docs/ERROR_MODEL.md` — `8dc8196ede2b5aec6faa8f3c08e52eb691f6eab7`
 - `docs/ZAA_INTEGRATION.md` — `67eccf4d49644806c9d0f076d7f7c15eb74b1ded`
-- `docs/TEST_STRATEGY.md` — `53d03feb4bb0ce3010ffd7136f9fa4aabbe900af`
+- `docs/TEST_STRATEGY.md` — `8704086622bee944779130f1f02224dfccfbf59f`
 - `docs/QUALITY_GATES.md` — `ea88a8cc85d167b11868217cda7e7ce3194927fd`
 - `docs/REVIEW_PROCESS.md` — `00b1658a1f25956f6fedf3b4583cce352499d680`
-- `docs/ROADMAP.md` — `1917d36b8c6cd852d19a412a08f6d1de8161db8c`
-- `docs/FULL_CONSISTENCY_AUDIT_2026-10-01.md` — `9f5ff12433b8f648b1501119514fdcaed7a57c42`
+- `docs/ROADMAP.md` — `1dada2c1e8b5b3af4f66aabc762d07a1f37ba843`
+- `docs/FULL_CONSISTENCY_AUDIT_2026-10-01.md` — `72ad63ea4a8ad4053a76b1fc8dcd7a7023ad07f4`
 
 ## ADR blobs
 
@@ -55,13 +55,15 @@ Orca source audit baseline:
 - `0029-plan-candidate-seams-before-gcode-emission.md` — `ae0a28ef48465729ce3c0d583c933d9ae6075efb`
 - `0030-validate-source-orientation-material-side.md` — `8f40ca1613935ab27c9eb693adf0d3ef2db35fd9`
 - `0031-byte-preserving-streaming-gcode.md` — `c4b2fbd54130dd399810fbdfb628d2723b5fc18f`
+- `0032-chronological-material-state-and-support-order.md` — `81599b3a48ef52f300a987db3f12e4436f55b661`
+- `0033-unified-final-tool-clearance-validation.md` — `f3c491f661cca9202cd747d243f4b82d263eb0ec`
 
 ## Verification rule
 
 Before repository review or implementation:
 1. fetch every listed path from the target branch;
 2. require its Git blob SHA to match this manifest;
-3. require ADR identifiers to remain unique;
+3. require ADR identifiers to remain unique from 0001 through 0033;
 4. require ADR-0010 to remain Superseded by ADR-0015.
 
 Any mismatch invalidates this audited revision.
