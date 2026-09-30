@@ -1,135 +1,139 @@
-# Surface Error and Flow Model
+# Surface Error, Bead and Support Model
 
 ## 1. Coordinate semantics
-All values in this document use absolute print-space millimeters.
+All engine coordinates are absolute print-space millimeters.
 
-For a structural layer interval:
+Orca ZAA path points are normalized by the adapter:
+Z_abs = layer.print_z + unscale(path_point.z)
 
-Z0 = previous structural-layer command Z
-Z1 = current structural-layer command Z
+For Z-contoured non-ironing segments, Orca's emitted extrusion is also locally scaled:
+effective_flow_ratio = (path.height + z_offset) / path.height
 
-If intermediate passes exist:
+The baseline predictor MUST reproduce both Z and local flow effects.
 
-Z0 < z1 < ... < zk < Z1
+## 2. Surface error
+Let M be the ideal model boundary and P the predicted printed envelope.
 
-Each z_i is the **nozzle/path command Z**, i.e. the nominal top height of that deposited pass.
-
-## 2. Why Z error is insufficient
-Quality is evaluated relative to the ideal model surface, not only in vertical Z.
-
-Let M be the ideal boundary and P the predicted printable surface envelope.
-
-For a sample q on P:
+Primary error:
 e_n(q) = (q - p) dot n(p)
 
-where p is the corresponding/nearest point on M and n(p) is the outward model normal.
-
-Initial implementation may use closest-point distance plus sign derived from normal/containment.
+where p is nearest/corresponding point on M and n(p) is its outward normal.
 
 Required metrics:
-- maximum absolute normal error E_max
-- RMS normal error E_rms
-- 95th percentile absolute error E_p95
-- mean signed error / bias
+- E_max absolute normal error
+- E_rms
+- E_p95
+- mean signed bias
 
 Both underfill and overbuild matter.
 
-## 3. Refined outer-wall pass schedule
+## 3. Final combined surface
+v1 does NOT replace or rewrite Orca structural beads.
 
-Adaptive Sub-Edge does NOT simply add material.
+Candidate quality is evaluated on the combined envelope of:
+- lower structural/post-ZAA beads;
+- all candidate SubEdge beads;
+- upper structural/post-ZAA beads that Orca will print unchanged.
 
-For [Z0,Z1] with intermediate command heights z1..zk:
-
-h1 = z1 - Z0
-hi = zi - z(i-1)
-h_top = Z1 - zk
-
-All values must be positive and satisfy configured minimum-height/spacing constraints.
-
-The existing Orca outer-wall path becomes the final **top pass**. If ZAA made that path non-planar, its local absolute command Z varies by segment, so its remaining height and flow must be evaluated segment-by-segment.
-
-With no intermediate pass:
-h_top = Z1-Z0 and original G-code remains untouched.
+This is the authoritative overfill/overlap model.
 
 ## 4. Flow model
-For a non-bridge pass of nominal width w and effective height h, v1 SHOULD reproduce Orca's rounded-rectangle area model:
+For a normal non-bridge candidate bead with width w and effective bead height h:
 
 A = h * (w - h * (1 - pi/4))
 
 mm3_per_mm = A
 
-Requirements:
-- w > 0
-- h > 0
-- w >= h for the v1 non-bridge model
-- invalid/non-positive flow rejects the candidate
+This matches Orca Flow::mm3_per_mm() rounded-rectangle model.
 
-The original upper-wall extrusion is rescaled/re-emitted according to its reduced local top-pass area, not merely multiplied by an arbitrary pass fraction. For ZAA upper walls, segment j uses h_top_j = Z_top_j - z_k.
+A candidate is invalid if required width/height/flow is outside calibrated printable bounds.
 
-The intermediate contour length may differ from the original wall length, so total material is not forced to equal the old loop volume exactly. It is determined by each pass's contour length and cross-section.
+ZAA structural beads use Orca's local extrusion scaling described in section 1.
 
-## 5. Printed-envelope approximation
-Each pass is modeled with finite width/height.
+## 5. Meaning of the 0.08 mm constraint
+Initial h_min = 0.08 mm for the 0.4 mm nozzle target.
 
-Initial bead profile:
-- rounded rectangle preferred for consistency with Orca flow area;
-- elliptical profile may be retained only as an experimental comparison model.
+It applies to **effective deposited bead height above local supporting material**, not to pairwise Z distance between candidate paths.
 
-Inputs:
-- command Z
-- effective pass height
-- width
-- XY path
-- local support relationship
+For candidate j:
+h_eff,j = z_nozzle,j - z_support,j
 
-The bead's nominal top is command Z and nominal bottom is command Z - effective_height.
+Require:
+h_min <= h_eff,j <= configured maximum.
 
-## 6. Adaptive search
-For each eligible full outer-wall loop interval:
+Two non-crossing candidate paths may have |z_i-z_j| < 0.08 mm if each has sufficient local support height and passes all clearance/overlap checks.
 
-1. Build post-ZAA/post-simplification baseline.
-2. Evaluate baseline error.
-3. If compliant: no refinement.
-4. Generate candidate k and command heights z1..zk.
-5. Construct corresponding model cross-sections/outer contours.
-6. Compute effective heights from adjacent Z values.
-7. Compute pass flows.
-8. Reconstruct the actual upper-wall absolute Z profile from ZAA path offsets.
-9. Compute h_top_j and target flow per upper-wall segment.
-10. Reject any schedule with insufficient remaining top height.
-11. Recompute finite-bead surface.
-12. Reject support/crossing/clearance-invalid schedules.
-13. Choose lowest-cost schedule meeting tolerance.
+## 6. Local support model
+For each candidate centerline, determine support height from the predicted lower material envelope at/under that path footprint.
 
-k_max follows from physical height constraints and configured guardrail.
+v1 supports only nested/self-supported top-facing geometry.
 
-## 7. v1 spatial scope
-v1 uses one common Z schedule for one entire matched external-perimeter loop.
+Required local nesting:
+higher material sections must not expand outward beyond lower support beyond tolerance.
 
-The previous concept:
-k = k(s), z_i = z_i(s)
+Reject unsupported outward-expanding/overhang regions in printable v1.
 
-is deferred because it requires partial-loop segmentation and local rewriting of original E values.
+## 7. Surface boundary vs nozzle centerline
+A mesh-plane intersection C(z) is the target **material boundary**, not the extrusion centerline.
 
-Future segment-level adaptivity requires a separate ADR and test suite.
+The planner must derive centerlines inside the material side based on:
+- bead width/shape
+- available surface band
+- lower support envelope
+- target final boundary
 
-## 8. Support and collision assumptions
-For a non-crossing outward sequence printed lower-Z first:
-- each pass must have sufficient overlap/contact with lower accepted material;
-- next pass command Z must exceed lower pass nominal top by the required height;
-- top structural outer wall uses remaining local h_top_j, avoiding the previous additive-only over-extrusion problem.
+No fixed half-width offset is assumed exact.
 
-Concave/inward/nozzle-body uncertain cases are unsupported in v1.
+## 8. Surface-band coverage
+A wide shallow terrace may require multiple centerlines.
 
-## 9. Validation geometry
-Initial analytic/physical set:
-- smooth tangent-angle sweep approximately 1-30 degrees
+The optimizer may generate:
+- several paths at one Z;
+- several paths at different Z;
+- combinations of both.
+
+Coverage is scored by the final finite-bead envelope.
+
+The old assumption "one Z schedule for one whole wall loop" is not a v1 requirement.
+
+## 9. Candidate optimization
+For each eligible error region:
+1. predict baseline structural/ZAA bead envelope;
+2. identify residual surface band;
+3. generate candidate centerlines and nozzle Z values;
+4. derive local support height and bead height;
+5. assign candidate width/flow;
+6. combine candidate beads with unchanged structural beads;
+7. reject support/crossing/nozzle-clearance invalid candidates;
+8. recompute error;
+9. select minimum-cost feasible candidate set meeting tolerance.
+
+No fixed 1/2 or 1/3 pitch assumption.
+
+## 10. Collision model
+Candidate paths are non-crossing and ordered so lower required nozzle Z paths are printed before higher ones where order matters.
+
+Pairwise Z alone does not establish safety.
+
+Validate:
+- support footprint
+- finite bead envelope
+- nozzle-body clearance
+- safe travel path
+- path crossings
+- structural-layer ceiling
+
+G-code execution additionally uses the safe-ceiling travel invariant defined by ADR-0007.
+
+## 11. Validation geometry
+Initial:
 - fixed 1, 5, 10, 15, 20, 25, 30 degree coupons
+- continuous 1-30 degree smooth curve
 
 Report:
-- E_max / E_rms / E_p95 / bias
-- added path length
-- rewritten original-wall material
-- total material delta
+- E_max/E_rms/E_p95/bias
+- candidate path length
+- material delta
 - estimated time
+- candidate bead heights
 - measured roughness where available
