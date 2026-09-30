@@ -74,6 +74,8 @@ All must pass:
 - no negative/modifier/helper volumes;
 - one tool/extruder;
 - By Layer print sequence;
+- wall sequence Outer Wall -> Inner Wall;
+- infill-first disabled;
 - absolute XYZ mode;
 - relative E in target interval;
 - arc fitting disabled;
