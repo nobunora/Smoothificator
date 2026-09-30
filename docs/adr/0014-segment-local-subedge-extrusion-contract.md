@@ -84,3 +84,8 @@ If support or flow cannot be resolved segment-locally, the candidate is non-inje
 None.
 
 Supersedes: path-wide extrusion fields in the earlier SubEdgePath draft.
+
+
+## Partial supersession
+
+ADR-0021 supersedes only the earlier idea that authoritative final emitted E is stored in SubEdgeSegment. Segment-local support/height/geometric/commanded-flow semantics remain Accepted. Final E is derived after machine-frame mapping and XYZ quantization.
