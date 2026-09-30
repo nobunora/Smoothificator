@@ -225,6 +225,8 @@ Injection MUST be disabled unless all are true:
 - no negative/modifier/support helper volumes;
 - single tool/extruder;
 - print sequence By Layer;
+- wall sequence Outer Wall -> Inner Wall;
+- infill-first disabled;
 - target G-code uses absolute XYZ positioning;
 - target G-code uses relative extrusion for target intervals;
 - arc fitting disabled;
