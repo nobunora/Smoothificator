@@ -102,7 +102,7 @@ The domain package owns immutable vocabulary only.
 
 Primary types include:
 - `ErrorMetrics`;
-- `NozzleClearanceModel`;
+- `ToolClearanceProfile`;
 - `PluginSettingsFingerprint`;
 - `StructuralPathSegment`;
 - `StructuralLoopReference`;
@@ -177,6 +177,7 @@ It owns:
 - source ModelInstance/ModelVolume transform handling;
 - resolved semantic config extraction;
 - ExecutionConfigFingerprint construction;
+- PluginSettingsFingerprint construction from validated plugin-owned Settings at the application boundary;
 - stable snapshot/reference fingerprints.
 
 No live Orca object or Orca-backed zero-copy array may escape `execute(ctx)`.
@@ -410,6 +411,7 @@ PlanMatcher.match(...)
 ExecutionFrameResolver.resolve(...)
 OrcaQuantizer.quantize_xyz/e(...)
 RetractionController.plan_candidate_cycle(...)
+DownstreamMotionClearanceValidator.validate(...)
 PlanInjector.prepare/emit(...)
 PreviewRenderer.render(...)
 ```
@@ -531,10 +533,18 @@ The plugin does not create an independent mesh-repair authority.
 
 ## 29. Downstream clearance ownership
 
+ToolClearanceProfile ownership:
+- schema/value object lives in domain/settings;
+- selected profile id/version and margins participate in PluginSettingsFingerprint;
+- physical source/measurement evidence lives in printer fixture/review records;
+- G-code validator consumes the immutable profile but does not invent or modify it.
+
+
+
 `downstream_clearance.py` consumes only:
 - final parsed original motion;
 - quantized machine-space candidate bead envelopes;
-- a versioned NozzleClearanceModel.
+- a versioned ToolClearanceProfile.
 
 It does not change candidate geometry.
 
