@@ -1,55 +1,87 @@
 # ZAA Integration Strategy
 
-## Role
-ZAA is the low-cost first optimizer.
+## Role of ZAA
+Orca Z Contouring/ZAA is the first-line low-cost surface improvement.
 
-Adaptive Sub-Edge addresses only residual error that remains after actual Orca toolpath generation/simplification.
+Adaptive Sub-Edge does not attempt to detect or reproduce ZAA internally. It analyzes the final simplified extrusion paths that already contain any ZAA adjustments Orca chose to apply.
 
-## Hook
-Analyze at posSimplifyPath.
+## Canonical analysis point
+Use **posSimplifyPath**, not posContouring.
 
-This works whether ZAA was active or not and sees geometry after simplify_extrusion_path().
+Reason:
+posContouring hook is conditional on need_z_contouring(); posSimplifyPath occurs later and remains usable when ZAA is disabled/ineligible.
 
-## ZAA data semantics
-ContourZ stores path-point Z as offset d, not absolute Z.
+## Path Z semantics
+ZAA ContourZ stores point.z as a layer-relative offset d.
 
-Normalize:
-z_abs = layer.print_z + d
+Adapter reconstructs:
+Z_abs = layer.print_z + unscale(point.z)
 
-For non-ironing ZAA, Orca G-code scales extrusion:
-q_eff = q_nominal * (h_nominal + d) / h_nominal
+The engine only sees absolute print-space Z.
 
-Baseline prediction must reproduce both Z and flow behavior.
+## Hybrid strategy
+1. normal Orca slice/perimeters;
+2. ZAA if Orca applies it;
+3. path simplification;
+4. posSimplifyPath snapshot;
+5. finite-bead prediction;
+6. residual normal-error evaluation;
+7. if needed, optimize a complete refined outer-wall pass schedule;
+8. export normal Orca G-code;
+9. rewrite top external-wall flow and inject intermediate passes.
 
-## Surface-relevant roles
-Do not inspect outer walls only.
+## Why ZAA remains first
+ZAA improves geometry by moving existing path vertices with little added extrusion/time.
 
-ZAA also affects exposed top-solid paths; baseline prediction must include exposed roles that define the target slope.
-
-Ironing and scarf/sloped seams are disabled in printable v1 to avoid ambiguous nonzero-Z semantics.
+Sub-edge refinement is more expensive and should only be used where the final baseline still misses tolerance.
 
 ## Solution-space difference
 ZAA:
-- moves existing paths
-- very low added time/material
-- existing topology
+- existing path topology;
+- varying Z offsets along path;
+- excellent time efficiency.
 
-Adaptive Sub-Edge:
-- adds paths/material
-- can use many independently positioned heights
-- each candidate's physical bead height is determined relative to support
-- can fill residual geometric bandwidth that existing paths cannot represent
+Adaptive Sub-Edge v1:
+- creates additional constant-command-Z external contours;
+- redistributes vertical outer-wall extrusion across those passes;
+- preserves inner/infill structural layer schedule;
+- explicit error tolerance.
+
+## Flow interaction
+Sub-edge is NOT "ZAA path + extra material".
+
+For structural interval [Z0,Z1] with intermediate z_i, the original external wall at Z1 is rewritten to its remaining effective height.
+
+This is required to avoid over-extrusion where intermediate passes raise the support surface.
 
 ## Success criterion
-Not “beat ZAA everywhere.”
+Compare:
+- normal;
+- fine conventional layers;
+- ZAA-only;
+- ZAA + Adaptive Sub-Edge.
 
-When ZAA remains above tolerance, improve error with less penalty than globally reducing structural layer height.
+Primary claim to test:
 
-## Collision/order
-Lower-to-higher path ordering is required.
+Where ZAA-only remains above target surface-error tolerance, ZAA + Adaptive Sub-Edge should lower geometric error with less time cost than globally reducing layer height.
 
-Actual nozzle clearance still uses a finite nozzle envelope; small pairwise Z differences are allowed only when clearance passes.
+## Collision distinction
+Intermediate contours are non-crossing and printed lower command Z to higher command Z.
 
-## Benchmark
-Normal / fine layer / ZAA-only / ZAA+SubEdge on:
-1/5/10/15/20/25/30 degree coupons and smooth slope.
+This avoids ZAA's high-to-low ordering issue in the supported v1 geometry class.
+
+## Benchmark targets
+Fixed angles:
+1, 5, 10, 15, 20, 25, 30 degrees.
+
+Also:
+- continuous smooth slope coupon;
+- dome/chamfer later.
+
+Measure:
+- E_max/E_rms/E_p95;
+- roughness where available;
+- print time;
+- material delta;
+- wall artifacts;
+- failures.
