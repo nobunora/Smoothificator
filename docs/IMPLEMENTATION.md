@@ -1,6 +1,18 @@
 # Implementation Specification — Stock Orca Plugin
 
-This document is normative. Coding agents MUST follow it unless a later Accepted ADR supersedes a requirement.
+This document is normative. Coding agents MUST also follow `AGENTS.md`. A later Accepted ADR supersedes this document only within that ADR's stated scope.
+
+## Implementation preconditions
+
+Production implementation MUST NOT start until:
+- the full specification consistency audit is complete;
+- `docs/specs/adaptive-subedge-v1.md` references the audited canonical commit;
+- a review-only repository pass using `.codex/repository-review.md` records disposition `validated`;
+- `docs/implementation/<task>.md` records the approved implementation scope and verification plan.
+
+Specification work and production implementation should normally use separate branches/PRs.
+
+If implementation discovers a material specification/API conflict, stop the affected work and return to specification adjudication instead of improvising behavior.
 
 ## 0. Canonical v1 architecture
 
@@ -84,6 +96,7 @@ orca_plugin/
     parser.py
     state.py
     matcher.py
+    execution_frame.py
     anchors.py
     validation.py
     emitter.py
@@ -592,7 +605,21 @@ Working copies only; failure byte-preservation.
 ### Gate I — physical coupon
 Only after A-H pass.
 
-## 20. Coding-agent hard rules
+## 20. Quality, review, and evidence
+
+Every implementation step MUST:
+- follow `docs/QUALITY_GATES.md`;
+- run focused tests before broader tests;
+- record exact commands/outcomes in the implementation record;
+- inspect the final diff and affected execution path;
+- keep behavior changes separate from unrelated refactors/formatting;
+- leave no debug/temporary bypass code.
+
+Before first physical-print enablement and before production release, apply the independent review/convergence rules in `docs/REVIEW_PROCESS.md`.
+
+A passing suite alone does not authorize physical printing.
+
+## 21. Coding-agent hard rules
 
 - do not modify legacy Smoothificator scripts unless tasked;
 - no custom Orca C++;
