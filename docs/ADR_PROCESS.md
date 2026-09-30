@@ -18,13 +18,20 @@ ADR template:
 # ADR-NNNN: Title
 Status: Proposed | Accepted | Superseded
 Date:
+
 Context:
+Evidence / source contract:
 Decision:
+Requirements / invariants introduced:
 Alternatives considered:
 Safety impact:
 Compatibility impact:
-Test impact:
-Migration:
+Performance / resource impact:
+Observability impact:
+Test / validation impact:
+Migration / rollout:
+Rollback / disable condition:
+Open questions:
 Supersedes:
 
 Implementation MUST NOT precede Accepted status for safety/architecture changes.
@@ -48,3 +55,17 @@ When an ADR depends on Orca implementation details, record:
 - tested/audited Orca commit or version where practical.
 
 If later Orca source contradicts an Accepted ADR assumption, stop implementation for the affected area and create a superseding ADR before code changes.
+
+
+## Review rule
+
+Before accepting a high-risk ADR, verify:
+- authoritative owner is clear;
+- non-ownership is clear;
+- inputs/outputs/units are explicit;
+- failure and rollback behavior are explicit;
+- implementation can be validated deterministically;
+- the decision does not introduce a second policy owner;
+- physical/G-code safety impact has an evidence plan.
+
+For hardware/G-code safety semantics, an Accepted ADR should receive independent review before the implementation gate it controls is enabled.
