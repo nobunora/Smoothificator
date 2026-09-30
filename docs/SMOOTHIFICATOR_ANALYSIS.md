@@ -40,7 +40,7 @@ Upstream repeats identical XY.
 This fork:
 - treats source mesh section as material boundary;
 - derives printable centerlines inside the material;
-- may create multiple paths at same/different Z;
+- may create multiple paths at same/different Z, while each printable v1 path itself stays constant-Z;
 - uses local support/nesting;
 - does not assume equal 1/2 or 1/3 pitch.
 
@@ -50,8 +50,12 @@ Legacy scripts use regex/block logic.
 New injector uses:
 - geometry-time immutable plan;
 - stateful streaming G-code parser;
+- seam-invariant structural matching and execution-frame translation;
+- Orca-compatible quantization;
 - validated Bambu structural-layer boundary;
+- exact parsed retraction/state restoration;
 - safe-ceiling travel;
+- downstream original-motion clearance against a versioned ToolClearanceProfile;
 - relative-E candidate emission;
 - atomic temp-file replacement.
 
