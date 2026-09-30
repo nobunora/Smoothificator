@@ -35,6 +35,7 @@ Implement/test:
 - Orca rounded-rectangle flow formula
 - candidate effective bead height above support
 - ZAA local effective flow normalization
+- Orca filament_flow_ratio -> E conversion parity
 - finite-bead representation
 - no-refinement baseline identity
 
@@ -138,11 +139,13 @@ Exit:
 - exactly one correct match
 - zero/multiple/stale plan safe skip
 - runtime ObjectIDs not required
+- validated constant print-space -> machine-G-code translation
+- inconsistent mapping safe rejection
 
 ## Phase 4D — offline emitter
 On fixture copies:
 - safe-ceiling travel
-- relative-E candidate extrusion
+- relative-E candidate extrusion with filament_flow_ratio
 - state restore
 - markers/idempotence
 
