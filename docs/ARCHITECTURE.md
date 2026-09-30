@@ -34,6 +34,7 @@ adaptive_subedge/
     flow_model.py
     error_estimator.py
     mesh_section.py
+    material_side.py
     surface_band.py
     candidate_generator.py
     z_optimizer.py
@@ -130,6 +131,7 @@ Domain MUST NOT contain:
 
 The engine owns pure physical/geometric decision logic:
 - source-surface sectioning;
+- source orientation/material-side validation;
 - residual surface-band derivation;
 - centerline placement;
 - finite-bead prediction;
@@ -175,6 +177,7 @@ It owns:
 - ZAA relative-Z normalization;
 - structural effective commanded-flow normalization;
 - source ModelInstance/ModelVolume transform handling;
+- closed-manifold orientation/material-side validation;
 - resolved semantic config extraction;
 - ExecutionConfigFingerprint construction;
 - PluginSettingsFingerprint construction from validated plugin-owned Settings at the application boundary;
@@ -210,7 +213,7 @@ It owns:
 - relative-E retraction-state handling;
 - candidate command derivation from immutable plan;
 - safe-ceiling travel;
-- temp-file emission/sanity validation/atomic replacement;
+- byte-preserving binary-line temp emission/sanity validation/atomic replacement;
 - PluginResult mapping at the capability boundary.
 
 It MUST NOT:
@@ -375,7 +378,7 @@ Never shared with optimizer/UI.
 
 ### Temp output
 Owned by one injector attempt.
-Original working file is untouched until full validation/sanity succeeds.
+Parser/emitter uses binary line streams. Untouched original bytes and line endings are copied exactly. Original working file is untouched until full validation/sanity succeeds.
 
 ## 19. Component contract checklist
 
@@ -522,10 +525,12 @@ Compatibility expansion requires fixtures/tests and ADR when safety semantics ch
 
 ## 28. Source-mesh validity
 
-Printable v1 source geometry must pass the ADR-0027 validity contract before engine use:
+Printable v1 source geometry must pass ADR-0027 and ADR-0030 before engine use:
 - finite vertices;
 - valid triangle indices;
 - current bound ModelVolume reports manifold;
+- shared-edge orientation/material side is deterministic;
+- mirrored/global orientation is resolved without mutating Orca mesh;
 - non-degenerate transformed bounds;
 - unambiguous required plane sections.
 
