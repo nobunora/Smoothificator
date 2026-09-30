@@ -52,6 +52,7 @@ Physical injection requires:
 - no NegativeVolume/ParameterModifier/helper CSG volume;
 - finite valid triangle mesh;
 - current bound ModelVolume manifold;
+- deterministic closed-mesh orientation/material-side validation, including mirrored transforms;
 - centered-frame parity;
 - unambiguous required plane sections.
 
@@ -251,14 +252,17 @@ v1 does not rewrite later original travel to repair a collision.
 ## 19. File processing
 
 Postprocess is:
-- streaming;
+- binary-line streaming;
+- byte-preserving for all untouched original content;
 - parser/state-machine based;
 - validation-first;
 - idempotent;
 - temp-file based;
 - sanity-checked;
 - atomic;
-- all-or-nothing.
+- all-or-nothing;
+- line-ending preserving;
+- original file mode/permissions preserving where required by the supported platform workflow.
 
 Expected unsupported/validation condition:
 - stable internal reason;
