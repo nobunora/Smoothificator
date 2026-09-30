@@ -79,7 +79,7 @@ Printable v1 requires:
 - non-degenerate transformed bounds;
 - every required candidate-Z section used for a printable path has an unambiguous closed material boundary.
 
-The plugin does not create an independent mesh-repair authority. Raw source normals are not trusted until orientation/material-side validation passes.
+The plugin does not create an independent mesh-repair authority. Raw source normals are not trusted until orientation/material-side validation passes. Raw source normals are not trusted until orientation/material-side validation passes.
 
 A model Orca can slice may still be analysis-only for this plugin.
 
