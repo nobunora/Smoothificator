@@ -140,3 +140,20 @@ Do not make full-file memory loading a requirement.
 Largest remaining risk is correct and robust G-code state/anchor handling, not Orca geometry access.
 
 This risk is isolated in orca_plugin/gcode and gated by golden fixtures before physical printing.
+
+
+## 15. Print-space vs final G-code coordinate finding
+GCode::point_to_gcode() applies the current instance origin (m_origin) and active extruder XY offset. PrintApply separates instance XY translation into PrintInstance.shift, and GCode sets m_origin from that shift. GCode::change_layer() also applies printer z_offset to structural machine Z.
+
+Therefore plugin plan coordinates cannot be emitted directly.
+
+ADR-0009 requires final-G-code anchor matching to derive/validate one constant translation (dx,dy,dz) for the v1 one-instance/one-tool case before emission.
+
+## 16. Volumetric-to-E conversion finding
+Extruder.cpp caches:
+
+m_e_per_mm3 = filament_flow_ratio / filament_crossection
+
+Therefore injected candidate E must include the active filament_flow_ratio rather than assuming E = volume / area.
+
+ADR-0010 defines the v1 conversion and required parity tests.
