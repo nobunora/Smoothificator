@@ -2,6 +2,8 @@
 
 Tests are organized by ownership boundary so failures identify the responsible module.
 
+Before behavioral tests, apply the independent quality-audit ordering in `docs/QUALITY_GATES.md`. Architecture/static/type/lint categories that are configured must be reported separately from behavioral tests.
+
 ## A. Architecture tests
 Owner: tests/architecture/
 
@@ -136,8 +138,21 @@ Check:
 - repeated export/upload working copies;
 - already-injected file no-op.
 
-## L. Physical test gate
-Physical printing forbidden until A-K pass for exact supported fixture.
+## L. Independent review gate
+
+Before first physical printer injection:
+- primary implementation review is complete;
+- an independent blind review has completed under `docs/REVIEW_PROCESS.md`;
+- findings are reconciled only after the blind report is final;
+- no unresolved Critical or High finding remains;
+- every confirmed finding has a disposition;
+- canonical documents and source evidence agree;
+- all required software/fixture gates pass.
+
+A "no findings" review must still state coverage and residual uncertainty.
+
+## M. Physical test gate
+Physical printing forbidden until A-L pass for exact supported fixture.
 
 Sequence:
 1. simple 5 degree coupon;
@@ -147,7 +162,7 @@ Sequence:
 
 Any nozzle contact, severe overbuild, delamination, or dimensional failure pauses physical testing and returns to model/spec review.
 
-## M. Compatibility expansion
+## N. Compatibility expansion
 Every newly supported:
 - Orca version
 - printer profile
