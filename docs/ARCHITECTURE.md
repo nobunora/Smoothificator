@@ -122,7 +122,9 @@ No live Orca object may escape this layer.
 Execution only:
 - parse final G-code;
 - select exactly one matching plan;
+- derive/validate the constant print-space -> G-code-space execution translation;
 - validate machine state/anchors;
+- apply that translation to candidate coordinates at emission time only;
 - emit additive SubEdge paths;
 - restore state;
 - atomically replace working file.
@@ -260,6 +262,9 @@ parse_stream(source) -> events/state checkpoints
 PlanMatcher:
 match(document_metadata, candidate_plans) -> exactly one plan or typed failure
 
+ExecutionFrameResolver:
+resolve(plan_reference_geometry, gcode_reference_geometry) -> validated constant (dx,dy,dz)
+
 PlanInjector:
 emit(source, temp_output, plan) -> InjectionResult
 
@@ -272,6 +277,7 @@ Forbidden:
 - domain/engine -> orca_plugin
 - engine -> G-code
 - G-code -> optimizer/source mesh
+- domain/engine -> machine G-code coordinate offsets
 - UI -> live Orca
 - UI -> optimizer
 - injector -> engine
