@@ -3,58 +3,59 @@
 Upstream: TengerTechnologies/Smoothificator
 
 ## Upstream behavior
-Original Smoothificator is a G-code post-processing script.
+Original Smoothificator post-processes G-code:
+- finds external-wall blocks;
+- chooses equal vertical pass count;
+- repeats the same XY loop at those Z values;
+- divides original outer-wall extrusion among passes.
 
-It:
-- identifies external-perimeter / outer-wall blocks;
-- derives a pass count from base layer height and requested outer height;
-- places repeated passes at equal Z spacing;
-- repeats the same XY outer path;
-- divides extrusion among passes;
-- inserts Z/travel commands.
+Adaptive variant chooses integer pass count from current layer height.
 
-Adaptive version reads per-layer HEIGHT/min_layer_height and chooses a nearby integer pass count.
+## What this fork keeps conceptually
+- outer-surface vertical resolution can differ from the interior;
+- multiple external paths can be introduced without globally reducing layer height;
+- G-code post-processing can be used with stock Orca.
 
-## What remains valuable
-Upstream established two important practical ideas:
-1. outer-wall vertical resolution can differ from the interior;
-2. original outer-wall extrusion must be distributed across the smaller-height passes rather than simply adding full-flow material.
+## What this fork changes
+Geometry decisions move earlier, while source mesh and final simplified Orca/ZAA paths are still available.
 
-The second point is retained explicitly in ADR-0002.
+Canonical flow:
+final simplified structural geometry -> residual error -> surface band -> optimized candidate centerlines/flow -> immutable plan -> final G-code validated injection.
 
-## Limitations relative to this fork
-Upstream:
-- decides refinement from G-code, without source-mesh error;
-- uses equal Z spacing;
-- repeats identical XY geometry;
-- has no residual-error tolerance;
-- has no finite-bead optimizer;
-- does not use ZAA result as the baseline;
-- does not separate preview plan from execution plan.
+## Important difference: flow
+Upstream redistributes the original wall extrusion among repeated passes.
 
-## This fork's architecture
-The current target is NOT "normal path generation inside Orca's mutable geometry graph."
+This fork v1 does **not** rewrite the original structural wall.
 
-It is:
+Instead:
+- original lower/upper structural/ZAA beads remain in the final-surface model;
+- candidate SubEdge bead flow is optimized;
+- combined finite-bead overfill/underfill is scored explicitly.
 
-1. geometry-time read-only analysis at Orca posSimplifyPath;
-2. create immutable error-driven WallPassSchedules from source mesh + final simplified paths;
-3. preview the exact plan;
-4. let Orca export normal G-code;
-5. at official psGCodePostProcess:
-   - match the plan to the exported wall loop;
-   - reduce/rewrite the original upper-wall extrusion;
-   - inject non-uniform intermediate contours lower-Z first.
+A future structural-wall redistribution mode would require its own ADR and tests.
 
-Legacy:
-target outer layer height -> equal passes -> duplicate XY -> split E
+## Important difference: geometry
+Upstream repeats identical XY.
 
-New:
-post-ZAA residual error -> optimize true intermediate contours + Z schedule -> redistribute outer-wall flow -> validated G-code execution
+This fork:
+- treats source mesh section as material boundary;
+- derives printable centerlines inside the material;
+- may create multiple paths at same/different Z;
+- uses local support/nesting;
+- does not assume equal 1/2 or 1/3 pitch.
 
-## Code-reuse policy
-The legacy scripts remain reference material.
+## Execution
+Legacy scripts use regex/block logic.
 
-Do not directly extend their regex/block-processing architecture for the new injector. The new G-code implementation uses an explicit parser/state machine and all-or-nothing validation.
+New injector uses:
+- geometry-time immutable plan;
+- stateful streaming G-code parser;
+- validated Bambu structural-layer boundary;
+- safe-ceiling travel;
+- relative-E candidate emission;
+- atomic temp-file replacement.
 
-Legacy scripts are not modified unless an explicit task requires it.
+## Code reuse
+Keep legacy Smoothificator.py and Smoothificator_Adaptive.py unchanged as reference/baseline.
+
+Do not extend their parser architecture for the new engine unless explicitly tasked.
