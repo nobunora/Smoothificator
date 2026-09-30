@@ -169,7 +169,7 @@ Fix: ADR-0010. Capture/validate active filament diameter and flow ratio and use 
 
 ## Final consistency result
 After the corrections above:
-- one canonical ADR sequence exists: 0001 through 0010;
+- one canonical ADR sequence exists: 0001 through 0011;
 - normative documents use posSimplifyPath;
 - ZAA relative-Z and local-flow semantics are consistent;
 - 0.08 mm semantics are effective bead height, not neighbor spacing;
@@ -180,3 +180,16 @@ After the corrections above:
 - final G-code processing is streaming/all-or-nothing.
 
 No known document-level contradiction remains in the reviewed v1 architecture at this audit point.
+
+
+### F-21 Export-time resolved settings were not directly revalidated — High
+psGCodePostProcess has no live Print object, but Orca's SlicingPipelineContext still exposes config_value(key) from the final full export config.
+
+Without using that API, a plan could theoretically survive a relevant settings change and rely only on G-code/header heuristics.
+
+Fix: ADR-0011. Store a versioned safety-key ExecutionConfigFingerprint at planning and recompute it at export through ctx.config_value(). Any missing/mismatched key disables injection.
+
+### F-22 Plugin Python/dependency floor was not explicit — Medium
+Official Orca plugin samples declare requires-python >= 3.12, and geometry bindings rely on NumPy for array access.
+
+Fix: plugin packaging must declare Python >=3.12 for the currently audited runtime and NumPy explicitly. Exact dependency versions are pinned after Phase 0.5 environment verification.
