@@ -61,9 +61,13 @@ Pinned Orca:
 - no live reference escape;
 - cache/no-plan behavior.
 
-## F. Plan/preview tests
+## F. Plan/config/preview tests
 Check:
 - immutable plan;
+- canonical ExecutionConfigFingerprint;
+- same-config export acceptance;
+- every required config-key change rejects injection;
+- missing required config key rejects injection;
 - separate runtime status;
 - stable hash excludes runtime ObjectIDs/timestamps;
 - preview hash equals injector plan hash;
