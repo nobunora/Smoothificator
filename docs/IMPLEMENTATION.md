@@ -159,15 +159,23 @@ Frozen:
 - ordering_index
 - source_error_region_id
 
+### OriginalWallSegmentRewrite
+Frozen, one record per matched original upper-wall extrusion segment:
+- segment anchor/fingerprint
+- original segment start/end XYZ
+- original width_mm
+- original mm3_per_mm
+- local/representative absolute top command Z
+- target effective_height_mm
+- target mm3_per_mm
+- relative-E scale/rewrite rule
+
 ### OriginalWallRewrite
 Frozen:
 - matched original loop anchor
-- original command Z
-- original width/height/mm3_per_mm
-- target effective_height_mm
-- target mm3_per_mm
-- rewrite mode
 - expected original-loop fingerprint
+- ordered OriginalWallSegmentRewrite records
+- rewrite mode
 
 ### WallPassSchedule
 Frozen:
@@ -175,6 +183,7 @@ Frozen:
 - intermediate_passes
 - original_wall_rewrite
 - target loop fingerprint
+- highest_intermediate_z_mm
 
 ### InsertionAnchor
 Frozen:
@@ -225,7 +234,9 @@ Injection MUST be disabled unless all are true:
 - no classic post-processing scripts;
 - no other active geometry/G-code-mutating slicing-pipeline plugin;
 - no support-dependent refined region;
-- external-wall target is non-crossing and outward/top-facing;
+- not the first printed layer;
+- no bridge-role target segment;
+- target external-wall loop is simple, deterministically matchable, non-crossing and self-supported/top-facing;
 - supported Orca/profile fixture exists.
 
 Analysis MAY run outside this domain, but plan must be marked non-injectable with reason codes.
@@ -246,12 +257,13 @@ For the one supported PrintObject:
 12. generate complete intermediate external-loop contours;
 13. derive pass heights from adjacent command Z values;
 14. compute flow using FlowModel;
-15. compute reduced top original-wall flow;
-16. validate support/non-crossing/clearance;
-17. re-score finite-bead surface;
-18. select lowest-cost feasible full-loop schedule;
-19. construct immutable SubEdgePlan;
-20. store plan and PLANNED status.
+15. compute segment-wise reduced top original-wall flow from the actual ZAA top-wall absolute Z profile;
+16. reject schedules where any top segment leaves less than minimum printable height above the highest intermediate pass;
+17. validate support/non-crossing/clearance;
+18. re-score finite-bead surface;
+19. select lowest-cost feasible full-loop schedule;
+20. construct immutable SubEdgePlan;
+21. store plan and PLANNED status.
 
 Heavy loops MUST poll cancellation at bounded intervals.
 
@@ -273,10 +285,16 @@ Intermediate pass height:
 h1 = z1-Z0
 hi = zi-z(i-1)
 
-Upper original wall:
-h_top = Z1-zk
+Upper original wall is evaluated per matched segment j because ZAA may make it non-planar:
 
-The injector MUST rewrite the matched original outer-wall loop from its old mm3_per_mm to target top mm3_per_mm.
+Z_top_j = Z1 + d_j
+h_top_j = Z_top_j - z_k
+
+Each h_top_j must satisfy the configured minimum printable height/clearance.
+
+The injector MUST rewrite each matched original upper-wall extrusion segment from its original mm3_per_mm to the target value computed from that segment's width and h_top_j.
+
+With a planar non-ZAA wall all h_top_j are equal.
 
 No-refinement schedule MUST leave original wall byte-identical.
 
@@ -359,9 +377,10 @@ For every WallPassSchedule:
 2. find exact original outer-wall loop;
 3. validate loop fingerprint, Z, role/comment context and state;
 4. verify relative extrusion mode;
-5. compute each original extrusion move's scaled E increment using target/original mm3_per_mm ratio;
-6. preserve non-extrusion moves/comments/order;
-7. ensure rewritten loop remains geometrically identical to Orca output.
+5. map each G-code extrusion move to its planned OriginalWallSegmentRewrite;
+6. compute the move's relative-E rewrite using the segment target/original mm3_per_mm ratio;
+7. preserve non-extrusion moves/comments/order;
+8. ensure rewritten loop remains geometrically identical to Orca output.
 
 Do not change XY of the original top loop in v1.
 
@@ -424,6 +443,7 @@ Plugin activation/config changes are expected to invalidate slicing; tests must 
 
 ### Gate C — pure engine
 - flow formula vs Orca Flow reference cases
+- planar and varying-Z top-wall segment rewrite model
 - bead model
 - error metrics
 - optimizer constraints
@@ -479,6 +499,7 @@ Record error, roughness, time, material, wall artifacts and failure modes.
 - no UI call from SlicingPipeline execute();
 - no live Orca object storage;
 - no additive-only sub-edge model;
+- no uniform top-wall flow assumption when ZAA makes the upper wall non-planar;
 - no partial-loop refinement in v1;
 - no absolute-E injection in v1;
 - no partial file writes;
