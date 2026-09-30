@@ -79,7 +79,7 @@ Printable v1 requires:
 - non-degenerate transformed bounds;
 - every required candidate-Z section used for a printable path has an unambiguous closed material boundary.
 
-The plugin does not create an independent mesh-repair authority. Raw source normals are not trusted until orientation/material-side validation passes. Raw source normals are not trusted until orientation/material-side validation passes.
+The plugin does not create an independent mesh-repair authority. Signed error and material-side insetting use a validated orientation view plus an independent inside/outside check per ADR-0030. Raw source normals are not trusted until orientation/material-side validation passes. Raw source normals are not trusted until orientation/material-side validation passes.
 
 A model Orca can slice may still be analysis-only for this plugin.
 
@@ -514,7 +514,7 @@ A standard Bambu process with arc fitting still enabled is analysis-only until t
 
 ## 31. G-code file mutation
 
-psGCodePostProcess uses streaming all-or-nothing processing.
+psGCodePostProcess uses binary, byte-preserving, streaming all-or-nothing processing per ADR-0031.
 
 Pass 1:
 - validate plugin settings fingerprint;
@@ -558,6 +558,8 @@ Any uncertainty in:
 - Zsafe;
 - downstream original-motion clearance;
 - ToolClearanceProfile;
+- source orientation/material-side ambiguity;
+- unsupported binary/token/newline/filesystem atomic-replace behavior;
 causes injection to be skipped.
 
 The project always prefers unchanged valid Orca G-code over guessed modification.
