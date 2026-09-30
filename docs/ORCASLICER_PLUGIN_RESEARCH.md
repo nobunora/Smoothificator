@@ -1,127 +1,142 @@
 # OrcaSlicer Plugin / Geometry API Research
 
-Research target: OrcaSlicer main and official plugin sources, audited 2026-09-30.
+Research target: OrcaSlicer main and official plugin sources, audited through 2026-09-30.
 
-## 1. Final v1 conclusion
-Stock Orca is sufficient for v1 by combining:
-- **posSimplifyPath** for post-ZAA/post-simplification read-only analysis;
-- **psGCodePostProcess** for official exported-working-file modification;
-- a separate Script capability for preview.
+## 1. Feasibility conclusion
+A conservative printable v1 is feasible on **stock OrcaSlicer** using:
+- posSimplifyPath for geometry analysis;
+- psGCodePostProcess for final working-file injection;
+- Script capability for preview.
 
-A custom Orca build is not required for the first printable implementation.
+No custom Orca build is required.
 
-## 2. Why posContouring was rejected
-Source audit of Print.cpp shows:
-- Orca calls obj->contour_z();
-- it fires the posContouring plugin hook only when obj->need_z_contouring() is true;
-- otherwise the step is marked done without calling the plugin hook.
+## 2. Hook selection
+Print.cpp shows:
+- posContouring hook only fires when need_z_contouring() is true;
+- simplify_extrusion_path() occurs later;
+- posSimplifyPath fires after simplification for freshly processed objects.
 
-Therefore posContouring cannot implement the required "analyze ordinary Orca geometry when ZAA is disabled/ineligible" behavior.
+Therefore posSimplifyPath is the canonical analyzer hook.
 
-## 3. Why posSimplifyPath was selected
-Print.cpp runs simplify_extrusion_path() after Z Contouring and then fires posSimplifyPath for newly processed objects.
+Cache-loaded plugin-final objects intentionally do not re-fire it. Missing current-session plan => no injection.
 
-Benefits:
-- sees ZAA results where they exist;
-- also runs when ZAA is not needed;
-- sees paths after simplification, closer to exported geometry.
+## 3. Plugin package/UI capability
+PyPluginPackage permits register_capability() for each capability class.
 
-Caveat:
-Orca intentionally avoids re-firing this hook on cache-loaded plugin-final objects. Missing in-process plan at export therefore causes safe skip/re-slice diagnostic.
+Official sandbox plugins demonstrate ScriptPluginCapabilityBase and orca.host.ui.create_window.
 
-## 4. Path-coordinate discovery
-PluginHostSlicing exposes ExtrusionPath.points() as native 3D scaled coordinates.
-
-However ContourZ.cpp stores the point Z component as adjustment d relative to Layer.print_z, not absolute print Z.
-
-Canonical conversion:
-
-Z_abs = Layer.print_z + orca.slicing.unscale(point_z)
-
-This conversion is mandatory before domain analysis.
-
-## 5. Source mesh bindings
-PluginHostMesh/PluginHostModel expose:
-- immutable mesh vertices/triangles;
-- ModelVolume.matrix() volume-to-object;
-- PrintObject.trafo() object-to-print;
-- source Model snapshot tied to the Print worker.
-
-This is sufficient for v1 single-volume source mesh reconstruction.
-
-Multi-volume CSG is not solved by the binding itself and is deferred.
-
-## 6. Read-only path limitation
-LayerRegion.perimeters and ExtrusionPath points/width/height/flow are read-only from Python.
-
-This blocks live path injection but not v1 because execution occurs at psGCodePostProcess.
-
-## 7. psGCodePostProcess
-Official Orca sample/source confirms:
-- runs after classic post_process scripts;
-- has no live print/object graph;
-- exposes ctx.gcode_path/ctx.host/ctx.output_name;
-- edits working G-code in place;
-- may fire multiple times per slice on separate working copies;
-- output is not reflected in standard G-code viewer.
-
-The same SlicingPipeline capability class may implement geometry and post-process steps.
-
-## 8. Multiple capabilities / preview
-PyPluginPackage explicitly permits register_capability() once per capability class.
-
-Official sandbox Script examples use orca.host.ui.create_window.
-
-Therefore one package can provide:
-- SlicingPipeline capability;
+One plugin package can therefore provide:
+- SlicingPipeline analyzer/injector capability;
 - Script preview capability.
 
-UI must be invoked from UI-safe Script execution, not slicing worker.
+## 4. Readable slicing graph
+Bindings expose:
+- Print / PrintObject
+- Layer / LayerRegion
+- source Model snapshot / ModelObject
+- ModelVolume mesh and transforms
+- Surface/ExPolygon
+- extrusion tree
+- ExtrusionPath 3D points
+- width / height / mm3_per_mm
+- resolved config
 
-## 9. Cache/invalidation finding
-Orca tests confirm:
-- activating/changing slicing_pipeline_plugin invalidates posSlice;
-- changing plugin config overrides invalidates posSlice.
+This is enough for read-only planning.
 
-This supports deterministic re-analysis after plugin/config changes.
+## 5. Coordinate finding
+PluginHostSlicing exposes path points in scaled native coordinates.
 
-Still, no plan at export is treated as non-injectable; plugin never reconstructs geometry from G-code.
+ContourZ.cpp stores point Z as relative offset d, not absolute layer Z.
 
-## 10. Important execution implication: flow redistribution
-Orca Flow.cpp computes non-bridge mm3/mm using rounded-rectangle area:
+Adapter must use:
+Z_abs = layer.print_z + unscale(d)
 
-A = h * (w - h * (1 - pi/4))
+## 6. ZAA G-code flow finding
+GCode.cpp explicitly handles path.z_contoured:
 
-Because intermediate passes reduce the remaining physical height for the upper outer wall, additive-only sub-edge insertion would over-extrude.
+For each line endpoint:
+- z_diff = unscale(line.b.z())
+- z = nominal_z + z_diff
+- for non-ironing:
+  extrusion_ratio = (path.height + z_diff) / path.height
+- emitted E = nominal dE * extrusion_ratio
 
-The plan/injector must rewrite upper original wall flow for the remaining height.
+Therefore a correct predictor needs local Z **and local effective flow**.
 
-## 11. Features deferred by source audit
-v1 injection rejects:
-- shared/duplicate/multiple PrintObjects;
-- multi-volume/negative/modifier objects;
-- By-object sequence;
-- absolute-E target regions;
-- arc-fitted target geometry;
-- scarf/seam-slope wall geometry;
-- fuzzy/spiral modes;
-- multitool;
-- other mutating postprocessors/plugins.
+This source verification supports ADR-0006.
 
-These are engineering scope gates, not claims that future support is impossible.
+## 7. Mesh bindings
+ModelVolume.mesh():
+- immutable mesh snapshot;
+- local coordinates in mm.
 
-## 12. Remaining engineering risk
-No known source-level impossibility remains inside the narrowed v1 domain.
+Bindings expose:
+- ModelVolume.matrix() volume->object
+- PrintObject.trafo() object->print
 
-Largest risk:
-robustly matching a geometry-time whole-loop plan to the exact exported G-code loop while preserving machine state.
+v1 limits printable mode to one ModelPart volume, avoiding arbitrary multi-volume CSG reconstruction.
 
-Mitigations:
-- single-object/loop-first scope;
-- supported golden fixtures;
-- parser/state machine;
-- exactly-one-plan matching;
-- all-or-nothing validation;
-- relative-E requirement;
-- arc fitting off;
-- atomic replacement.
+## 8. Mutable geometry limits
+LayerRegion.slices is mutable at posSlice.
+
+Generated perimeters/ExtrusionPath geometry is read-only from public Python bindings.
+
+This is not a v1 blocker because v1 injects only new SubEdge G-code after export rather than mutating live paths.
+
+## 9. psGCodePostProcess
+Official source/sample confirms:
+- runs from export path after classic post_process scripts;
+- ctx.print/ctx.object are None;
+- ctx.gcode_path is working file;
+- ctx.host/output_name are available;
+- plugin edits file in place;
+- may run multiple times on separate working copies;
+- result does not appear in standard Orca preview.
+
+## 10. Why final G-code is not used for geometry design
+The geometry plan is created at posSimplifyPath where:
+- source mesh is available;
+- structural/ZAA paths are available;
+- local effective flow can be reconstructed.
+
+Final G-code is execution target only.
+
+If no matching immutable current-session plan exists, injector skips.
+
+## 11. Bambu layer-boundary research
+Source/profile audit behind ADR-0007 found the supported Bambu layer-change environment can be identified around structural layer transition markers.
+
+v1 safe execution:
+- validated profile/custom layer G-code only;
+- safe-ceiling lift before any injected lateral travel;
+- vertical descent to candidate;
+- restore saved upper-layer state before resuming Orca.
+
+Unknown/motion-producing custom layer code disables injection.
+
+## 12. G-code-mode reduction
+ADR-0008 intentionally limits physical v1 to:
+- relative E
+- firmware retract off
+- line numbers/checksum off
+- arc fitting off
+- single tool
+- spiral/ironing/scarf/support/raft off
+
+Parser may observe other modes but must not inject outside supported contract.
+
+## 13. File-size finding
+Large G-code may be hundreds of MB.
+
+Injector architecture should stream:
+1. validation pass;
+2. temp emission pass;
+3. sanity pass;
+then atomic replace.
+
+Do not make full-file memory loading a requirement.
+
+## 14. Remaining technical risk
+Largest remaining risk is correct and robust G-code state/anchor handling, not Orca geometry access.
+
+This risk is isolated in orca_plugin/gcode and gated by golden fixtures before physical printing.
