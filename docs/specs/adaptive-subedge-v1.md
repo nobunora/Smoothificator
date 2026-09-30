@@ -5,94 +5,148 @@
 - System specification: `docs/SPECIFICATION.md`
 - Architecture: `docs/ARCHITECTURE.md`
 - Implementation contract: `docs/IMPLEMENTATION.md`
+- Plugin/runtime requirements: `docs/PLUGIN_REQUIREMENTS.md`
+- Error/physical model: `docs/ERROR_MODEL.md`
 - Test strategy: `docs/TEST_STRATEGY.md`
-- Accepted ADRs: `docs/adr/0001-*.md` through `docs/adr/0011-*.md`
-- Canonical revision / commit: use the final specification-audit commit before repository implementation starts.
+- Full audit: `docs/FULL_CONSISTENCY_AUDIT_2026-09-30.md`
+- Audited revision manifest: `docs/AUDIT_REVISION_2026-09-30.md`
+- Audited revision manifest blob SHA: `2f21857a37f91b4bdadbaaa85b4600addc7c7a07`
+- ADRs: `docs/adr/0001-*.md` through `docs/adr/0031-*.md`
+- ADR-0010 is Superseded by ADR-0015.
 
-If this handoff file conflicts with the canonical documents above, follow `docs/DOCUMENT_CONTRACT.md` and return the conflict to specification adjudication.
+The audited blob manifest, rather than a possibly stale branch-head value, is the canonical revision reference for this handoff.
+
+Before repository review, every blob listed in the manifest MUST still match.
+
+If this handoff conflicts with higher-precedence canonical documents, follow `docs/DOCUMENT_CONTRACT.md` and return the conflict to specification adjudication.
 
 ## Goal
 
-Produce a reviewable, testable stock-Orca Python plugin implementation of Adaptive Sub-Edge v1 without silently changing the approved geometry, safety, G-code, or compatibility contracts.
+Implement Adaptive Sub-Edge v1 as a reviewable, deterministic stock-Orca Python plugin without silently changing the audited geometry, safety, G-code, or compatibility contracts.
+
+The first implementation task is Phase 0.5 architecture skeleton only.
 
 ## Scope
 
-- Phase 0.5 architecture/package skeleton.
-- Pure Python domain/application/engine boundaries.
-- Immutable plan/status/config-fingerprint contracts.
-- Later gated phases defined by `docs/ROADMAP.md`.
-- Stock Orca SlicingPipeline + Script capability architecture.
-- Analysis-only behavior outside the explicitly supported printable profile/geometry envelope.
+Initial approved implementation scope:
+- package/module tree from `docs/ARCHITECTURE.md`;
+- frozen domain DTOs;
+- typed errors/stable reason codes;
+- validated plugin Settings;
+- `ToolClearanceProfile` DTO/settings contract;
+- `ExecutionConfigFingerprint`;
+- `PluginSettingsFingerprint`;
+- deterministic canonical serialization and plan hashing;
+- bounded thread-safe PlanStore and separate execution-status store;
+- architecture/import-boundary tests.
+
+Later work remains gated by `docs/ROADMAP.md` and requires its own implementation records.
 
 ## Non-goals
 
-- Rewriting accepted product/safety semantics during implementation.
-- Custom Orca C++ changes.
-- Broad compatibility expansion beyond the approved v1 gates.
-- Opportunistic refactoring of legacy Smoothificator scripts.
-- Physical printing before all preceding gates and independent review pass.
+Phase 0.5 MUST NOT implement:
+- Orca live-binding adapters;
+- source mesh geometry algorithms;
+- optimizer/surface-band algorithms;
+- G-code parser/matcher/emitter;
+- machine execution-frame logic;
+- physical printer injection;
+- custom Orca C++;
+- modifications to legacy `Smoothificator.py` / `Smoothificator_Adaptive.py`;
+- compatibility expansion beyond the audited v1 contract.
 
 ## Requirements / Invariants
 
-- Implement only from a repository-review disposition of `validated`.
-- Preserve the dependency direction and ownership rules in `docs/ARCHITECTURE.md`.
-- Preserve all Accepted ADR decisions.
-- Use deterministic immutable plan/config fingerprints.
-- Keep geometry optimization independent from Orca/G-code adapters.
-- Fail closed on unknown compatibility, modal, coordinate-frame, or profile state.
-- Preview and injection consume the same immutable plan.
-- No physical printer injection until the exact fixture/profile software gates pass.
-- Any newly discovered material repository/API conflict returns to specification adjudication.
+Phase 0.5 must establish boundaries needed by later phases without pre-implementing them.
+
+Required invariants:
+- domain/engine independent from `orca_plugin`;
+- immutable plan/value DTOs;
+- no machine G-code coordinate values inside the immutable plan;
+- no authoritative final emitted E in the plan;
+- `SubEdgePath` is an explicit open constant-Z path;
+- `SubEdgeSegment` owns local support/effective-height/geometric-flow/commanded-flow intent;
+- candidate seam/gap is immutable plan geometry;
+- geometric and commanded volume are different concepts;
+- runtime execution status is separate from the immutable plan;
+- execution and plugin-settings fingerprints have distinct ownership;
+- `ToolClearanceProfile` is explicit plugin/hardware configuration, not inferred from nozzle diameter;
+- serializer/hash is deterministic and excludes runtime-only state;
+- expected failures use typed reason codes;
+- architecture rules are mechanically testable;
+- no implementation component silently creates a second source of product policy.
 
 ## Affected Interfaces / Contracts
 
-- Orca Python Plugin System / SlicingPipeline.
-- `posSimplifyPath` geometry snapshot.
-- `psGCodePostProcess` working-file mutation.
-- Script/UI preview capability.
-- Bambu/Orca G-code fixture/profile assumptions.
-- SubEdgePlan / ExecutionConfigFingerprint schema.
-- G-code coordinate/extrusion conversion contracts.
-- Repository quality/review gates.
+Phase 0.5 defines internal contracts that later support:
+- Orca `posSimplifyPath` geometry snapshot;
+- Orca `psGCodePostProcess` final execution;
+- Script/UI preview capability;
+- centered PrintObject slice-space geometry;
+- immutable `SubEdgePlan`;
+- both configuration fingerprints;
+- future binary G-code execution adapter;
+- downstream original-motion clearance using `ToolClearanceProfile`.
+
+It MUST NOT yet couple the domain layer to Orca concrete types.
 
 ## Acceptance Criteria
 
-For each implementation phase:
-- approved source-boundary rules are mechanically testable;
-- focused tests pass before broader tests;
-- required architecture/quality gates pass or are explicitly BLOCKED/NOT CONFIGURED;
-- implementation record contains exact commands and results;
-- no unresolved Critical/High review finding remains at a phase declared complete;
-- physical-print gate remains disabled until the test/review contract explicitly permits it.
+Phase 0.5 is complete only when:
+- package structure matches `docs/ARCHITECTURE.md`;
+- all public cross-boundary DTOs are explicit and immutable where specified;
+- units/coordinate semantics are encoded in names/types/documentation;
+- canonical serialization is deterministic;
+- identical semantic inputs produce identical fingerprints/hash;
+- timestamps, runtime ObjectIDs, machine translation, final E, and execution status do not affect plan hash;
+- PlanStore concurrency/bounds/current-session semantics are testable;
+- forbidden imports fail architecture tests;
+- duplicate ADR identifier check is testable or covered by a deterministic repository check;
+- no production Orca/G-code behavior has been implemented prematurely;
+- required focused tests pass;
+- exact commands/results are recorded in the implementation task record;
+- no unresolved Critical/High review finding remains for the Phase 0.5 scope.
 
 ## Validation
 
-Use the phase-specific commands defined after Phase 0.5 tooling is established.
-
-At minimum:
+Phase 0.5 repository-native validation should include, once its minimal tooling is established:
+- Python syntax/import check;
+- package import test;
 - architecture/import-boundary tests;
-- deterministic serialization/hash tests;
-- focused unit tests;
-- Orca adapter fixture tests;
-- golden G-code/parser/injector tests before printer enablement;
-- package/build check;
-- independent blind review before first physical injection.
+- immutable DTO tests;
+- Settings validation tests;
+- ExecutionConfigFingerprint determinism tests;
+- PluginSettingsFingerprint determinism tests;
+- canonical plan serialization/hash tests;
+- PlanStore status/bounds/concurrency tests;
+- package/build check if packaging metadata is introduced.
+
+Tool choice for lint/type checking is decided only after target Orca embedded runtime verification. A missing unconfigured analyzer is reported as NOT CONFIGURED, not silently installed.
 
 ## Risks / Rollback
 
-Primary risks:
-- incorrect Orca compatibility assumptions;
-- coordinate-frame mismatch;
-- incorrect flow/E conversion;
-- invalid support/collision model;
-- unsafe G-code state restoration;
-- stale/mismatched plan injection.
+Primary Phase 0.5 risks:
+- encoding a stale/superseded field into DTOs;
+- putting execution concerns into domain types;
+- creating duplicate config-resolution ownership;
+- serializing runtime-only state into plan identity;
+- overengineering interfaces for future phases.
 
-Rollback rule:
-- injection must fail closed and preserve original Orca G-code;
-- implementation changes are phase-gated and should be reversible by reverting the bounded implementation commit/PR.
+Rollback:
+- Phase 0.5 is source-structure/contracts only;
+- bounded commits should be independently revertible;
+- no printer/file mutation exists at this phase.
+
+Any repository reality that requires a material schema/safety/architecture change returns to specification adjudication before implementation.
 
 ## Open Questions
 
-- Exact initial pinned Orca commit/release and Bambu profile fixture set are finalized during the dedicated fixture-acquisition phase.
-- Exact Python lint/type tooling is finalized during Phase 0.5 after environment verification.
+Not blockers for Phase 0.5:
+- exact first production-compatible Orca release/commit;
+- exact first Bambu fixture family;
+- physical ToolClearanceProfile dimensions/evidence;
+- empirical bead calibration;
+- final lint/type tooling versions;
+- production performance/resource budgets.
+
+These are explicit later-phase gates, not permissions to invent values during Phase 0.5.
