@@ -267,7 +267,7 @@ Postprocess is:
 Expected unsupported/validation condition:
 - stable internal reason;
 - PluginResult.Skipped;
-- original file unchanged.
+- original file unchanged byte-for-byte on failure.
 
 Successful injection or validated already-injected no-op:
 - Success.
@@ -309,6 +309,6 @@ No fixture => analysis-only.
 
 ## 23. Compatibility default
 
-Unknown Orca source/API, profile, config, modal state, custom code, physical tool envelope, coordinate mapping, formatter behavior, or machine limit => injection disabled.
+Unknown Orca source/API, profile, config, modal state, custom code, physical tool envelope, source orientation/material side, coordinate mapping, formatter behavior, binary token/newline semantics, filesystem atomic-replace behavior, or machine limit => injection disabled.
 
 Never best-effort mutate.
