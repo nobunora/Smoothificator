@@ -1,113 +1,133 @@
-# Surface Error and Material Model
+# Surface Error and Flow Model
 
-## Reference
-M = ideal source-model boundary.
-P = predicted final printed surface.
+## 1. Coordinate semantics
+All values in this document use absolute print-space millimeters.
 
-Primary signed error:
+For a structural layer interval:
+
+Z0 = previous structural-layer command Z
+Z1 = current structural-layer command Z
+
+If intermediate passes exist:
+
+Z0 < z1 < ... < zk < Z1
+
+Each z_i is the **nozzle/path command Z**, i.e. the nominal top height of that deposited pass.
+
+## 2. Why Z error is insufficient
+Quality is evaluated relative to the ideal model surface, not only in vertical Z.
+
+Let M be the ideal boundary and P the predicted printable surface envelope.
+
+For a sample q on P:
 e_n(q) = (q - p) dot n(p)
 
+where p is the corresponding/nearest point on M and n(p) is the outward model normal.
+
+Initial implementation may use closest-point distance plus sign derived from normal/containment.
+
 Required metrics:
-- E_max absolute normal error
-- E_rms
-- E_p95
-- signed mean/bias
+- maximum absolute normal error E_max
+- RMS normal error E_rms
+- 95th percentile absolute error E_p95
+- mean signed error / bias
 
-## Final printed surface
-Candidate quality MUST include:
-- lower structural/post-ZAA beads
-- all candidate Sub-edge beads
-- upper structural/post-ZAA beads Orca will still print
+Both underfill and overbuild matter.
 
-Sub-edges are extra material, not replacement layers.
+## 3. Refined outer-wall pass schedule
 
-## Orca/ZAA baseline normalization
-Orca ContourZ stores each ZAA point Z as offset d from layer.print_z.
+Adaptive Sub-Edge does NOT simply add material.
 
-Normalize:
-z_abs = layer.print_z + d
+For [Z0,Z1] with intermediate command heights z1..zk:
 
-For non-ironing ZAA segments Orca scales extrusion:
-h_eff = h_nominal + d
-q_eff = q_nominal * h_eff / h_nominal
+h1 = z1 - Z0
+hi = zi - z(i-1)
+h_top = Z1 - zk
 
-The baseline predictor MUST reproduce these semantics.
+All values must be positive and satisfy configured minimum-height/spacing constraints.
 
-Printable v1 rejects ironing and scarf/sloped seams so nonzero path Z has unambiguous ZAA meaning.
+The existing Orca outer-wall path at Z1 becomes the final **top pass** and its target extrusion must be rewritten for h_top.
 
-## Rounded-rectangle bead model
-Initial Orca parity:
-q = h * (w - h * (1 - pi/4))
+With no intermediate pass:
+h_top = Z1-Z0 and original G-code remains untouched.
 
-where:
-- q = mm3_per_mm
-- h = effective deposited bead height
-- w = bead width
+## 4. Flow model
+For a non-bridge pass of nominal width w and effective height h, v1 SHOULD reproduce Orca's rounded-rectangle area model:
 
-## Candidate bead height
-The initial 0.08 mm limit applies to **effective bead height above local support**, not pairwise path-Z difference.
+A = h * (w - h * (1 - pi/4))
 
-For candidate segment:
-h_eff = z_nozzle - z_support
+mm3_per_mm = A
 
-Require h_eff >= min_bead_height.
+Requirements:
+- w > 0
+- h > 0
+- w >= h for the v1 non-bridge model
+- invalid/non-positive flow rejects the candidate
 
-Neighboring paths may have Z differences smaller than 0.08 mm if finite-bead overlap, support, machine resolution and nozzle-envelope clearance are valid.
+The original upper-wall extrusion is rescaled/re-emitted according to its reduced top-pass area, not merely multiplied by an arbitrary pass fraction.
 
-This is essential for shallow slopes, where paths separated laterally by about one line width may need only small Z increments.
+The intermediate contour length may differ from the original wall length, so total material is not forced to equal the old loop volume exactly. It is determined by each pass's contour length and cross-section.
 
-## Geometry boundary vs tool centerline
-Mesh-plane intersection C(z) is a material boundary.
+## 5. Printed-envelope approximation
+Each pass is modeled with finite width/height.
 
-It MUST NOT be emitted directly as a nozzle path.
+Initial bead profile:
+- rounded rectangle preferred for consistency with Orca flow area;
+- elliptical profile may be retained only as an experimental comparison model.
 
-Path layout offsets/positions centerlines on the material side using bead width and final-envelope scoring.
+Inputs:
+- command Z
+- effective pass height
+- width
+- XY path
+- local support relationship
 
-## Nested top-facing v1 condition
-For target region:
-C(z_high) must be contained in C(z_low) within tolerance.
+The bead's nominal top is command Z and nominal bottom is command Z - effective_height.
 
-Higher layers recede inward as Z increases.
+## 6. Adaptive search
+For each eligible full outer-wall loop interval:
 
-Outward-growing/downward-facing overhang targets are rejected in printable v1.
+1. Build post-ZAA/post-simplification baseline.
+2. Evaluate baseline error.
+3. If compliant: no refinement.
+4. Generate candidate k and command heights z1..zk.
+5. Construct corresponding model cross-sections/outer contours.
+6. Compute effective heights from adjacent Z values.
+7. Compute pass flows.
+8. Replace predicted top-wall flow with h_top.
+9. Recompute finite-bead surface.
+10. Reject support/crossing/clearance-invalid schedules.
+11. Choose lowest-cost schedule meeting tolerance.
 
-## Surface coverage
-A plan may contain many SubEdgePaths at different, closely spaced nozzle Z values.
+k_max follows from physical height constraints and configured guardrail.
 
-The optimizer evaluates the union/envelope of deposited beads. It does not assume one path per nominal subdivision or one path is enough for a shallow terrace.
+## 7. v1 spatial scope
+v1 uses one common Z schedule for one entire matched external-perimeter loop.
 
-## Candidate flow
-SubEdge segments carry accepted width/effective-height/q.
+The previous concept:
+k = k(s), z_i = z_i(s)
 
-Engine accounts for:
-- overlap with structural beads
-- overlap between Sub-edges
-- missing target volume
-- overbuild
-- feasible flow/shape limits
+is deferred because it requires partial-loop segmentation and local rewriting of original E values.
 
-Emitter only converts accepted q to relative filament E.
+Future segment-level adaptivity requires a separate ADR and test suite.
 
-## Nozzle clearance
-A->B lower-to-higher order reduces collision risk but does not mathematically guarantee nozzle-body clearance when paths are close in XY/Z.
+## 8. Support and collision assumptions
+For a non-crossing outward sequence printed lower-Z first:
+- each pass must have sufficient overlap/contact with lower accepted material;
+- next pass command Z must exceed lower pass nominal top by the required height;
+- top structural outer wall uses remaining h_top, avoiding the previous additive-only over-extrusion problem.
 
-Use a configurable nozzle envelope + safety margin.
+Concave/inward/nozzle-body uncertain cases are unsupported in v1.
 
-Unknown/unvalidated nozzle geometry may allow analysis but blocks physical Injection.
+## 9. Validation geometry
+Initial analytic/physical set:
+- smooth tangent-angle sweep approximately 1-30 degrees
+- fixed 1, 5, 10, 15, 20, 25, 30 degree coupons
 
-## Acceptance
-1. predict post-ZAA baseline
-2. identify residual-error regions
-3. verify nested support
-4. generate boundary/path candidates
-5. compute support and h_eff
-6. score combined final bead envelope
-7. enforce nozzle/support/flow constraints
-8. choose minimum-cost solution meeting tolerance
-9. otherwise leave Orca/ZAA unchanged
-
-## Regression geometry
-- fixed 1/5/10/15/20/25/30 degree slopes
-- smooth 1-30 degree slope
-- translated/rotated/scaled copies for coordinate tests
-- later domes/chamfers
+Report:
+- E_max / E_rms / E_p95 / bias
+- added path length
+- rewritten original-wall material
+- total material delta
+- estimated time
+- measured roughness where available
