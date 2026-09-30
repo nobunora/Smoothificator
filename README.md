@@ -4,7 +4,7 @@ Error-driven adaptive outer-surface reconstruction for OrcaSlicer.
 
 This fork investigates a **stock-Orca plugin** that reads Orca's final simplified outer-wall geometry (including ZAA where Orca applied it), measures remaining surface error, then adds only the extra surface-band paths needed to reduce that error.
 
-> Status: 2026-10-01 full consistency + technical audit complete. Phase 0.5 implementation is gated only on repository revalidation against the new audited manifest; physical injection remains separately gated. Legacy Smoothificator scripts are preserved as upstream reference.
+> Status: 2026-10-01 full consistency + technical audit, manifest revalidation, and human principle/design review complete. Phase 0.5 architecture-skeleton implementation is ready on a separate implementation branch/PR. Physical injection remains separately gated. Legacy Smoothificator scripts are preserved as upstream reference.
 
 ## Canonical architecture
 
@@ -92,6 +92,7 @@ Production implementation starts only after the final consistency audit and a re
 - [Architecture](docs/ARCHITECTURE.md)
 - [Full consistency + technical audit](docs/FULL_CONSISTENCY_AUDIT_2026-10-01.md)
 - [Audited revision manifest](docs/AUDIT_REVISION_2026-10-01.md)
+- [Principle explanation + human design review](docs/DESIGN_REVIEW_2026-10-01.md)
 - [Earlier dependency/feasibility audit](docs/DEPENDENCY_AUDIT.md)
 - [Surface/flow model](docs/ERROR_MODEL.md)
 - [ZAA integration](docs/ZAA_INTEGRATION.md)
