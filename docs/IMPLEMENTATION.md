@@ -30,6 +30,7 @@ Before implementation, read:
 - ADR-0008 relative-E Bambu profile restriction
 - ADR-0009 validated print-space -> G-code-space translation
 - ADR-0010 Orca-compatible filament flow-ratio E conversion
+- ADR-0011 export-time resolved-config fingerprint validation
 
 If this file conflicts with those ADRs, ADR wins.
 
@@ -364,7 +365,17 @@ Printer/G-code:
 
 Analysis may run outside these gates, but injection is forbidden.
 
-## 11. PlanStore
+## 11. PlanStore and execution-config fingerprint
+
+During analysis, the Orca config adapter builds a versioned ExecutionConfigFingerprint from the required safety-relevant resolved config keys and stores it with the immutable plan.
+
+At psGCodePostProcess, recompute the same fingerprint using ctx.config_value(key).
+
+Missing key or mismatch => injection disabled before G-code mutation.
+
+The key allowlist lives only in orca_plugin/adapters/orca_config.py and is versioned/tested for each pinned Orca release.
+
+PlanStore
 
 Process-local, thread-safe, bounded.
 
@@ -372,7 +383,7 @@ Store immutable plans and separate status records.
 
 Do not map by runtime object pointer/id.
 
-At export, matcher considers current-session injectable candidate plans.
+At export, first filter candidate plans by exact ExecutionConfigFingerprint equality, then matcher considers current-session injectable candidates.
 
 Exactly one plan must match final G-code fingerprints.
 
