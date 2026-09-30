@@ -1,84 +1,127 @@
 # OrcaSlicer Plugin / Geometry API Research
 
-Research target: OrcaSlicer main and official plugin docs, audited 2026-09-29.
+Research target: OrcaSlicer main and official plugin sources, audited 2026-09-30.
 
-## Confirmed plugin model
-Orca plugin packages may register multiple capabilities. This project uses:
-- one SlicingPipeline capability
-- one Script preview capability
+## 1. Final v1 conclusion
+Stock Orca is sufficient for v1 by combining:
+- **posSimplifyPath** for post-ZAA/post-simplification read-only analysis;
+- **psGCodePostProcess** for official exported-working-file modification;
+- a separate Script capability for preview.
 
-Capabilities are instantiated for the plugin load lifetime.
+A custom Orca build is not required for the first printable implementation.
 
-## Confirmed host data
-Python bindings expose:
-- Print / PrintObject / Layer / LayerRegion
-- Print-owned Model snapshot
-- ModelObject/ModelInstance/ModelVolume transforms
-- TriangleMesh vertices/triangles/normals
-- Surface/ExPolygon geometry and 2D boolean/offset operations
-- extrusion tree
-- 3D ExtrusionPath points
-- width/height/mm3_per_mm
-- config values
+## 2. Why posContouring was rejected
+Source audit of Print.cpp shows:
+- Orca calls obj->contour_z();
+- it fires the posContouring plugin hook only when obj->need_z_contouring() is true;
+- otherwise the step is marked done without calling the plugin hook.
 
-ModelVolume mesh is local; volume.matrix maps volume->object and ModelInstance.matrix maps object->world. Coordinate use still requires integration tests against sliced paths/exported G-code.
+Therefore posContouring cannot implement the required "analyze ordinary Orca geometry when ZAA is disabled/ineligible" behavior.
 
-## Hook order audit
-Orca Print.cpp shows:
-1. Z contouring via obj->contour_z()
-2. posContouring hook only if need_z_contouring() is true
-3. support/detect-overhang steps
-4. psSkirtBrim
-5. obj->simplify_extrusion_path()
-6. posSimplifyPath hook on fresh slicing objects
+## 3. Why posSimplifyPath was selected
+Print.cpp runs simplify_extrusion_path() after Z Contouring and then fires posSimplifyPath for newly processed objects.
 
-Therefore posContouring is unsuitable as universal Analyzer and psSkirtBrim is too early relative to simplification.
+Benefits:
+- sees ZAA results where they exist;
+- also runs when ZAA is not needed;
+- sees paths after simplification, closer to exported geometry.
 
-ADR-0001 selects posSimplifyPath.
+Caveat:
+Orca intentionally avoids re-firing this hook on cache-loaded plugin-final objects. Missing in-process plan at export therefore causes safe skip/re-slice diagnostic.
 
-## Cache caveat
-Source explicitly prevents posSimplifyPath plugin hook on cache-loaded plugin-final objects.
+## 4. Path-coordinate discovery
+PluginHostSlicing exposes ExtrusionPath.points() as native 3D scaled coordinates.
 
-No fresh current-session plan => injection must skip and request re-slice.
+However ContourZ.cpp stores the point Z component as adjustment d relative to Layer.print_z, not absolute print Z.
 
-## Post-process seam
-psGCodePostProcess:
-- runs from export path after classic post_process scripts
-- ctx.print/object are None
-- ctx.gcode_path/host/output_name are present
-- edits working file in place
-- may run more than once on separate working copies
-- result is not mapped into standard G-code preview
+Canonical conversion:
 
-## G-code layer markers
-Orca emits reserved layer-change and height tags as processor metadata. BBL and non-BBL Z marker formatting differs (for example Z_HEIGHT vs Z). Parser must support tested dialect forms rather than infer structural layers from arbitrary Z moves, especially because ZAA introduces non-planar Z movement.
+Z_abs = Layer.print_z + orca.slicing.unscale(point_z)
 
-## Why source geometry scope is limited
-Raw individual volume meshes are accessible, but plugin API does not provide a single arbitrary-Z cross-section of fully evaluated multi-volume CSG/modifier geometry.
+This conversion is mandatory before domain analysis.
 
-Printable v1 therefore restricts to one ModelPart volume. This avoids reimplementing Orca CSG.
+## 5. Source mesh bindings
+PluginHostMesh/PluginHostModel expose:
+- immutable mesh vertices/triangles;
+- ModelVolume.matrix() volume-to-object;
+- PrintObject.trafo() object-to-print;
+- source Model snapshot tied to the Print worker.
 
-## Planar geometry
-orca.host Polygon/ExPolygon expose offset/union/difference/intersection. The engine remains Orca-independent by using a PlanarGeometryOps port; the Orca adapter may call these during execute(ctx) and copy results out.
+This is sufficient for v1 single-volume source mesh reconstruction.
 
-## Flow parity
-Orca Flow::mm3_per_mm() for non-bridge rounded rectangle is:
+Multi-volume CSG is not solved by the binding itself and is deferred.
 
-h * (w - h * (1 - pi/4))
+## 6. Read-only path limitation
+LayerRegion.perimeters and ExtrusionPath points/width/height/flow are read-only from Python.
 
-Use this as initial bead-volume parity model.
+This blocks live path injection but not v1 because execution occurs at psGCodePostProcess.
 
-## Stock-Orca feasibility
-No custom Orca is required for v1:
-- geometry intelligence at posSimplifyPath
-- execution at psGCodePostProcess
-- preview via Script capability
+## 7. psGCodePostProcess
+Official Orca sample/source confirms:
+- runs after classic post_process scripts;
+- has no live print/object graph;
+- exposes ctx.gcode_path/ctx.host/ctx.output_name;
+- edits working G-code in place;
+- may fire multiple times per slice on separate working copies;
+- output is not reflected in standard G-code viewer.
 
-The principal risk is safe G-code translation, not API access.
+The same SlicingPipeline capability class may implement geometry and post-process steps.
 
-## v1 interference policy
-Because classic scripts run before psGCodePostProcess and multiple slicing-pipeline capabilities can mutate output in configured order, v1 printable mode requires:
-- classic post_process empty
-- no other active slicing-pipeline capability
+## 8. Multiple capabilities / preview
+PyPluginPackage explicitly permits register_capability() once per capability class.
 
-Later interoperability requires a separate ADR/test matrix.
+Official sandbox Script examples use orca.host.ui.create_window.
+
+Therefore one package can provide:
+- SlicingPipeline capability;
+- Script preview capability.
+
+UI must be invoked from UI-safe Script execution, not slicing worker.
+
+## 9. Cache/invalidation finding
+Orca tests confirm:
+- activating/changing slicing_pipeline_plugin invalidates posSlice;
+- changing plugin config overrides invalidates posSlice.
+
+This supports deterministic re-analysis after plugin/config changes.
+
+Still, no plan at export is treated as non-injectable; plugin never reconstructs geometry from G-code.
+
+## 10. Important execution implication: flow redistribution
+Orca Flow.cpp computes non-bridge mm3/mm using rounded-rectangle area:
+
+A = h * (w - h * (1 - pi/4))
+
+Because intermediate passes reduce the remaining physical height for the upper outer wall, additive-only sub-edge insertion would over-extrude.
+
+The plan/injector must rewrite upper original wall flow for the remaining height.
+
+## 11. Features deferred by source audit
+v1 injection rejects:
+- shared/duplicate/multiple PrintObjects;
+- multi-volume/negative/modifier objects;
+- By-object sequence;
+- absolute-E target regions;
+- arc-fitted target geometry;
+- scarf/seam-slope wall geometry;
+- fuzzy/spiral modes;
+- multitool;
+- other mutating postprocessors/plugins.
+
+These are engineering scope gates, not claims that future support is impossible.
+
+## 12. Remaining engineering risk
+No known source-level impossibility remains inside the narrowed v1 domain.
+
+Largest risk:
+robustly matching a geometry-time whole-loop plan to the exact exported G-code loop while preserving machine state.
+
+Mitigations:
+- single-object/loop-first scope;
+- supported golden fixtures;
+- parser/state machine;
+- exactly-one-plan matching;
+- all-or-nothing validation;
+- relative-E requirement;
+- arc fitting off;
+- atomic replacement.
