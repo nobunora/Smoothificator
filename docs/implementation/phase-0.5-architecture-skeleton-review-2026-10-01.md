@@ -185,10 +185,22 @@ The most important implementation risk is premature behavior:
 - ToolClearanceProfile must remain a schema, with no invented physical dimensions;
 - compatibility constants must not be fabricated during Phase 0.5.
 
+## Human Principle/Design Review
+
+Completed: `docs/DESIGN_REVIEW_2026-10-01.md`.
+
+The explanation-first review identified two material ambiguities before implementation:
+- final completed surface versus chronological support state;
+- downstream-only clearance versus complete plugin + original motion clearance.
+
+They were resolved by ADR-0032 and ADR-0033 before the final audited manifest was stamped.
+
+After those corrections, no additional material contradiction was found in the Phase 0.5 scope.
+
+Residual uncertainties are explicitly later-phase empirical/compatibility gates, not hidden Phase 0.5 assumptions.
+
 ## Next Gate
 
 Phase 0.5 architecture-skeleton implementation may begin on a separate implementation branch/PR.
 
-Before code is written, use the requested human-facing technology/principle explanation as a final design review.
-
-If that review reveals a material contradiction, this `validated` disposition is invalidated and specification adjudication resumes.
+If implementation later reveals a material contradiction, this `validated` disposition is invalidated and specification adjudication resumes.
