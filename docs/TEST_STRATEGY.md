@@ -41,6 +41,10 @@ Pinned Orca/source fixtures verify:
 - one ModelPart volume;
 - finite vertices/indices;
 - manifold gate;
+- globally reversed mesh handling;
+- locally inconsistent winding rejection;
+- mirrored-transform material-side parity;
+- inside/outside material-side checks;
 - non-degenerate transformed bounds;
 - translated instance;
 - rotated instance;
@@ -332,7 +336,12 @@ Three passes:
 
 Check:
 - bounded memory on large fixture;
-- original unchanged on every failure;
+- binary-line parsing/emission;
+- LF/CRLF preservation;
+- no-final-newline preservation;
+- opaque non-ASCII comment bytes preserved;
+- unsupported non-ASCII command token rejected;
+- original byte-for-byte unchanged on every failure;
 - temp cleanup;
 - marker/hash/count;
 - state restoration;
