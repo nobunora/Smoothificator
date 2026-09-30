@@ -43,3 +43,13 @@ Before starting a task, read:
 5. task-specific model/requirements docs.
 
 Do not infer current behavior from historical/audit prose without checking higher-precedence documents.
+
+
+## Consistency invariants
+
+Before implementation or release:
+- ADR identifiers MUST be unique.
+- Every normative hook name, coordinate convention, and printable safety gate MUST agree across SPECIFICATION, ARCHITECTURE, IMPLEMENTATION, and PLUGIN_REQUIREMENTS.
+- Historical/audit documents may describe rejected approaches only when clearly labeled as historical/rejected.
+- README must not contain behavior that is absent from higher-precedence documents.
+- A coding agent encountering ambiguity MUST stop that work item and report the conflicting documents rather than choosing silently.
