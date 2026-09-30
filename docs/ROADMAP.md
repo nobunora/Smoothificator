@@ -6,7 +6,7 @@ Implementation is gated. Do not advance until the previous phase exit criteria p
 
 Complete before production code:
 - document precedence and AGENTS workflow;
-- unique ADR set through ADR-0029;
+- unique ADR set through ADR-0031;
 - source-verified Orca hook/ZAA/config/G-code semantics;
 - centered source-frame contract;
 - geometric versus commanded flow separation;
@@ -69,6 +69,7 @@ Exit:
 
 Implement:
 - finite/manifold mesh validity gates;
+- orientation/material-side validation including mirrored transforms;
 - mesh plane sections;
 - material boundary representation;
 - centerline placement inside material;
@@ -224,9 +225,9 @@ Exit:
 ## Phase 4F — streaming atomic injector
 
 Implement:
-1. validation pass;
-2. temp emission;
-3. sanity pass;
+1. binary-stream validation pass;
+2. byte-preserving temp emission;
+3. binary-stream sanity pass;
 4. atomic replacement.
 
 Exit:
@@ -234,7 +235,8 @@ Exit:
 - PluginResult policy tested;
 - repeated export/upload copies handled independently;
 - idempotence passes;
-- bounded-memory large-file test passes.
+- bounded-memory large-file test passes;
+- LF/CRLF/no-final-newline and opaque-comment byte preservation passes.
 
 ## Phase 4G — implementation review convergence
 
