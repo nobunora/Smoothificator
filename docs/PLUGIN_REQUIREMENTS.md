@@ -27,6 +27,7 @@ Stock Orca must expose:
 - ModelVolume mesh/transforms
 - simplified ExtrusionPath 3D points
 - width/height/mm3_per_mm
+- active filament diameter and filament_flow_ratio
 - resolved config
 
 Adapter normalizes all data before domain use.
@@ -118,7 +119,16 @@ Orca standard G-code preview is pre-postprocess.
 
 Plugin preview uses exact immutable plan and separate execution status.
 
-## 13. File processing
+## 13. Extrusion conversion
+Candidate E generation MUST match Orca's single-filament volumetric conversion:
+
+E_per_mm3 = filament_flow_ratio / filament_cross_section
+
+Do not assume flow ratio = 1.0.
+
+The planned filament parameters must match the final supported profile fingerprint.
+
+## 14. File processing
 G-code postprocessor must be:
 - stateful parser based
 - streaming/multi-pass
@@ -129,12 +139,12 @@ G-code postprocessor must be:
 
 No full-file regex substitution.
 
-## 14. Packaging
+## 15. Packaging
 Target pure-Python wheel.
 
 No native/custom Orca dependency in v1.
 
-## 15. Golden-fixture requirement
+## 16. Golden-fixture requirement
 Before any physical support for a profile:
 - exact Orca version/commit
 - exact printer/process profile metadata
@@ -147,7 +157,7 @@ Before any physical support for a profile:
 
 No fixture => analysis-only.
 
-## 16. Compatibility default
+## 17. Compatibility default
 Unknown Orca/profile/dialect/state -> injection disabled.
 
 Never best-effort mutate.
