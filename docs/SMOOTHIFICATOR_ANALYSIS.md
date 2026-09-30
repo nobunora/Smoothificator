@@ -3,35 +3,58 @@
 Upstream: TengerTechnologies/Smoothificator
 
 ## Upstream behavior
-Smoothificator is a final-G-code post-processing script. It detects external perimeter/outer-wall blocks and repeats the same XY path at additional equally spaced Z values, dividing extrusion among passes.
+Original Smoothificator is a G-code post-processing script.
 
-Adaptive variant chooses an integer equal subdivision closest to requested outer-wall height.
+It:
+- identifies external-perimeter / outer-wall blocks;
+- derives a pass count from base layer height and requested outer height;
+- places repeated passes at equal Z spacing;
+- repeats the same XY outer path;
+- divides extrusion among passes;
+- inserts Z/travel commands.
 
-## Useful inheritance
-This fork retains:
-- GPL lineage
-- proof that post-generated G-code can be altered for outer-wall refinement
-- Orca/Prusa marker knowledge
-- baseline tests/concepts for outer-only refinement
+Adaptive version reads per-layer HEIGHT/min_layer_height and chooses a nearby integer pass count.
 
-## What is NOT reused as architecture
-- regex-driven geometry decisions
-- identical XY repeated at equal Z
-- target fixed outer layer height
-- pass-count-only optimization
-- G-code as the source of geometric truth
+## What remains valuable
+Upstream established two important practical ideas:
+1. outer-wall vertical resolution can differ from the interior;
+2. original outer-wall extrusion must be distributed across the smaller-height passes rather than simply adding full-flow material.
 
-## Current fork architecture
-Geometry decisions happen while source mesh and finalized post-ZAA/post-simplification paths are available at Orca posSimplifyPath.
+The second point is retained explicitly in ADR-0002.
 
-The resulting immutable SubEdgePlan is later translated into final G-code at psGCodePostProcess.
+## Limitations relative to this fork
+Upstream:
+- decides refinement from G-code, without source-mesh error;
+- uses equal Z spacing;
+- repeats identical XY geometry;
+- has no residual-error tolerance;
+- has no finite-bead optimizer;
+- does not use ZAA result as the baseline;
+- does not separate preview plan from execution plan.
 
-Therefore the architecture is hybrid:
+## This fork's architecture
+The current target is NOT "normal path generation inside Orca's mutable geometry graph."
 
-source mesh + Orca toolpath -> error/optimization -> immutable plan
-final G-code + matching plan -> validated execution
+It is:
 
-G-code post-processing is execution only, not geometry inference.
+1. geometry-time read-only analysis at Orca posSimplifyPath;
+2. create immutable error-driven WallPassSchedules from source mesh + final simplified paths;
+3. preview the exact plan;
+4. let Orca export normal G-code;
+5. at official psGCodePostProcess:
+   - match the plan to the exported wall loop;
+   - reduce/rewrite the original upper-wall extrusion;
+   - inject non-uniform intermediate contours lower-Z first.
 
-## Major additional difference
-Added sub-edges are extra material. The optimizer includes lower/upper structural beads and candidate flow in a finite-bead final-surface model to prevent naive overfill.
+Legacy:
+target outer layer height -> equal passes -> duplicate XY -> split E
+
+New:
+post-ZAA residual error -> optimize true intermediate contours + Z schedule -> redistribute outer-wall flow -> validated G-code execution
+
+## Code-reuse policy
+The legacy scripts remain reference material.
+
+Do not directly extend their regex/block-processing architecture for the new injector. The new G-code implementation uses an explicit parser/state machine and all-or-nothing validation.
+
+Legacy scripts are not modified unless an explicit task requires it.
