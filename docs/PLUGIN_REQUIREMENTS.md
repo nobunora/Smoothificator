@@ -1,175 +1,321 @@
-# Plugin Requirements — Stock Orca Printable Architecture
+# Plugin Requirements — Stock Orca Printable v1
 
-## 1. Orca compatibility
-Target Orca builds containing:
-- Python Plugin System
-- SlicingPipeline capability
-- posSimplifyPath
-- psGCodePostProcess
-- host UI Script capability
+## 1. Compatibility baseline
 
-Pin exact tested Orca commit/version per release because SlicingPipeline is experimental.
+The technical audit used OrcaSlicer source commit:
 
-## 2. Python/runtime requirement
-Plugin packaging MUST declare:
-- Requires-Python >= 3.12 for the currently audited Orca plugin runtime;
-- NumPy as an explicit dependency for bound array access and geometry processing.
+`789f848694b955d293ca6b277d1c8046aa6f7436`
 
-Exact tested dependency versions are pinned in release/build metadata after Phase 0.5 environment verification.
+as the source-level reference.
 
-## 4. Plugin capabilities
-One package registers:
-1. SlicingPipeline capability
-   - posSimplifyPath analyzer
-   - psGCodePostProcess injector
-2. Script capability
-   - preview/diagnostics through orca.host.ui
+Production injection support is granted only to explicitly tested Orca release/commit + printer/process/filament fixture families.
 
-No UI calls from slicing worker.
+SlicingPipeline is experimental; unknown API/source behavior defaults to analysis-only.
 
-## 3. Geometry inputs
-Stock Orca must expose:
-- Print/PrintObject/Layer/LayerRegion
-- Print-owned Model snapshot
-- ModelVolume mesh/transforms
-- simplified ExtrusionPath 3D points
-- width/height/mm3_per_mm
-- active filament diameter and filament_flow_ratio
-- resolved config
+## 2. Python/runtime
 
-Adapter normalizes all data before domain use.
+Initial audited Orca plugin examples use:
+- Python >= 3.12;
+- NumPy for bound array access.
 
-## 5. ZAA normalization
-For ContourZ paths:
-- raw point.z is layer-relative offset;
-- absolute Z = layer.print_z + unscale(point.z);
-- effective local extrusion for non-ironing segments matches Orca's (height+d)/height scaling.
+Actual package metadata is finalized only after Phase 0.5 verifies the target embedded runtime.
 
-Any profile/source change that invalidates this assumption requires compatibility review.
+## 3. Plugin capabilities
 
-## 6. Printable v1 geometry gates
-Injection requires:
-- exactly one printable PrintObject;
-- exactly one printable instance;
-- exactly one ModelPart volume;
-- no NegativeVolume/ParameterModifier;
-- nested/self-supported top-facing target;
-- no support/raft;
-- no bridge target;
-- ironing disabled;
-- scarf/sloped seam disabled;
-- spiral vase disabled.
+One package provides:
+- SlicingPipeline capability:
+  - `posSimplifyPath`;
+  - `psGCodePostProcess`;
+- Script/UI capability:
+  - preview/diagnostics.
 
-Unsupported geometry may be analyzed but not injected.
+No UI calls from slicing workflow callbacks.
 
-## 7. Printable v1 plugin-environment gates
-Requires:
-- fresh slice in current plugin load/session;
-- no classic post_process script;
-- no other active slicing-pipeline plugin.
+## 4. Required read-only Orca data
 
-Missing current-session plan => skip and request re-slice.
+The compatible Orca build must expose:
+- Print / PrintObject / Layer / LayerRegion;
+- Print-owned Model snapshot;
+- ModelObject / ModelInstance / ModelVolume;
+- source mesh vertices/triangles;
+- instance/volume/PrintObject transforms;
+- PrintObject bounding box;
+- simplified 3D ExtrusionPath geometry;
+- width/height/mm3_per_mm/role;
+- resolved config through geometry context;
+- `ctx.config_value()` at G-code postprocess.
 
-## 8. Printable v1 Bambu/G-code gates
-Requires a repository golden-fixture family for the exact supported Orca/profile.
+Missing required binding => analysis/injection capability disabled as appropriate.
 
-Initial target:
-- current Bambu 0.4 mm single-tool profile family;
-- use_relative_e_distances=true;
-- use_firmware_retraction=false;
-- gcode_add_line_number=false;
-- enable_arc_fitting=false;
-- one tool;
-- validated before_layer_change_gcode/layer_change_gcode environment;
-- no unknown motion-producing custom code around insertion anchor.
+## 5. Printable source topology
 
-The supported exact machine/profile list is not active until corresponding fixtures/tests exist.
+v1 injection requires:
+- one PrintObject;
+- exactly one total source ModelInstance;
+- exactly one positive ModelPart volume;
+- no negative/modifier/CSG helper volume;
+- one tool/filament execution context.
 
-## 9. Surface-band semantics
-Source mesh boundary is not a print centerline.
+The adapter reconstructs Orca's centered slice frame per ADR-0012.
 
-Planner must derive centerlines inside material and may create several paths at one/different Z.
+Transform parity failure => no injection.
 
-0.08 mm initial limit applies to effective bead height above local support, not pairwise candidate Z distance.
+## 6. ZAA normalization
 
-## 10. Execution semantics
-v1 only **adds** validated SubEdge paths.
+For Z-contoured paths:
+- raw point Z is layer-relative;
+- absolute centered-slice Z = layer.print_z + unscaled offset;
+- local geometry-directed ZAA volume ratio = (path.height + offset) / path.height.
 
-It does not rewrite original Orca structural wall flow or XY.
+Global calibration flow ratios are tracked separately from nominal geometric bead prediction.
 
-Final-surface optimization must account for overlap/overbuild with unchanged structural/ZAA beads.
+## 7. ExecutionConfigFingerprint
 
-## 11. Execution-frame mapping and safe travel
-Plan geometry is print-space mm. Final G-code uses instance/origin/extruder/Z-offset adjusted machine coordinates.
+A versioned fingerprint is built both:
+- during planning;
+- during `psGCodePostProcess` using `ctx.config_value()`.
 
-Before emission, injector MUST derive and validate one constant (dx,dy,dz) translation from matched Orca structural geometry per ADR-0009.
+It contains resolved semantic values, not independently interpreted raw overrides.
 
-No plan coordinate may be emitted before that validation.
+Required semantic groups include:
 
-All non-extruding XY moves for injected paths occur at validated machine-coordinate Zsafe per ADR-0007.
+### Geometry/seam
+- nozzle diameter;
+- seam_gap resolved semantics;
+- scarf/seam-slope state;
+- spiral state;
+- ironing state;
+- support/raft state.
 
-Injector restores saved upper structural-layer state before Orca resumes.
+### Flow/material
+- print_flow_ratio;
+- active filament_flow_ratio;
+- set_other_flow_ratios;
+- outer_wall_flow_ratio;
+- filament diameter;
+- filament max volumetric speed.
 
-## 12. Cross-hook state
-PlanStore:
-- process-local
-- thread-safe
-- immutable plans
-- separate runtime status
-- candidate enumeration for final G-code matching
-- no Orca live references
+### Retraction
+- relative/absolute E mode;
+- firmware-retraction state;
+- effective retract-on-layer-change;
+- effective retraction length;
+- retract speed;
+- deretract speed;
+- restart extra;
+- wipe/retract-before-wipe/retract-after-wipe values required by fixture semantics.
 
-At export:
-1. recompute the versioned ExecutionConfigFingerprint using ctx.config_value();
-2. require exact equality with the plan fingerprint;
-3. then require exactly one geometry/G-code plan match.
+### Motion
+- outer-wall speed;
+- XY travel speed;
+- Z travel speed;
+- active Z hop;
+- printer/active extruder printable height;
+- z_offset;
+- active extruder XY offset.
 
-Missing/mismatched config, zero match, or multiple matches => skip.
+### External execution behavior
+- gcode line-number/checksum state;
+- gcode_comments;
+- arc fitting;
+- adaptive pressure advance;
+- static pressure-advance state for diagnostics;
+- machine/filament/process extrusion-role-change G-code;
+- before_layer_change_gcode;
+- layer_change_gcode;
+- classic post_process;
+- selected slicing-pipeline capabilities;
+- print-sequence/profile-family invariants required by fixtures.
 
-## 13. Preview
-Orca standard G-code preview is pre-postprocess.
+Any missing/mismatched required semantic value => Skipped.
 
-Plugin preview uses exact immutable plan and separate execution status.
+## 8. Printable geometry gates
 
-## 14. Extrusion conversion
-Candidate E generation MUST match Orca's single-filament volumetric conversion:
+Target region must be:
+- top-facing/nested/self-supported;
+- non-bridge;
+- no support/raft dependency;
+- valid local support height;
+- no candidate crossing;
+- no unresolved nozzle-clearance conflict.
 
-E_per_mm3 = filament_flow_ratio / filament_cross_section
+Unsupported regions may be previewed as non-injectable.
 
-Do not assume flow ratio = 1.0.
+## 9. Printable G-code/profile gates
 
-The planned filament parameters must match the final supported profile fingerprint.
+Initial physical v1 requires a golden-fixtured Bambu/Orca 0.4 mm single-tool family with:
 
-## 15. File processing
-G-code postprocessor must be:
-- stateful parser based
-- streaming/multi-pass
-- idempotent
-- all-or-nothing
-- temp-file + atomic replace
-- original-preserving on failure
+- relative E;
+- firmware retraction off;
+- line numbering/checksum off;
+- arc fitting off;
+- spiral vase off;
+- ironing off for unsupported target;
+- scarf/sloped seam off;
+- support/raft off;
+- adaptive PA off;
+- role-change custom G-code empty;
+- classic post_process empty;
+- no other slicing-pipeline plugin;
+- verbose G-code/comments enabled for fixture diagnostics/matching;
+- supported motion-neutral before/layer-change custom code;
+- normal print, not calibration/tower mode;
+- fresh current-session plan;
+- unambiguous positive retraction state at insertion boundary;
+- zero ordinary retract restart-extra;
+- positive active Z hop;
+- valid printable-height margin.
 
-No full-file regex substitution.
+Bambu standard process profiles may enable arc fitting by default. The plugin MUST report this as an unmet injection requirement; it MUST NOT silently change the user profile.
 
-## 16. Packaging
-Target pure-Python wheel.
+## 10. Seam handling
 
-No native/custom Orca dependency in v1.
+Nonzero normal seam gap is supported.
 
-## 17. Golden-fixture requirement
-Before any physical support for a profile:
-- exact Orca version/commit
-- exact printer/process profile metadata
-- source G-code fixture
-- expected parser states
-- layer-boundary anchors
-- expected injected output
-- idempotence fixture
-- failure fixtures
+Matcher must tolerate:
+- cyclic seam start;
+- seam split;
+- collinear subdivision;
+- one contiguous clip interval equal to the Orca-resolved seam-gap amount within tolerance.
+
+Raw ordered-loop equality is not a supported matcher.
+
+## 11. Coordinate execution mapping
+
+Domain plan geometry stays in centered PrintObject slice-space.
+
+At final G-code:
+- match unique structural geometry;
+- derive constant ((dx,dy,dz));
+- require consistency across multiple anchors;
+- apply only in G-code adapter.
+
+Unknown/non-constant mapping => Skipped.
+
+## 12. Formatter compatibility
+
+For the audited Orca source descriptor:
+- XYZ/F precision: 3 decimals;
+- E precision: 5 decimals;
+- midpoint rounding matches C++ `std::round`.
+
+Emitter and final validation share one compatibility quantizer.
+
+Unknown formatter contract => no injection.
+
+## 13. Flow and E conversion
+
+Candidate plan segment stores:
+- geometric mm³/mm;
+- commanded mm³/mm.
+
+For external-surface v1:
+
+[
+q_{cmd}
+=
+q_{geom}
+cdot print_flow_ratio
+cdot filament_flow_ratio
+cdot applicable outer role ratio.
+]
+
+Final E is derived only after machine XYZ quantization from the quantized segment length.
+
+Do not pre-store final E in the immutable plan.
+
+## 14. Speed and volumetric limits
+
+Each emitted segment speed is bounded by:
+- resolved outer-wall speed;
+- resolved filament max volumetric speed / commanded mm³/mm;
+- optional lower plugin cap.
+
+No resolved safe bound => no injection.
+
+## 15. Retraction/state requirements
+
+Parser reconstructs actual final-G-code state.
+
+v1 candidate travel starts from an already-retracted supported boundary.
+
+The plugin:
+- travels safely while retracted;
+- unretracts exactly saved amount;
+- prints;
+- retracts exactly saved amount;
+- finishes in the same retraction state.
+
+It does not reproduce wipe.
+
+Ambiguous retraction => Skipped.
+
+## 16. Safe-ceiling requirement
+
+Machine-space Zsafe is based on:
+- actual parsed saved Z;
+- target upper structural machine Z;
+- positive active Z hop.
+
+Require:
+- Zsafe within active tool printable-height limit;
+- all injected non-extruding XY travel occurs at Zsafe;
+- vertical-only raise/descend around candidate XY travel.
+
+## 17. Final-state restoration
+
+After injection, restore the actual parsed pre-insertion machine state, not an inferred nominal upper-layer state.
+
+The unchanged original G-code remains responsible for Orca's deferred layer/Z behavior.
+
+## 18. File processing
+
+Postprocessor is:
+- streaming;
+- parser/state-machine based;
+- validation-first;
+- idempotent;
+- temp-file based;
+- sanity-checked;
+- atomic;
+- all-or-nothing.
+
+Expected unsupported/validation result => PluginResult.Skipped + original file unchanged.
+
+## 19. Preview
+
+Standard Orca preview is pre-postprocess.
+
+Plugin preview uses the exact immutable plan and separate execution status.
+
+It explicitly shows unmet injection gates.
+
+## 20. Packaging
+
+Target: pure-Python wheel.
+
+No native/custom-Orca dependency in v1.
+
+## 21. Fixture requirement
+
+No printer/profile family is injectable until repository fixtures record:
+- exact Orca release/commit;
+- exact machine/process/filament profile identity;
+- resolved semantic config;
+- source G-code;
+- expected parser state;
+- structural matching expectations;
+- execution-frame translation;
+- retraction state;
+- quantization;
+- expected injected output;
+- idempotence;
+- representative failure cases.
 
 No fixture => analysis-only.
 
-## 18. Compatibility default
-Unknown Orca/profile/dialect/state -> injection disabled.
+## 22. Compatibility default
+
+Unknown Orca source/API, profile, config, modal state, custom code, calibration behavior, coordinate mapping, or machine limit => injection disabled.
 
 Never best-effort mutate.
