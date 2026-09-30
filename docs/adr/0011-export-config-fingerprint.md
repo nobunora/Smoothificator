@@ -69,3 +69,24 @@ Add:
 - missing required key -> injection disabled.
 
 Supersedes: none.
+
+
+## Expansion by later ADRs
+
+The fingerprint allowlist MUST also include the safety-relevant values introduced by ADR-0012 through ADR-0020, including where applicable:
+- total ModelInstance / supported geometry identity needed for the centered-frame contract;
+- seam_gap and seam/scarf controls;
+- print_flow_ratio;
+- set_other_flow_ratios;
+- outer_wall_flow_ratio;
+- retraction/wipe/restart-extra values used by ADR-0018;
+- adaptive pressure advance and extrusion-role-change custom G-code gates;
+- outer_wall_speed;
+- filament_max_volumetric_speed;
+- travel_speed / travel_speed_z;
+- active z_hop;
+- printable_height / active extruder printable height;
+- gcode_comments;
+- calibration/profile compatibility identifiers.
+
+The adapter fingerprints resolved semantic values, not merely raw machine/filament override keys. Raw-key precedence must match the pinned Orca behavior and be covered by fixtures.
