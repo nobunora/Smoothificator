@@ -80,6 +80,7 @@ Immutable value objects only:
 - SubEdgePlan
 - InsertionAnchor
 - Settings
+- ExecutionConfigFingerprint
 - status/reason enums
 
 No Orca or G-code knowledge.
@@ -110,6 +111,7 @@ Only layer allowed to import Orca geometry/slicing bindings.
 
 It:
 - copies live ctx data;
+- builds the versioned resolved-settings ExecutionConfigFingerprint;
 - transforms coordinates;
 - converts path-local Z offsets to absolute Z;
 - reconstructs effective local ZAA flow metadata;
