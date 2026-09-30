@@ -3,205 +3,219 @@
 Implementation is gated. Do not advance until the previous phase exit criteria pass.
 
 ## Phase 0 — specification and audit
-Completed:
-- ZAA-first architecture
-- stock-Orca post-process execution
+Complete before code:
 - architecture boundaries
-- ADR process
-- pre-implementation source audit
-- hook change to posSimplifyPath
-- coordinate normalization
-- outer-wall flow redistribution
-- narrowed v1 injection domain
+- document precedence
+- canonical ADR set 0001-0008
+- dependency/feasibility audit
+- stock-Orca execution architecture
+- source-verified ZAA Z/flow semantics
+- Bambu safe-boundary injection model
+- v1 safety envelope
 
-Exit: normative docs consistent; audit has no known implementation impossibility in v1 domain.
+Exit:
+- no duplicate/conflicting Accepted ADRs
+- normative docs consistent
+- no known source-level blocker in v1 domain
 
 ## Phase 0.5 — architecture skeleton
-Create package tree only.
-
-Implement:
+Implement only:
+- package/module tree
 - frozen domain DTOs
 - typed errors/reason codes
 - Settings validation
-- canonical serializer/hash
-- PlanStore + status store interfaces
+- canonical plan serializer/hash
+- PlanStore/status interfaces
 - import-boundary tests
 
-No Orca/G-code/optimizer implementation.
+No Orca/G-code/optimizer logic.
 
-Exit:
-- architecture tests pass
-- no forbidden imports
-- hash deterministic
-
-## Phase 1A — flow and pass-schedule primitives
+## Phase 1A — bead/flow primitives
 Implement/test:
-- Orca-compatible rounded-rectangle flow formula
-- command-Z/effective-height semantics
-- WallPass / OriginalWallRewrite / WallPassSchedule
-- no-refinement identity schedule
+- Orca rounded-rectangle flow formula
+- candidate effective bead height above support
+- ZAA local effective flow normalization
+- finite-bead representation
+- no-refinement baseline identity
 
 Exit:
-- reference flow cases match Orca formula
-- invalid height/width rejected
+- formula parity fixtures pass
+- invalid physical candidates rejected
 
-## Phase 1B — standalone geometry/error engine
+## Phase 1B — surface-band geometry
 Implement:
 - mesh plane section
-- finite-bead envelope
+- target-boundary representation
+- centerline placement inside material
+- same-Z multi-path coverage
+- different-Z multi-path coverage
+- nesting/support checks
+
+Exit:
+- boundary is never directly treated as centerline
+- shallow terrace can require multiple paths
+- unsupported outward-expanding geometry rejected
+
+## Phase 1C — error/optimizer
+Implement:
+- final combined envelope
 - normal-error metrics
-- candidate generation
-- whole-loop Z schedule optimizer
-- support/non-crossing checks
+- candidate flow/geometry search
 - cost model
-
-Use analytic fixed-angle + smooth coupons.
-
-Exit:
-- optimizer reduces error on known geometry
-- deterministic results
-- no G-code dependency
-
-## Phase 2A — Orca coordinate/snapshot adapter
-Stock Orca, read-only:
-- posSimplifyPath hook
-- copy mesh/path/config
-- relative path-Z -> absolute Z conversion
-- source mesh transform validation
-- feature gate detection
+- deterministic optimizer
 
 Exit:
-- transform/coordinate fixtures pass
-- ZAA on/off both produce snapshots
-- no live refs escape
+- synthetic/fixed-angle cases improve or safely report infeasible
+- no Orca/G-code dependency
 
-## Phase 2B — Orca analyzer
-Wire snapshot -> engine -> immutable plan.
-
-No G-code mutation.
+## Phase 2A — Orca coordinate adapter
+Stock Orca read-only:
+- posSimplifyPath
+- copy source mesh/path/config
+- path-relative Z -> absolute Z
+- local ZAA flow normalization
+- source transform validation
+- injection gate detection
 
 Exit:
-- plan generated from real Orca coupon
-- unsupported configurations produce stable non-injectable reason
+- ZAA on/off fixtures
+- transformed coupon fixture
+- no live reference escape
 
-## Phase 3 — Plugin preview
+## Phase 2B — Analyzer/PlanStore
+Wire Snapshot -> Engine -> immutable SubEdgePlan.
+
+Exit:
+- real Orca coupon plan
+- unsupported configs marked analysis-only
+- plan hash deterministic
+- cache/no-plan behavior tested
+
+## Phase 3 — Preview
 Script capability:
-- plan paths
-- rewritten top wall
-- Z/effective heights
+- baseline/ZAA paths
+- target material boundary
+- candidate centerlines
+- bead height/flow
 - error heatmap
+- support diagnostics
 - metrics/hash/status
 
 Exit:
-- preview hash equals stored plan hash
-- UI never touches live slicing objects
+- preview plan hash equals stored plan hash
+- no UI call from slicing worker
 
-## Phase 4A — G-code fixture acquisition
-Before parser mutation:
-- choose exact supported Orca version
-- choose exact Bambu/printer profile
-- generate golden coupon G-code
-- verify G90 absolute XYZ
-- verify M83 relative E in target
+## Phase 4A — Bambu golden fixture acquisition
+Choose exact initial Orca commit and Bambu 0.4 mm profile set.
+
+Verify:
+- relative E
+- firmware retract off
+- line numbering off
 - arc fitting off
-- verify Outer Wall -> Inner Wall and infill-first disabled
-- identify layer/outer-wall comments/anchors
+- spiral/ironing/scarf/support/raft off
+- layer-change custom code motion-neutral
+- structural layer-boundary markers/state
 
-If fixture does not satisfy assumptions, update spec/ADR before implementation.
+No injector code enabled until fixtures exist.
 
-## Phase 4B — parser/state machine dry-run
-Parse only, no writes.
+## Phase 4B — streaming parser dry-run
+Parse only:
+- modal state
+- layer boundaries
+- object/type tags
+- Bambu custom commands needed for state confidence
+- target insertion anchors
 
 Exit:
-- full target fixture parses
-- expected layer/loop/state report matches manually verified fixture
-- unknown critical command causes safe rejection
+- manually verified report matches fixture
+- unknown critical state => reject
 
 ## Phase 4C — plan matcher
-Match stored plan candidates to G-code.
+Match stored plan candidates to final G-code.
 
 Exit:
-- exactly-one match on correct fixture
-- zero/multiple candidates fail safely
-- nondeterministic ObjectIDs not required
+- exactly one correct match
+- zero/multiple/stale plan safe skip
+- runtime ObjectIDs not required
 
-## Phase 4D — outer-wall rewrite offline
-Rewrite copied fixture only:
-- scale/recompute relative-E increments for reduced top-pass height
-- preserve XY/comments/non-target bytes where feasible
+## Phase 4D — offline emitter
+On fixture copies:
+- safe-ceiling travel
+- relative-E candidate extrusion
+- state restore
+- markers/idempotence
 
-Exit:
-- no-refinement output byte-identical
-- refined expected output golden test passes
-
-## Phase 4E — intermediate-pass emitter offline
-Emit lower-Z-first passes into copied fixture.
+Original structural G-code remains unchanged.
 
 Exit:
-- correct E from mm3/mm and filament area
-- state restoration tests
-- parser re-reads modified output
-- idempotence markers pass
+- parser can re-read result
+- state at resume equals saved boundary state
+- no low-Z non-extruding XY travel
 
-## Phase 4F — atomic postprocessor integration
-Use psGCodePostProcess on working copies.
+## Phase 4E — streaming atomic postprocess
+Implement:
+1. validation pass
+2. temp-file emission pass
+3. sanity pass
+4. atomic replace
 
 Exit:
-- full validation before replacement
-- all failure paths preserve original bytes
+- original bytes unchanged on every failure
 - repeated export/upload copies handled independently
 
 ## Phase 5 — first physical PoC
-Only after all previous gates.
+Only after all prior gates.
 
-Hardware:
-- 0.4 mm nozzle
-- never first-layer refinement
+Initial:
+- supported Bambu 0.4 mm
 - PLA
-- single-volume fixed-angle coupon
-- supported exact Orca/profile fixture family
+- one-volume calibration coupon
+- simple nested/self-supported slope
 
 Sequence:
-1. 5° simple coupon at conservative speed
-2. 10°/20°
-3. continuous smooth coupon
+1. 5 degree coupon
+2. 10/20 degree
+3. smooth 1-30 degree surface
 
-Inspect for:
-- over/under extrusion
-- wall bonding
+Inspect:
 - nozzle contact
+- overbuild
+- bonding
 - dimensional bias
+- surface roughness
 
-Any unexpected physical behavior may trigger spec/flow-model revision.
+Unexpected physical behavior returns project to model/spec review.
 
 ## Phase 6 — benchmark
 Compare:
 - normal
 - fine conventional
 - ZAA-only
-- ZAA + Adaptive Sub-Edge
+- ZAA + SubEdge
 
-Measure quality/time/material/failure modes.
+Measure:
+quality / time / material / failure modes.
 
 ## Phase 7 — controlled expansion
-One feature per step with tests/ADR as needed:
-- multiple loops/holes
-- partial-loop local schedules
-- multiple volumes/CSG
+One capability at a time:
+- additional Bambu profiles
+- more complex local surface bands
+- holes/multiple loops
+- multi-volume CSG
 - multiple objects/instances
+- supports/overhangs
 - absolute E
-- arc fitting
-- additional firmware/profile families
-- supports/concave geometry
+- arcs
+- other firmware
 - multitool last
 
+Each requires fixtures/tests and ADR when safety semantics change.
+
 ## Phase 8 — production plugin
-- pinned compatibility matrix
-- wheel packaging
-- tolerance UI
+- compatibility matrix
+- pure-Python wheel
+- tolerance/quality UI
 - performance optimization
 - regression corpus
-- analysis-only safe fallback
-
-## Optional future native integration
-Only if plugin evidence justifies it. Native Orca integration is not required for v1/community proof.
+- analysis-only fallback
