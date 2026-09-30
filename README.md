@@ -1,61 +1,77 @@
 # Smoothificator — Adaptive Sub-Edge Research Fork
 
-Error-driven adaptive surface reconstruction for OrcaSlicer.
+Error-driven adaptive outer-surface reconstruction for OrcaSlicer.
 
-Status: pre-implementation audit complete; implementation has not started.
+This fork investigates a **stock-Orca plugin** that uses Orca's final simplified outer-wall geometry (including ZAA where Orca applies it), measures remaining surface error, then refines only the outer wall where the requested tolerance is not met.
 
-## v1 architecture
-Stock Orca only:
+> Status: specification / pre-implementation audit complete. Legacy Smoothificator scripts are preserved as upstream reference.
 
+## Canonical architecture
 ```text
-fresh slice
- -> ZAA if applicable
- -> Orca path simplification
- -> posSimplifyPath Analyzer
- -> immutable SubEdgePlan
-      -> Plugin Preview
- -> normal G-code generation
- -> psGCodePostProcess validated Injection
- -> output
+Stock Orca
+  -> normal slicing / ZAA
+  -> path simplification
+  -> posSimplifyPath: copy final geometry
+  -> Analyzer creates immutable SubEdgePlan
+       -> Plugin Preview uses same plan
+  -> normal Orca G-code generation
+  -> psGCodePostProcess:
+       match plan
+       rewrite upper outer-wall flow
+       inject intermediate passes
+  -> file/printer
 ```
 
-## Key design rules
-- ZAA first; Sub-edge addresses residual error.
-- Orca ZAA path Z is normalized from layer-relative offset to absolute nozzle Z.
-- ZAA local flow scaling is reproduced in the baseline model.
-- 0.08 mm initially means minimum effective bead height above support, not minimum neighbor-path Z difference.
-- Shallow slopes may therefore use several paths whose Z values differ by much less than 0.08 mm.
-- Mesh intersection is a material boundary, not a nozzle centerline; path layout accounts for bead width.
-- Printable v1 targets nested top-facing geometry only.
-- Lower/upper structural beads and all added paths are included in final-surface scoring.
-- G-code Injection uses safe-ceiling travel and exact state restoration.
-- Preview and Injector consume one immutable plan hash.
-- Any ambiguity leaves original Orca G-code unchanged.
+No custom Orca build is required for v1.
 
-## First printable scope
-- stock supported Orca
-- one object / one instance / one ModelPart
-- current tested Bambu 0.4 single-tool profile family
-- relative E
-- no support/raft/ironing/scarf/spiral/arc fitting
-- no other slicing-pipeline plugin or classic post-process script
-- validated nozzle envelope
+## Important design correction
+Sub-edges are **not simply extra material**.
 
-Scope expands only by tests + ADR.
+For a refined structural-layer interval, outer-wall extrusion is redistributed across:
+- optimized intermediate passes; and
+- the original upper outer-wall path with reduced remaining effective height.
 
-## Documents
+This avoids over-extruding the original upper wall.
+
+## Core rules
+- final post-simplification geometry is the baseline;
+- ZAA is automatically included when Orca applied it;
+- Z values are freely optimized;
+- v1 uses one common Z schedule for an entire matched external-wall loop;
+- non-crossing intermediate passes print lower-Z first;
+- initial 0.4 mm-nozzle minimum pass height is 0.08 mm;
+- all domain coordinates are absolute print-space mm;
+- Preview and Injection share one deterministic plan/hash;
+- G-code execution is parser-based, stateful, atomic, idempotent and all-or-nothing.
+
+## Preview
+Orca standard G-code viewer shows pre-post-process G-code.
+
+The plugin provides a separate preview of the exact immutable plan, including:
+- intermediate contours;
+- rewritten upper wall;
+- pass Z/heights;
+- residual error;
+- predicted metrics;
+- injection status.
+
+## v1 safety scope
+Physical injection starts intentionally narrow: one object, one instance, one positive model volume, one tool, By-Layer printing, absolute XYZ, relative E, arc fitting/scarf/fuzzy/vase disabled, and no other mutating postprocessor.
+
+Unsupported configurations may be analyzed but are not injected.
+
+## Documentation
 - [Specification](docs/SPECIFICATION.md)
-- [Implementation](docs/IMPLEMENTATION.md)
+- [Implementation specification](docs/IMPLEMENTATION.md)
 - [Architecture](docs/ARCHITECTURE.md)
-- [Error/material model](docs/ERROR_MODEL.md)
-- [Plugin/API research](docs/ORCASLICER_PLUGIN_RESEARCH.md)
-- [Plugin requirements](docs/PLUGIN_REQUIREMENTS.md)
+- [Pre-implementation audit](docs/PRE_IMPLEMENTATION_AUDIT.md)
+- [Surface/flow model](docs/ERROR_MODEL.md)
 - [ZAA integration](docs/ZAA_INTEGRATION.md)
-- [Dependency audit](docs/DEPENDENCY_AUDIT.md)
-- [ADRs](docs/adr/)
+- [Plugin requirements](docs/PLUGIN_REQUIREMENTS.md)
+- [Orca API research](docs/ORCASLICER_PLUGIN_RESEARCH.md)
+- [Upstream analysis](docs/SMOOTHIFICATOR_ANALYSIS.md)
 - [Roadmap](docs/ROADMAP.md)
-
-Original Smoothificator scripts remain as upstream reference.
+- [ADR process](docs/ADR_PROCESS.md)
 
 ## License
-GNU GPL terms and upstream notices are retained.
+GNU GPL terms and upstream copyright notices are retained.
