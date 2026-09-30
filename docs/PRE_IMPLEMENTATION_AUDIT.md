@@ -143,3 +143,20 @@ Within the narrowed v1 domain, no source-level blocker was found for:
 - official psGCodePostProcess working-file modification.
 
 The largest remaining engineering risk is robust G-code matching/state restoration, which is isolated behind the G-code adapter and is explicitly gated before physical printing.
+
+
+### F-014 — ZAA upper wall is locally non-planar
+Severity: Critical
+Status: Fixed by ADR-0004
+
+ContourZ may lower perimeter points by varying offsets along one loop. Therefore the remaining height above the highest constant-Z sub-edge is not one scalar h_top.
+
+Resolution: rewrite the original upper wall per matched extrusion segment using local absolute top Z; reject schedules where any segment leaves insufficient printable height.
+
+### F-015 — first-layer/bridge target behavior was unspecified
+Severity: High
+Status: Fixed
+
+First layer and bridge-role walls have special flow/support semantics.
+
+Resolution: v1 never refines the first printed layer and rejects bridge-role target segments.
