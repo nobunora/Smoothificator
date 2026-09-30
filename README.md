@@ -4,7 +4,7 @@ Error-driven adaptive outer-surface reconstruction for OrcaSlicer.
 
 This fork investigates a **stock-Orca plugin** that reads Orca's final simplified outer-wall geometry (including ZAA where Orca applied it), measures remaining surface error, then adds only the extra surface-band paths needed to reduce that error.
 
-> Status: specification / pre-implementation audit complete. Legacy Smoothificator scripts are preserved as upstream reference.
+> Status: specification / pre-implementation consistency work. Project-template agent/workflow rules are integrated; production implementation remains gated on the final full-text audit and a validated repository-review handoff. Legacy Smoothificator scripts are preserved as upstream reference.
 
 ## Canonical architecture
 
@@ -68,9 +68,19 @@ Physical injection is intentionally narrow:
 
 Unsupported configurations may be analyzed but are not injected.
 
+## Implementation workflow
+
+Repository/AI work begins with [AGENTS.md](AGENTS.md).
+
+The canonical system specification remains `docs/SPECIFICATION.md`. Versioned Codex/GitHub handoff contracts live under `docs/specs/`, and implementation/review evidence lives under `docs/implementation/`.
+
+Production implementation starts only after the final consistency audit and a review-only repository validation returns `validated`.
+
 ## Documentation
 
+- [Agent/repository rules](AGENTS.md)
 - [Specification](docs/SPECIFICATION.md)
+- [v1 handoff specification](docs/specs/adaptive-subedge-v1.md)
 - [Implementation specification](docs/IMPLEMENTATION.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Dependency/feasibility audit](docs/DEPENDENCY_AUDIT.md)
@@ -81,6 +91,9 @@ Unsupported configurations may be analyzed but are not injected.
 - [Upstream analysis](docs/SMOOTHIFICATOR_ANALYSIS.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Test strategy](docs/TEST_STRATEGY.md)
+- [Quality gates](docs/QUALITY_GATES.md)
+- [Review/convergence process](docs/REVIEW_PROCESS.md)
+- [Project-template rule adoption](docs/PROJECT_RULES_ADOPTION.md)
 - [Documentation precedence](docs/DOCUMENT_CONTRACT.md)
 - [ADR process](docs/ADR_PROCESS.md)
 
