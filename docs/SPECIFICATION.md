@@ -153,6 +153,7 @@ Unsupported configurations are analysis-only.
 Any uncertainty in:
 - current plan identity;
 - print-space -> G-code-space coordinate translation;
+- active filament diameter / flow-ratio compatibility;
 - G-code state;
 - layer-boundary anchor;
 - support/clearance;
