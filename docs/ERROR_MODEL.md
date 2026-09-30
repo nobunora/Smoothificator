@@ -46,7 +46,7 @@ h_top = Z1 - zk
 
 All values must be positive and satisfy configured minimum-height/spacing constraints.
 
-The existing Orca outer-wall path at Z1 becomes the final **top pass** and its target extrusion must be rewritten for h_top.
+The existing Orca outer-wall path becomes the final **top pass**. If ZAA made that path non-planar, its local absolute command Z varies by segment, so its remaining height and flow must be evaluated segment-by-segment.
 
 With no intermediate pass:
 h_top = Z1-Z0 and original G-code remains untouched.
@@ -64,7 +64,7 @@ Requirements:
 - w >= h for the v1 non-bridge model
 - invalid/non-positive flow rejects the candidate
 
-The original upper-wall extrusion is rescaled/re-emitted according to its reduced top-pass area, not merely multiplied by an arbitrary pass fraction.
+The original upper-wall extrusion is rescaled/re-emitted according to its reduced local top-pass area, not merely multiplied by an arbitrary pass fraction. For ZAA upper walls, segment j uses h_top_j = Z_top_j - z_k.
 
 The intermediate contour length may differ from the original wall length, so total material is not forced to equal the old loop volume exactly. It is determined by each pass's contour length and cross-section.
 
@@ -94,10 +94,12 @@ For each eligible full outer-wall loop interval:
 5. Construct corresponding model cross-sections/outer contours.
 6. Compute effective heights from adjacent Z values.
 7. Compute pass flows.
-8. Replace predicted top-wall flow with h_top.
-9. Recompute finite-bead surface.
-10. Reject support/crossing/clearance-invalid schedules.
-11. Choose lowest-cost schedule meeting tolerance.
+8. Reconstruct the actual upper-wall absolute Z profile from ZAA path offsets.
+9. Compute h_top_j and target flow per upper-wall segment.
+10. Reject any schedule with insufficient remaining top height.
+11. Recompute finite-bead surface.
+12. Reject support/crossing/clearance-invalid schedules.
+13. Choose lowest-cost schedule meeting tolerance.
 
 k_max follows from physical height constraints and configured guardrail.
 
@@ -115,7 +117,7 @@ Future segment-level adaptivity requires a separate ADR and test suite.
 For a non-crossing outward sequence printed lower-Z first:
 - each pass must have sufficient overlap/contact with lower accepted material;
 - next pass command Z must exceed lower pass nominal top by the required height;
-- top structural outer wall uses remaining h_top, avoiding the previous additive-only over-extrusion problem.
+- top structural outer wall uses remaining local h_top_j, avoiding the previous additive-only over-extrusion problem.
 
 Concave/inward/nozzle-body uncertain cases are unsupported in v1.
 
