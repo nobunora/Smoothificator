@@ -155,6 +155,7 @@ Only after all previous gates.
 
 Hardware:
 - 0.4 mm nozzle
+- never first-layer refinement
 - PLA
 - single-volume fixed-angle coupon
 - supported exact Orca/profile fixture family
