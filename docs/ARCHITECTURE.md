@@ -307,3 +307,128 @@ Use deterministic fixed-unit/quantized values or deterministic binary representa
 - safety/architecture changes require Accepted ADR first
 - owner-module tests before integration tests
 - lower-precedence docs never override accepted ADRs
+
+
+## 13. Component contract checklist
+
+Every non-trivial component must have an explicit or evident contract covering:
+1. what it owns;
+2. what it explicitly does not own;
+3. accepted inputs and units/coordinate frame;
+4. produced outputs;
+5. invariants;
+6. expected failure categories;
+7. allowed dependencies;
+8. state it may mutate.
+
+A component whose responsibility cannot be summarized precisely probably owns too much.
+
+Adapters translate contracts; they do not redefine domain meaning.
+
+## 14. State, concurrency, and idempotency
+
+Every mutable state must have one owner.
+
+For PlanStore / execution status / G-code mutation define:
+- allowed readers/writers;
+- locking/synchronization;
+- stale-plan detection;
+- duplicate-execution behavior;
+- partial-update prevention;
+- idempotency key/hash;
+- cancellation behavior.
+
+Prefer immutable values and single-writer transitions.
+
+No shared mutable global geometry state.
+
+## 15. Failure containment
+
+Boundary code must fail closed.
+
+Required containment:
+- validate risky input/state before side effects;
+- explicit error conversion at boundaries;
+- bounded memory/work where practical;
+- cancellation polling in expensive analysis;
+- no partial G-code replacement;
+- no retry without one owner, budget, and idempotency;
+- no fallback that silently changes geometry or machine behavior.
+
+For physical execution, an unsupported/ambiguous state is an injection skip, not a guessed recovery.
+
+## 16. Observability contract
+
+Important operations must be reconstructable from structured diagnostics without logging full models/G-code unnecessarily.
+
+Record where applicable:
+- plan hash / execution attempt id;
+- Orca/plugin version;
+- profile/config fingerprint;
+- phase name and duration;
+- decision/result reason code;
+- number/summary of candidate paths;
+- validation gate that stopped execution;
+- external effect attempted;
+- final injection status.
+
+Do not log secrets, credentials, or unbounded raw payloads.
+
+## 17. Compatibility and rollback
+
+Every compatibility expansion must define:
+- supported Orca/profile/firmware versions;
+- fixture evidence;
+- breaking assumptions;
+- migration/schema handling when relevant;
+- rollback/disable condition;
+- removal condition for temporary compatibility paths.
+
+Compatibility wrappers or profile-specific branches are temporary debt and need an owner and deletion gate.
+
+## 18. Performance/resource contracts
+
+Before declaring production readiness, measure and record limits for critical paths:
+- maximum expected model/path size;
+- analyzer execution time budget;
+- PlanStore bound;
+- G-code streaming memory behavior;
+- temp-file disk usage;
+- maximum candidate/search budget;
+- cancellation responsiveness.
+
+Do not trade correctness for performance silently.
+
+A structural refactor that materially changes allocations, passes over G-code, or data copies requires before/after measurement or an explicit accepted risk.
+
+## 19. Security / external-input boundaries
+
+Treat as untrusted boundaries:
+- model/file input;
+- G-code working file;
+- plugin/user configuration;
+- external paths/URLs if ever introduced.
+
+Rules:
+- validate before domain use;
+- use least privilege;
+- never put secrets in domain models/logs;
+- do not let convenience adapters bypass safety policy;
+- distinguish validation failure from compatibility failure and infrastructure failure.
+
+## 20. Architecture evidence
+
+Behavior and architecture are validated separately.
+
+Behavior evidence:
+- unit/integration/golden/physical tests.
+
+Architecture evidence:
+- import-boundary tests;
+- one-owner review;
+- no bypass path around authoritative owner;
+- no duplicate policy implementation;
+- no live Orca types leaking inward;
+- no G-code implementation depending on optimizer internals.
+
+Green behavioral tests do not prove architectural ownership is correct.
