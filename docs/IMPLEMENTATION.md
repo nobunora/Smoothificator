@@ -28,6 +28,8 @@ Before implementation, read:
 - ADR-0006 Orca ZAA Z/flow semantics
 - ADR-0007 Bambu structural-layer-boundary safe-ceiling injection
 - ADR-0008 relative-E Bambu profile restriction
+- ADR-0009 validated print-space -> G-code-space translation
+- ADR-0010 Orca-compatible filament flow-ratio E conversion
 
 If this file conflicts with those ADRs, ADR wins.
 
@@ -474,9 +476,12 @@ v1 only injects when M83/relative E semantics are verified for target region/pro
 For candidate move length L:
 volume = L * mm3_per_mm
 filament_area = pi * filament_diameter^2 / 4
-E = volume / filament_area
+E_per_mm3 = filament_flow_ratio / filament_area
+E = volume * E_per_mm3
 
-Apply tested extrusion multiplier/filament assumptions exactly as defined by fixture/config normalization.
+This MUST match Orca Extruder::e_per_mm3() behavior for the active v1 filament.
+
+filament_diameter and filament_flow_ratio are captured during planning and validated against the supported final profile/fixture before injection.
 
 Do not implement absolute-E restoration in v1.
 
@@ -590,6 +595,7 @@ Only after A-H pass.
 - no full-file mandatory in-memory rewrite;
 - no unsupported profile guessing;
 - no direct emission of print-space XY/Z without validated execution-frame translation;
+- no E conversion that omits filament_flow_ratio;
 - no partial writes;
 - deterministic output;
 - tests with every behavior change;
