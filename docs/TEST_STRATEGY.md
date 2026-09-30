@@ -23,7 +23,8 @@ Check:
 - 0.08 mm rule applies to bead height, not pairwise Z;
 - ZAA local effective flow ratio parity;
 - invalid width/height/flow;
-- deterministic hashing.
+- deterministic hashing;
+- Orca volumetric-to-E parity including non-unity filament_flow_ratio.
 
 ## C. Surface-band geometry tests
 Owner: tests/analytic/
@@ -101,13 +102,16 @@ Check:
 - multiple plans;
 - stale plan;
 - runtime ObjectID changes;
-- config/profile mismatch.
+- config/profile mismatch;
+- constant print-space -> G-code-space translation;
+- non-zero XY/Z offset mapping;
+- inconsistent/ambiguous mapping rejection.
 
 ## J. Emitter tests
 Check ADR-0007:
 - Zsafe raise before any non-extruding XY;
 - vertical descend to candidate Z;
-- relative-E volume conversion;
+- relative-E volume conversion with filament_flow_ratio;
 - retract/unretract state;
 - lower-risk ordering;
 - return at Zsafe;
