@@ -160,3 +160,12 @@ Status: Fixed
 First layer and bridge-role walls have special flow/support semantics.
 
 Resolution: v1 never refines the first printed layer and rejects bridge-role target segments.
+
+
+### F-016 — wall/infill execution order was not constrained
+Severity: High
+Status: Fixed by ADR-0005
+
+The refined upper external wall has a smaller remaining effective height, while inner walls/infill remain structural-layer height. Allowing inner/infill first would introduce an uncontrolled interaction before the refined outer stack is closed.
+
+Resolution: v1 requires Outer Wall -> Inner Wall and infill-first disabled.
