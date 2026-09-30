@@ -104,6 +104,7 @@ Before parser mutation:
 - verify G90 absolute XYZ
 - verify M83 relative E in target
 - arc fitting off
+- verify Outer Wall -> Inner Wall and infill-first disabled
 - identify layer/outer-wall comments/anchors
 
 If fixture does not satisfy assumptions, update spec/ADR before implementation.
