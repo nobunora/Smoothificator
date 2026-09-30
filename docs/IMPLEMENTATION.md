@@ -49,7 +49,7 @@ Read all non-superseded ADRs relevant to the task.
 As of this audit:
 - ADR-0001 through ADR-0009;
 - ADR-0010 is superseded by ADR-0015;
-- ADR-0011 through ADR-0022, subject to explicit supersession notes.
+- ADR-0011 through ADR-0029, subject to explicit supersession notes.
 
 Later ADRs override earlier clauses only where stated.
 
@@ -109,6 +109,7 @@ orca_plugin/
     execution_frame.py
     quantization.py
     retraction.py
+    downstream_clearance.py
     anchors.py
     validation.py
     emitter.py
@@ -242,45 +243,45 @@ The engine never reads raw Orca config.
 
 ## 11. Resolved configuration adapter
 
-`orca_config.py` is the single owner of raw Orca key/override resolution.
+orca_config.py is the single owner of raw Orca key/override resolution.
 
-It produces a typed resolved semantic configuration.
-
-No other module independently chooses machine-vs-filament override precedence.
+It produces typed resolved semantic configuration. No other module independently chooses machine-vs-filament override precedence.
 
 Required semantic groups include:
 
-### Geometry / slicing
+Geometry / slicing:
 - nozzle diameter;
-- ZAA state/config needed by snapshot diagnostics;
-- seam mode/gap;
-- spiral/ironing/scarf/support/raft gates.
+- ZAA state/config used by snapshot diagnostics;
+- seam gap and seam/scarf mode;
+- spiral, ironing, support/raft, fuzzy-skin gates;
+- source topology and print-sequence assumptions.
 
-### Flow
+Flow:
 - print_flow_ratio;
 - filament_flow_ratio;
 - set_other_flow_ratios;
 - outer_wall_flow_ratio;
 - filament diameter;
-- filament max volumetric speed.
+- fixed filament max volumetric speed;
+- filament adaptive-volumetric-speed gate.
 
-### Retraction
-- retract-on-layer-change effective state;
+Retraction:
+- effective retract-on-layer-change state;
 - effective retraction length;
 - retraction speed;
 - deretraction speed;
 - restart extra;
 - firmware-retraction state;
-- wipe/retract-before-wipe/retract-after-wipe semantics required by the supported parser contract.
+- wipe / retract-before-wipe / retract-after-wipe values required by the supported parser contract.
 
-### Motion
+Motion:
 - outer-wall speed;
-- travel speed;
+- XY travel speed;
 - Z travel speed;
 - active Z hop/lift;
-- printable height / active extruder printable height.
+- printable height / active-extruder printable height.
 
-### Execution feature gates
+Execution feature gates:
 - relative-E state;
 - arc fitting;
 - line numbering/checksum;
@@ -290,106 +291,112 @@ Required semantic groups include:
 - machine/filament/process extrusion-role-change G-code;
 - before/layer-change G-code;
 - classic post_process;
-- selected slicing-pipeline plugin list;
-- print sequence / other pinned profile assumptions.
+- selected slicing-pipeline capability list;
+- calibration/profile-family invariants required by fixtures.
 
-Exact raw key mapping is versioned in compatibility tests.
+Exact raw-key mapping and override precedence are pinned in compatibility tests.
 
-## 12. ExecutionConfigFingerprint
+## 12. Execution and plugin settings fingerprints
 
-During analysis, canonicalize the resolved semantic configuration into a versioned immutable fingerprint.
+During analysis:
+1. build a versioned ExecutionConfigFingerprint from resolved Orca semantics;
+2. validate Adaptive Sub-Edge Settings;
+3. build a versioned PluginSettingsFingerprint from every plugin-owned value that can affect geometry, optimization, candidate seam/gap, ToolClearanceProfile, margins, speed cap, or execution policy.
 
-At `psGCodePostProcess`, recreate the same semantic fingerprint via `ctx.config_value()`.
+At psGCodePostProcess:
+- rebuild ExecutionConfigFingerprint with ctx.config_value();
+- rebuild PluginSettingsFingerprint from the capability current get_config() value.
 
-Injection requires exact equality.
+Injection requires exact equality for both fingerprints.
 
-Raw dictionary/map order MUST NOT affect the hash.
+Missing/invalid/mismatched required semantics => PluginResult.Skipped.
 
-Missing required semantic value => injection disabled.
+Raw map order MUST NOT affect either canonical fingerprint.
 
-The fingerprint is not a replacement for parsing actual final G-code state.
+PlanStore invalidation is useful but does not replace the final equality checks.
 
 ## 13. Immutable domain DTOs
 
 Use frozen dataclasses or equivalent immutable typed structures.
 
-### ErrorMetrics
-- `e_max_mm`
-- `e_rms_mm`
-- `e_p95_mm`
-- `signed_mean_mm`
+ErrorMetrics:
+- e_max_mm;
+- e_rms_mm;
+- e_p95_mm;
+- signed_mean_mm.
 
-### StructuralPathSegment
-- print-space start/end XYZ;
+ToolClearanceProfile:
+- profile id/version;
+- conservative radial keep-out as a function of height above nozzle tip;
+- modeled axial height;
+- radial and vertical margins;
+- hardware fixture identity/evidence reference.
+
+StructuralPathSegment:
+- centered print-space start/end XYZ;
 - width;
 - nominal/effective local height;
-- local geometric volume;
+- local geometric ZAA volume;
 - command-flow modifier summary;
 - role/layer metadata.
 
-### StructuralLoopReference
+StructuralLoopReference:
 - canonical closed geometry;
 - length/bounds/orientation metadata;
-- seam-gap allowance;
+- resolved seam-gap allowance;
 - representative non-collinear anchors;
 - canonical shape hash.
 
-### SurfaceBand
+SurfaceBand:
 - target material boundary;
 - residual error region;
 - support/nesting metadata.
 
-### SubEdgeSegment
-- high-precision print-space start/end XYZ;
+SubEdgeSegment:
+- high-precision print-space start/end XY;
+- parent path constant command_z_mm;
 - local support Z;
 - effective bead height;
 - width;
-- `geometric_mm3_per_mm`;
-- `commanded_mm3_per_mm`;
+- geometric_mm3_per_mm;
+- commanded_mm3_per_mm;
 - speed limit/request metadata;
 - support/validation metadata.
 
-No final emitted E field.
+SubEdgeSegment does NOT contain authoritative final machine XYZ or final emitted E.
 
-### SubEdgePath
+SubEdgePath:
 - path id;
 - interval/error-region id;
+- immutable constant command_z_mm;
+- explicit open execution polyline;
+- planned seam/start and gap metadata;
 - ordered segments;
 - path ordering/travel metadata.
 
-### InsertionAnchor
+InsertionAnchor:
 - target structural interval;
 - supported Bambu layer-boundary signature;
 - associated StructuralLoopReference ids;
 - matching tolerances/profile contract.
 
-### SubEdgePlan
+SubEdgePlan:
 - schema/plugin version;
 - plan id/hash;
-- audited/required compatibility descriptor;
+- compatibility descriptor;
 - source geometry hash;
 - ExecutionConfigFingerprint;
+- PluginSettingsFingerprint;
 - baseline references;
 - candidate paths;
 - anchors;
 - metrics;
-- added geometric/commanded volume and time estimates;
+- geometric/commanded volume and time estimates;
 - injectability/reason.
 
-Exclude:
-- timestamp from hash;
-- runtime ObjectID from hash;
-- final machine offset;
-- runtime status.
+Exclude timestamp, runtime ObjectID, final machine translation, final E, and runtime status from plan hash.
 
-### PlanExecutionStatus
-Separate mutable record:
-- PLANNED
-- INJECTION_PASS
-- INJECTION_SKIPPED
-- INJECTION_FAIL
-- stable reason
-- compact attempt diagnostics.
+PlanExecutionStatus is separate mutable state.
 
 ## 14. Snapshot immutability
 
@@ -402,28 +409,32 @@ No live pybind object survives `execute(ctx)`.
 
 ## 15. Analyzer workflow
 
-At `posSimplifyPath`:
+At posSimplifyPath:
 
 1. check cancellation;
-2. validate/copy supported source topology;
-3. resolve semantic config;
-4. build ExecutionConfigFingerprint;
-5. reconstruct centered source mesh;
-6. copy/normalize final simplified structural paths;
-7. build ZAA-aware structural segment baseline;
-8. discard live Orca references;
-9. build nominal finite-bead baseline;
-10. estimate residual error;
-11. derive residual surface bands;
-12. generate centerline candidates;
-13. resolve local support/effective height;
-14. compute geometric segment volume;
-15. compute commanded segment volume separately;
-16. enforce support/collision/geometry/speed feasibility;
-17. optimize candidate set deterministically;
-18. create StructuralLoopReferences and insertion intent;
-19. create immutable plan;
-20. store plan + PLANNED status in PlanStore.
+2. validate one-object/one-total-instance/one-ModelPart topology;
+3. validate finite/manifold source mesh and candidate-section assumptions;
+4. resolve semantic Orca config;
+5. validate plugin Settings and ToolClearanceProfile metadata;
+6. build ExecutionConfigFingerprint and PluginSettingsFingerprint;
+7. reconstruct centered source mesh;
+8. copy/normalize final simplified structural paths;
+9. build ZAA-aware structural baseline;
+10. discard live Orca references;
+11. build nominal finite-bead baseline;
+12. estimate residual error;
+13. exclude first-layer/fuzzy/unsupported regions from printable planning;
+14. derive residual surface bands;
+15. generate constant-Z centerline candidates;
+16. resolve deterministic candidate seam/gap before scoring;
+17. resolve local support/effective height;
+18. compute geometric segment volume;
+19. compute commanded segment volume separately;
+20. enforce support/candidate collision/geometry/speed feasibility;
+21. optimize candidate set deterministically;
+22. create StructuralLoopReferences and insertion intent;
+23. create immutable plan;
+24. store plan + PLANNED status in PlanStore.
 
 Expensive loops poll cancellation at bounded intervals.
 
@@ -431,56 +442,33 @@ UI is never called here.
 
 ## 16. Geometric flow model
 
-Candidate geometric volume:
+For supported non-bridge rounded-rectangle v1 beads:
 
-[
-q_{geom}
-=
-h(w-h(1-pi/4))
-]
+q_geom = h * (w - h * (1 - pi/4))
 
-for supported non-bridge rounded-rectangle v1 bead assumptions.
-
-The geometric finite-bead predictor uses geometric volume/height, not global calibration ratios.
+The nominal finite-bead predictor uses geometric volume/height, not global calibration multipliers.
 
 ## 17. Commanded flow model
 
 For v1 external-surface candidate:
 
-[
-q_{cmd}
-=
-q_{geom}
-cdot print_flow_ratio
-cdot filament_flow_ratio
-cdot role_factor
-]
+q_cmd = q_geom * print_flow_ratio * filament_flow_ratio * role_factor
 
-where:
+role_factor = outer_wall_flow_ratio when set_other_flow_ratios is enabled, otherwise 1.
 
-[
-role_factor=
-egin{cases}
-outer_wall_flow_ratio & set_other_flow_ratios\
-1 & otherwise
-end{cases}
-]
-
-Global flow ratios affect G-code/material commands, not the nominal geometric envelope.
+Global flow ratios affect G-code/material commands and volumetric-speed limits, not the nominal geometric bead envelope.
 
 ## 18. Local support / minimum height
 
 For each candidate segment:
 
-[
-h_{eff}=Z_{nozzle}-Z_{support}
-]
+h_eff = nozzle_z - support_z
 
-Initial 0.4 mm nozzle minimum: 0.08 mm.
+Initial 0.4 mm-nozzle minimum = 0.08 mm.
 
-Do not enforce pairwise candidate Z spacing = 0.08 mm.
+Do not enforce pairwise candidate-Z spacing of 0.08 mm.
 
-Local support/overlap/clearance determines feasibility.
+Local support, bead overlap, clearance, path crossing, and final quantization determine feasibility.
 
 ## 19. Surface-band planning
 
@@ -523,16 +511,17 @@ Process-local, thread-safe, bounded.
 
 On each fresh applicable analysis generation:
 - store immutable plan;
-- mark session/generation;
+- mark current session/generation;
 - invalidate or age stale incompatible candidates deterministically.
 
 At export:
-- filter by current-session status and exact ExecutionConfigFingerprint;
-- then use final G-code matcher;
-- exactly one plan must survive.
+1. require current PluginSettingsFingerprint equality;
+2. require current ExecutionConfigFingerprint equality;
+3. filter to current-session injectable plans;
+4. use final G-code structural matcher;
+5. exactly one plan must survive.
 
-Zero => Skipped.
-Multiple => Skipped.
+Zero or multiple matches => Skipped.
 
 Never rerun optimizer from G-code.
 
@@ -649,21 +638,15 @@ Any invalidity => whole injection Skipped.
 
 For each segment:
 
-[
-v_{vol}=V_{max}/q_{cmd}
-]
+v_vol = filament_max_volumetric_speed / q_cmd
 
-[
-v_{segment}
-le
-min(v_{outer}, v_{vol}, v_{plugin-cap})
-]
+v_segment must not exceed:
+- resolved outer-wall speed;
+- v_vol;
+- optional lower plugin speed cap;
+- actual matched structural-wall feed where the pinned fixture contract requires a lower bound.
 
-when optional plugin cap exists.
-
-Required resolved values:
-- outer-wall speed;
-- filament max volumetric speed.
+q_cmd is the Orca-compatible commanded volumetric line flow.
 
 Missing/non-positive safety bound => non-injectable.
 
@@ -672,24 +655,27 @@ Do not silently raise Orca speed.
 ## 29. v1 advanced-feature gates
 
 Printable injection is disabled if:
+- target is first-layer refinement;
 - calibration/tower mode is detected;
+- fuzzy skin is active for the target;
+- filament adaptive volumetric speed is enabled;
 - adaptive pressure advance is enabled;
 - machine/filament/process extrusion-role-change G-code is non-empty;
 - firmware retraction is enabled;
-- line numbering/checksum mode enabled;
-- arc fitting enabled;
-- spiral vase enabled;
-- ironing enabled for unsupported target;
-- scarf/sloped seam enabled;
-- support/raft active;
-- multitool/multifilament;
-- classic post_process non-empty;
-- another slicing-pipeline plugin active;
-- verbose G-code/comments disabled for initial physical fixture contract.
+- line numbering/checksum mode is enabled;
+- arc fitting is enabled;
+- spiral vase is enabled;
+- unsupported ironing is enabled;
+- scarf/sloped seam is enabled;
+- support/raft is active;
+- multitool/multifilament execution is present;
+- classic post_process is non-empty;
+- another slicing-pipeline capability is active;
+- verbose G-code/comments are disabled for the initial physical-fixture contract.
 
-Static PA may remain enabled; plugin does not modify PA state.
+Static pressure advance may remain enabled. The plugin does not modify PA state.
 
-Plugin reports gates. It never silently edits Orca settings.
+The plugin reports unmet gates and never silently changes Orca settings.
 
 ## 30. Insertion anchor
 
@@ -769,32 +755,32 @@ Malformed/partial plugin markers => do not overwrite blindly; fail according to 
 
 ## 35. Streaming all-or-nothing postprocess
 
-### Pass 1 — validation
-Stream original:
-- verify dialect/profile/gates;
-- recompute config fingerprint;
-- parse state;
-- identify/match all planned structural references;
-- derive one execution frame;
-- derive/validate all insertion states and quantized candidate blocks.
+Pass 1 — validation:
+- validate PluginSettingsFingerprint;
+- validate ExecutionConfigFingerprint;
+- stream-parse actual machine/modal/retraction state;
+- identify and seam-invariant-match all planned StructuralLoopReferences;
+- derive one execution-frame translation;
+- quantize and derive all candidate execution commands;
+- validate speed/Zsafe/retraction;
+- validate quantized candidate bead envelopes against unchanged downstream original motions using downstream_clearance.py and the versioned ToolClearanceProfile.
 
 No file mutation.
 
-### Pass 2 — temp emission
-Re-open original and stream to temp:
-- copy original bytes/lines in order;
-- inject fully prevalidated blocks at exact anchors.
+Pass 2 — temp emission:
+- re-open original;
+- stream original lines/bytes in order;
+- inject only fully prevalidated blocks at exact anchors.
 
-### Pass 3 — sanity
-Stream-parse temp:
-- marker count/hash;
-- injection count/order;
-- state restoration invariants;
-- unsupported/corrupt output checks.
+Pass 3 — sanity:
+- stream-parse temp;
+- verify marker count/hash;
+- verify injection count/order;
+- verify state restoration and integrity.
 
-Only then atomic replace of `ctx.gcode_path`.
+Only then atomically replace ctx.gcode_path.
 
-Any failure before replace leaves original unchanged.
+Any earlier failure leaves original unchanged.
 
 ## 36. PluginResult mapping
 
@@ -861,6 +847,10 @@ No physical printing until all software/fixture gates and independent review req
 - no pairwise 0.08 mm Z-gap assumption;
 - no global-flow-ratio-as-geometric-bead-size assumption;
 - no path-wide flow assumption when support varies;
+- no final-E field in immutable plan;
+- no candidate seam/gap changes in postprocess;
+- no first-layer candidate injection;
+- no injection without validated downstream original-motion clearance and ToolClearanceProfile;
 - no ordered raw-loop hash final matching;
 - no direct print-space coordinate emission;
 - no Python default rounding for Orca G-code;
