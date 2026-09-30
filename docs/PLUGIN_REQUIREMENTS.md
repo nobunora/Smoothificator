@@ -91,8 +91,14 @@ It does not rewrite original Orca structural wall flow or XY.
 
 Final-surface optimization must account for overlap/overbuild with unchanged structural/ZAA beads.
 
-## 10. Safe travel
-All non-extruding XY moves for injected paths occur at validated Zsafe per ADR-0007.
+## 10. Execution-frame mapping and safe travel
+Plan geometry is print-space mm. Final G-code uses instance/origin/extruder/Z-offset adjusted machine coordinates.
+
+Before emission, injector MUST derive and validate one constant (dx,dy,dz) translation from matched Orca structural geometry per ADR-0009.
+
+No plan coordinate may be emitted before that validation.
+
+All non-extruding XY moves for injected paths occur at validated machine-coordinate Zsafe per ADR-0007.
 
 Injector restores saved upper structural-layer state before Orca resumes.
 
