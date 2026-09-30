@@ -50,9 +50,12 @@ Adaptive Sub-Edge v1:
 ## Flow interaction
 Sub-edge is NOT "ZAA path + extra material".
 
-For structural interval [Z0,Z1] with intermediate z_i, the original external wall at Z1 is rewritten to its remaining effective height.
+For structural interval [Z0,Z1] with intermediate z_i, the original external wall is rewritten to its remaining local effective height.
 
-This is required to avoid over-extrusion where intermediate passes raise the support surface.
+Because ZAA may lower different perimeter segments by different offsets, this rewrite is segment-wise:
+h_top_j = Z_top_j - z_k.
+
+This is required to avoid local over-extrusion where intermediate passes raise the support surface.
 
 ## Success criterion
 Compare:
