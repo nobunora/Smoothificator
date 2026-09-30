@@ -4,7 +4,7 @@ Error-driven adaptive outer-surface reconstruction for OrcaSlicer.
 
 This fork investigates a **stock-Orca plugin** that reads Orca's final simplified outer-wall geometry (including ZAA where Orca applied it), measures remaining surface error, then adds only the extra surface-band paths needed to reduce that error.
 
-> Status: specification / pre-implementation consistency work. Project-template agent/workflow rules are integrated; production implementation remains gated on the final full-text audit and a validated repository-review handoff. Legacy Smoothificator scripts are preserved as upstream reference.
+> Status: full specification + technical audit in final convergence. Production implementation remains gated on stamping the audited canonical revision and completing the review-only repository-validation handoff. Legacy Smoothificator scripts are preserved as upstream reference.
 
 ## Canonical architecture
 
@@ -19,9 +19,12 @@ Stock Orca
        -> Plugin Preview uses same plan
   -> normal Orca G-code generation
   -> psGCodePostProcess:
-       match exactly one plan
+       validate both fingerprints
+       match structural geometry uniquely
+       derive machine translation + Orca quantization
+       validate retraction / Zsafe / downstream clearance
        inject additive SubEdge paths
-       restore validated machine state
+       restore exact parsed machine state
   -> file/printer
 ```
 
@@ -32,9 +35,9 @@ No custom Orca build is required for v1.
 - ZAA is used first where Orca applies it.
 - Source mesh intersections are **material boundaries**, not nozzle centerlines.
 - The planner derives one or more printable centerlines inside the residual surface band.
-- Multiple paths may share one Z or use different Z values.
+- Multiple paths may share one Z or use different Z values; each printable v1 SubEdgePath itself is constant-Z.
 - The initial 0.08 mm constraint applies to **effective bead height above local support**, not pairwise path-Z spacing.
-- Candidate flow is optimized with a finite-bead model.
+- Candidate geometry uses a finite-bead model; geometric bead volume and commanded/calibrated extrusion volume are separate.
 - Original Orca structural/ZAA extrusion remains unchanged in v1.
 - Final quality is predicted from structural beads + candidate SubEdge beads together.
 - Preview and injection share one deterministic plan/hash.
@@ -57,13 +60,15 @@ The plugin provides a separate preview from the exact immutable plan:
 ## v1 safety scope
 
 Physical injection is intentionally narrow:
-- one object / one printable instance / one ModelPart volume;
+- one object / one total source instance / one ModelPart manifold volume;
 - current validated Bambu 0.4 mm single-tool profile family;
-- relative E;
-- firmware retract, arc fitting, line numbering, spiral, ironing, scarf, support/raft disabled;
+- relative E and provable saved retraction state;
+- firmware retract, arc fitting, adaptive PA, adaptive volumetric speed, fuzzy skin, line numbering, spiral, ironing, scarf, support/raft disabled where required;
+- no first-layer refinement;
 - no classic post-process script;
-- no other slicing-pipeline plugin;
+- no other slicing-pipeline capability besides this plugin;
 - nested/self-supported target geometry;
+- explicit hardware ToolClearanceProfile and downstream original-motion clearance validation;
 - fresh current-session slice.
 
 Unsupported configurations may be analyzed but are not injected.
