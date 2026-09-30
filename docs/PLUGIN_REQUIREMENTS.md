@@ -2,275 +2,255 @@
 
 ## 1. Compatibility baseline
 
-The technical audit used OrcaSlicer source commit:
+Technical audit baseline:
+OrcaSlicer main commit 789f848694b955d293ca6b277d1c8046aa6f7436, dated 2026-09-29.
 
-`789f848694b955d293ca6b277d1c8046aa6f7436`
+Production injection support is enabled only for explicitly tested Orca release/commit + Bambu machine/process/filament fixture families.
 
-as the source-level reference.
-
-Production injection support is granted only to explicitly tested Orca release/commit + printer/process/filament fixture families.
-
-SlicingPipeline is experimental; unknown API/source behavior defaults to analysis-only.
+Unknown plugin/API/source behavior => analysis-only.
 
 ## 2. Python/runtime
 
-Initial audited Orca plugin examples use:
-- Python >= 3.12;
-- NumPy for bound array access.
+Initial audited Orca plugin examples require Python >= 3.12 and use NumPy.
 
-Actual package metadata is finalized only after Phase 0.5 verifies the target embedded runtime.
+Phase 0.5 verifies the actual target embedded runtime before wheel metadata is finalized.
 
 ## 3. Plugin capabilities
 
 One package provides:
 - SlicingPipeline capability:
-  - `posSimplifyPath`;
-  - `psGCodePostProcess`;
+  - posSimplifyPath analyzer;
+  - psGCodePostProcess injector.
 - Script/UI capability:
   - preview/diagnostics.
 
 No UI calls from slicing workflow callbacks.
 
-## 4. Required read-only Orca data
+## 4. Required Orca bindings/data
 
-The compatible Orca build must expose:
+Compatible Orca must expose enough data for:
 - Print / PrintObject / Layer / LayerRegion;
 - Print-owned Model snapshot;
 - ModelObject / ModelInstance / ModelVolume;
-- source mesh vertices/triangles;
+- source mesh vertices/triangles and manifold diagnostics;
 - instance/volume/PrintObject transforms;
 - PrintObject bounding box;
-- simplified 3D ExtrusionPath geometry;
+- simplified 3D ExtrusionPath points;
 - width/height/mm3_per_mm/role;
-- resolved config through geometry context;
-- `ctx.config_value()` at G-code postprocess.
+- resolved config in geometry callback;
+- ctx.config_value() at postprocess;
+- capability self.get_config() at both hooks.
 
-Missing required binding => analysis/injection capability disabled as appropriate.
+Missing required contract disables the affected capability.
 
 ## 5. Printable source topology
 
-v1 injection requires:
+Physical injection requires:
 - one PrintObject;
-- exactly one total source ModelInstance;
-- exactly one positive ModelPart volume;
-- no negative/modifier/CSG helper volume;
-- one tool/filament execution context.
+- one total source ModelInstance;
+- one positive ModelPart volume;
+- no NegativeVolume/ParameterModifier/helper CSG volume;
+- finite valid triangle mesh;
+- current bound ModelVolume manifold;
+- centered-frame parity;
+- unambiguous required plane sections.
 
-The adapter reconstructs Orca's centered slice frame per ADR-0012.
+Unsupported source topology remains analysis-only.
 
-Transform parity failure => no injection.
+## 6. Geometry semantics
 
-## 6. ZAA normalization
+All domain geometry uses centered Orca PrintObject slice-space.
 
-For Z-contoured paths:
-- raw point Z is layer-relative;
-- absolute centered-slice Z = layer.print_z + unscaled offset;
-- local geometry-directed ZAA volume ratio = (path.height + offset) / path.height.
+Adapter responsibilities:
+- reconstruct centered frame per ADR-0012;
+- unscale path XY;
+- reconstruct ZAA absolute Z from relative path offsets;
+- reconstruct ZAA local geometry-directed height/volume behavior;
+- copy all data before live Orca references expire.
 
-Global calibration flow ratios are tracked separately from nominal geometric bead prediction.
+## 7. Fingerprints
 
-## 7. ExecutionConfigFingerprint
+Every plan stores:
+- ExecutionConfigFingerprint;
+- PluginSettingsFingerprint.
 
-A versioned fingerprint is built both:
-- during planning;
-- during `psGCodePostProcess` using `ctx.config_value()`.
+At psGCodePostProcess both are recomputed and must match exactly before final plan selection.
 
-It contains resolved semantic values, not independently interpreted raw overrides.
+ExecutionConfigFingerprint covers resolved Orca semantics for:
+- geometry/seam behavior;
+- flow/material;
+- retraction;
+- motion/Zsafe/printable height;
+- feature gates;
+- custom layer/role G-code;
+- plugin/postprocess environment.
 
-Required semantic groups include:
+PluginSettingsFingerprint covers plugin-owned values including:
+- tolerance/cost/search policy;
+- h_min;
+- candidate seam/gap;
+- ToolClearanceProfile id/version and margins;
+- optional speed cap;
+- execution safety margins/policy.
 
-### Geometry/seam
-- nozzle diameter;
-- seam_gap resolved semantics;
-- scarf/seam-slope state;
-- spiral state;
-- ironing state;
-- support/raft state.
+Missing or mismatched value => Skipped.
 
-### Flow/material
-- print_flow_ratio;
-- active filament_flow_ratio;
-- set_other_flow_ratios;
-- outer_wall_flow_ratio;
-- filament diameter;
-- filament max volumetric speed.
+## 8. Candidate-path contract
 
-### Retraction
-- relative/absolute E mode;
-- firmware-retraction state;
-- effective retract-on-layer-change;
-- effective retraction length;
-- retract speed;
-- deretract speed;
-- restart extra;
-- wipe/retract-before-wipe/retract-after-wipe values required by fixture semantics.
+Printable v1 SubEdgePath:
+- constant command Z;
+- explicit open path;
+- deterministic planned seam/start/gap;
+- ordered segment-local support/flow properties.
 
-### Motion
-- outer-wall speed;
-- XY travel speed;
-- Z travel speed;
-- active Z hop;
-- printer/active extruder printable height;
-- z_offset;
-- active extruder XY offset.
+Postprocess may derive execution commands but may not change candidate geometry/seam/flow intent.
 
-### External execution behavior
-- gcode line-number/checksum state;
-- gcode_comments;
-- arc fitting;
-- adaptive pressure advance;
-- static pressure-advance state for diagnostics;
-- machine/filament/process extrusion-role-change G-code;
-- before_layer_change_gcode;
-- layer_change_gcode;
-- classic post_process;
-- selected slicing-pipeline capabilities;
-- print-sequence/profile-family invariants required by fixtures.
+## 9. Flow contract
 
-Any missing/mismatched required semantic value => Skipped.
+The plan separates:
+- geometric mm3/mm for nominal bead prediction;
+- commanded mm3/mm for G-code/material limits.
 
-## 8. Printable geometry gates
+For supported external-surface semantics:
 
-Target region must be:
-- top-facing/nested/self-supported;
-- non-bridge;
-- no support/raft dependency;
-- valid local support height;
-- no candidate crossing;
-- no unresolved nozzle-clearance conflict.
+q_cmd = q_geom * print_flow_ratio * filament_flow_ratio * role_factor
 
-Unsupported regions may be previewed as non-injectable.
+role_factor = outer_wall_flow_ratio only when set_other_flow_ratios is enabled, else 1.
 
-## 9. Printable G-code/profile gates
+Final E is derived after machine-coordinate XYZ quantization.
 
-Initial physical v1 requires a golden-fixtured Bambu/Orca 0.4 mm single-tool family with:
+## 10. Printable geometry gates
 
+Injection requires:
+- no first-layer refinement;
+- nested/self-supported top-facing target;
+- no bridge/support-dependent target;
+- no unresolved candidate crossing/clearance;
+- fuzzy skin disabled for target;
+- no ambiguous mesh section.
+
+## 11. Printable process/execution gates
+
+Initial physical v1 requires:
+- one tool / one filament execution context;
 - relative E;
-- firmware retraction off;
+- firmware retract off;
+- zero ordinary restart extra;
+- unambiguous positive saved retraction at insertion boundary;
+- known effective retract/deretract speeds;
 - line numbering/checksum off;
 - arc fitting off;
+- adaptive pressure advance off;
+- filament adaptive volumetric speed off;
+- extrusion-role-change custom G-code empty;
 - spiral vase off;
-- ironing off for unsupported target;
 - scarf/sloped seam off;
+- unsupported ironing off;
 - support/raft off;
-- adaptive PA off;
-- role-change custom G-code empty;
-- classic post_process empty;
-- no other slicing-pipeline plugin;
-- verbose G-code/comments enabled for fixture diagnostics/matching;
-- supported motion-neutral before/layer-change custom code;
-- normal print, not calibration/tower mode;
+- no classic post_process;
+- no other slicing-pipeline capability besides this plugin;
+- verbose G-code/comments enabled for initial physical fixture;
+- supported motion-neutral layer-change custom G-code;
+- normal non-calibration print;
 - fresh current-session plan;
-- unambiguous positive retraction state at insertion boundary;
-- zero ordinary retract restart-extra;
 - positive active Z hop;
-- valid printable-height margin.
+- printable-height margin;
+- exact golden-fixtured profile family.
 
-Bambu standard process profiles may enable arc fitting by default. The plugin MUST report this as an unmet injection requirement; it MUST NOT silently change the user profile.
+The plugin reports unmet settings but never silently changes them.
 
-## 10. Seam handling
+## 12. Seam matching
 
-Nonzero normal seam gap is supported.
+Normal nonzero Orca seam gap is supported.
 
-Matcher must tolerate:
+Final structural matcher handles:
 - cyclic seam start;
 - seam split;
 - collinear subdivision;
-- one contiguous clip interval equal to the Orca-resolved seam-gap amount within tolerance.
+- one expected contiguous seam-gap clip;
+- final translation and formatter quantization.
 
-Raw ordered-loop equality is not a supported matcher.
+Raw ordered path equality is not sufficient.
 
-## 11. Coordinate execution mapping
+Exactly one structural match is required.
 
-Domain plan geometry stays in centered PrintObject slice-space.
+## 13. Execution-frame mapping
 
-At final G-code:
-- match unique structural geometry;
-- derive constant ((dx,dy,dz));
-- require consistency across multiple anchors;
-- apply only in G-code adapter.
+Plan geometry is not machine G-code geometry.
 
-Unknown/non-constant mapping => Skipped.
+Final matcher derives one constant translation (dx, dy, dz) from multiple references.
 
-## 12. Formatter compatibility
+Reject non-constant mapping, rotation, scale, shear, or ambiguity.
 
-For the audited Orca source descriptor:
-- XYZ/F precision: 3 decimals;
-- E precision: 5 decimals;
-- midpoint rounding matches C++ `std::round`.
+Only G-code code applies machine translation.
 
-Emitter and final validation share one compatibility quantizer.
+## 14. Orca formatter parity
+
+For the audited compatibility descriptor:
+- XYZ/F = 3 decimals;
+- E = 5 decimals;
+- midpoint rounding = C++ std::round, half away from zero.
+
+Do not use Python default round for parity.
 
 Unknown formatter contract => no injection.
 
-## 13. Flow and E conversion
+## 15. Speed / volumetric limit
 
-Candidate plan segment stores:
-- geometric mm³/mm;
-- commanded mm³/mm.
-
-For external-surface v1:
-
-[
-q_{cmd}
-=
-q_{geom}
-cdot print_flow_ratio
-cdot filament_flow_ratio
-cdot applicable outer role ratio.
-]
-
-Final E is derived only after machine XYZ quantization from the quantized segment length.
-
-Do not pre-store final E in the immutable plan.
-
-## 14. Speed and volumetric limits
-
-Each emitted segment speed is bounded by:
+Candidate speed is bounded by:
 - resolved outer-wall speed;
-- resolved filament max volumetric speed / commanded mm³/mm;
-- optional lower plugin cap.
+- fixed filament max volumetric speed / q_cmd;
+- optional lower plugin cap;
+- fixture-required lower matched structural-wall feed.
 
-No resolved safe bound => no injection.
+Filament adaptive volumetric speed is disabled in v1.
 
-## 15. Retraction/state requirements
+## 16. Retraction/state behavior
 
 Parser reconstructs actual final-G-code state.
 
-v1 candidate travel starts from an already-retracted supported boundary.
+Candidate cycle preserves saved relative-E retraction exactly:
+- travel while saved-retracted;
+- temporary exact unretract at candidate;
+- print;
+- exact re-retract;
+- finish in original saved state.
 
-The plugin:
-- travels safely while retracted;
-- unretracts exactly saved amount;
-- prints;
-- retracts exactly saved amount;
-- finishes in the same retraction state.
+The plugin does not reproduce wipe for its temporary cycle.
 
-It does not reproduce wipe.
+Unknown state => Skipped.
 
-Ambiguous retraction => Skipped.
+## 17. Safe-ceiling travel
 
-## 16. Safe-ceiling requirement
+All plugin-generated non-extruding XY travel occurs at Zsafe.
 
-Machine-space Zsafe is based on:
+Zsafe uses:
 - actual parsed saved Z;
-- target upper structural machine Z;
+- target upper machine Z;
 - positive active Z hop.
 
-Require:
-- Zsafe within active tool printable-height limit;
-- all injected non-extruding XY travel occurs at Zsafe;
-- vertical-only raise/descend around candidate XY travel.
+Zsafe must remain inside active tool printable-height limit.
 
-## 17. Final-state restoration
+## 18. Downstream original-motion clearance
 
-After injection, restore the actual parsed pre-insertion machine state, not an inferred nominal upper-layer state.
+Every physical candidate requires final validation against unchanged original Orca motion after the insertion point.
 
-The unchanged original G-code remains responsible for Orca's deferred layer/Z behavior.
+Use a versioned ToolClearanceProfile whose dimensions come from documented manufacturer geometry, measurement, or another explicit physical source.
 
-## 18. File processing
+Validate swept tool keep-out against quantized candidate bead envelopes for:
+- downstream travel;
+- downstream extrusion including ZAA lowered paths;
+- relevant pure-Z and modal/motion commands.
 
-Postprocessor is:
+Unknown motion or insufficient clearance => Skipped.
+
+No ToolClearanceProfile => analysis/preview only.
+
+v1 does not rewrite later original travel to repair a collision.
+
+## 19. File processing
+
+Postprocess is:
 - streaming;
 - parser/state-machine based;
 - validation-first;
@@ -280,42 +260,51 @@ Postprocessor is:
 - atomic;
 - all-or-nothing.
 
-Expected unsupported/validation result => PluginResult.Skipped + original file unchanged.
+Expected unsupported/validation condition:
+- stable internal reason;
+- PluginResult.Skipped;
+- original file unchanged.
 
-## 19. Preview
+Successful injection or validated already-injected no-op:
+- Success.
 
-Standard Orca preview is pre-postprocess.
+## 20. Preview
 
-Plugin preview uses the exact immutable plan and separate execution status.
+Orca standard preview is pre-postprocess.
 
-It explicitly shows unmet injection gates.
+Plugin preview uses the exact immutable plan and separate runtime status.
 
-## 20. Packaging
+It shows unmet injection gates explicitly.
 
-Target: pure-Python wheel.
+## 21. Packaging
+
+Target pure-Python wheel.
 
 No native/custom-Orca dependency in v1.
 
-## 21. Fixture requirement
+## 22. Golden fixture requirement
 
-No printer/profile family is injectable until repository fixtures record:
-- exact Orca release/commit;
-- exact machine/process/filament profile identity;
+No printer/profile family becomes injectable until fixtures record:
+- exact Orca version/commit;
+- exact machine/process/filament identity;
 - resolved semantic config;
+- plugin settings fingerprint;
+- ToolClearanceProfile id/evidence;
 - source G-code;
-- expected parser state;
-- structural matching expectations;
+- parser/retraction state;
+- structural matching;
 - execution-frame translation;
-- retraction state;
 - quantization;
+- speed/Zsafe bounds;
+- downstream-clearance expectations;
 - expected injected output;
 - idempotence;
 - representative failure cases.
 
 No fixture => analysis-only.
 
-## 22. Compatibility default
+## 23. Compatibility default
 
-Unknown Orca source/API, profile, config, modal state, custom code, calibration behavior, coordinate mapping, or machine limit => injection disabled.
+Unknown Orca source/API, profile, config, modal state, custom code, physical tool envelope, coordinate mapping, formatter behavior, or machine limit => injection disabled.
 
 Never best-effort mutate.
