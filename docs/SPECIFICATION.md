@@ -66,7 +66,9 @@ All domain/engine geometry uses **Orca centered PrintObject slice-space expresse
 For printable v1:
 - exactly one PrintObject;
 - exactly one total source ModelInstance;
-- exactly one positive ModelPart volume.
+- exactly one positive ModelPart volume;
+- the current bound source mesh is finite and manifold;
+- every required arbitrary-Z section forms an unambiguous closed material boundary.
 
 The Orca adapter MUST reconstruct the centered frame defined by ADR-0012. A direct `PrintObject.trafo() @ ModelVolume.matrix()` transform is insufficient.
 
@@ -108,8 +110,10 @@ The engine:
 
 A residual band may require:
 - multiple paths at one Z;
-- multiple paths at different Z;
+- multiple paths at different independently optimized Z values;
 - a combination.
+
+Each printable v1 SubEdgePath itself is planar/constant-Z. Segment-local effective height may still vary because the support surface below it varies.
 
 No fixed half-pitch, 1/2, 1/3, or uniform subdivision rule is permitted.
 
@@ -140,7 +144,9 @@ Pairwise feasibility is determined by:
 
 ## 8. Segment-local candidate extrusion
 
-A `SubEdgePath` is composed of ordered immutable `SubEdgeSegment` records.
+A `SubEdgePath` is an explicit open execution path at one immutable `command_z_mm`, composed of ordered immutable `SubEdgeSegment` records.
+
+Closed candidate contours are converted to open executable paths by a deterministic candidate seam/gap policy before plan finalization. That seam/gap is included in preview and finite-bead scoring.
 
 Each segment carries the local:
 - start/end XYZ;
@@ -279,11 +285,15 @@ The adapter copies and normalizes all required information before returning.
 
 ## 15. Planning/export configuration identity
 
-Planning creates a versioned `ExecutionConfigFingerprint` from resolved safety-relevant semantics.
+Planning creates:
+- a versioned `ExecutionConfigFingerprint` from Orca/export safety-relevant semantics;
+- a versioned `PluginSettingsFingerprint` from the complete validated Adaptive Sub-Edge settings that can affect plan geometry, optimization, seam policy, collision margins, or execution policy.
 
-At `psGCodePostProcess`, recompute it with `ctx.config_value()`.
+At `psGCodePostProcess`:
+- recompute the Orca fingerprint with `ctx.config_value()`;
+- recompute the plugin-settings fingerprint from the SlicingPipeline capability's current `self.get_config()`.
 
-Injection requires exact equality.
+Injection requires exact equality for both fingerprints.
 
 The fingerprint covers at minimum all settings that affect:
 - geometry/frame identity;
@@ -375,6 +385,9 @@ Do NOT synthesize Orca's deferred layer synchronization.
 Printable v1 additionally requires:
 - one tool / one filament execution context;
 - normal non-calibration print;
+- no first-layer SubEdge refinement;
+- fuzzy skin disabled for the target;
+- filament adaptive volumetric speed disabled;
 - adaptive pressure advance disabled;
 - extrusion-role-change custom G-code empty;
 - line numbers/checksums off;
@@ -399,6 +412,8 @@ Zsafe uses resolved active Z-hop/travel lift and MUST remain below the active to
 
 The plugin never silently changes Orca settings; unsupported settings are reported as analysis-only gates.
 
+Candidate execution speed is additionally bounded by the actual feed rate observed on the uniquely matched structural external-wall reference in final G-code when that observed feed is lower than config-derived limits.
+
 ## 22. Printable v1 environment
 
 Physical injection is enabled only for an explicitly golden-fixtured Bambu/Orca 0.4 mm single-tool profile family satisfying every requirement above.
@@ -407,7 +422,19 @@ The normal Bambu process may enable arc fitting by default; such a profile is an
 
 No fixture => no injection.
 
-## 23. G-code file mutation contract
+## 23. Downstream original-motion clearance
+
+Safe plugin travel is necessary but not sufficient because Orca generated all later G-code without knowledge of injected material.
+
+Before mutation, validate candidate material against unchanged downstream original motions using ADR-0025:
+- transform and quantize candidate bead envelopes into machine space;
+- scan downstream original motions over a conservative clearance horizon;
+- reject low-Z travel or extrusion whose nozzle-clearance proxy intersects candidate material;
+- reject unknown XYZ/E-affecting motion in the horizon.
+
+The software nozzle-clearance proxy is a screening model, not proof of arbitrary real hotend-body clearance. Physical nozzle-family clearance calibration is required before broad collision-safety claims.
+
+## 24. G-code file mutation contract
 
 `psGCodePostProcess` uses a streaming, all-or-nothing workflow:
 
@@ -425,7 +452,7 @@ Expected unsupported/validation failures return plugin `Skipped` and preserve va
 
 `Success` is reserved for successful injection or a validated already-injected no-op.
 
-## 24. Failure behavior
+## 25. Failure behavior
 
 Any uncertainty in:
 - source centered frame;
@@ -443,7 +470,7 @@ causes injection to be skipped.
 
 The project MUST prefer an unchanged valid Orca G-code over a guessed modification.
 
-## 25. Non-goals v1
+## 26. Non-goals v1
 
 - custom Orca/C++ dependency;
 - mutating live Orca perimeters;
@@ -457,10 +484,13 @@ The project MUST prefer an unchanged valid Orca G-code over a guessed modificati
 - arc G2/G3 candidate output;
 - adaptive-PA emulation;
 - unsupported overhang reconstruction;
+- first-layer SubEdge refinement;
+- fuzzy-skin correction;
+- adaptive-volumetric-speed parity;
 - calibration-mode injection;
 - claiming Orca standard preview contains injected paths.
 
-## 26. Governance
+## 27. Governance
 
 Implementation MUST follow:
 - `AGENTS.md`;
