@@ -38,6 +38,8 @@ No custom Orca build is required for v1.
 - Multiple paths may share one Z or use different Z values; each printable v1 SubEdgePath itself is constant-Z.
 - The initial 0.08 mm constraint applies to **effective bead height above local support**, not pairwise path-Z spacing.
 - Candidate geometry uses a finite-bead model; geometric bead volume and commanded/calibrated extrusion volume are separate.
+- Final completed-surface scoring is separated from chronological support: no candidate may rely on material that has not been printed yet.
+- Final physical clearance validates both plugin-generated motion and resumed original Orca motion against the same ToolClearanceProfile.
 - Original Orca structural/ZAA extrusion remains unchanged in v1.
 - Final quality is predicted from structural beads + candidate SubEdge beads together.
 - Preview and injection share one deterministic plan/hash.
