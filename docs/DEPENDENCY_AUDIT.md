@@ -150,3 +150,33 @@ The highest-risk area is not plugin access; it is safe translation of a geometry
 8. File atomicity/idempotence tests.
 9. Simulator/manual G-code review.
 10. Only then physical printing.
+
+
+### F-19 Plan print-space coordinates were not mapped to final G-code coordinates — Critical
+Orca source shows GCode::point_to_gcode() applies the current PrintInstance origin and active extruder XY offset, while change_layer() adds printer z_offset to machine Z.
+
+A plan generated from sliced print-space geometry therefore cannot be emitted directly as G-code XYZ.
+
+Fix: ADR-0009. At final G-code matching, derive and validate a constant (dx,dy,dz) translation from existing Orca-generated structural geometry. Only the G-code adapter applies it. Any inconsistent/non-constant mapping disables injection.
+
+### F-20 Candidate E conversion omitted Orca filament_flow_ratio — Critical
+A naive candidate emitter formula E = volume / filament_area is incomplete.
+
+Orca Extruder.cpp uses:
+E_per_mm3 = filament_flow_ratio / filament_crosssection.
+
+Fix: ADR-0010. Capture/validate active filament diameter and flow ratio and use Orca-equivalent conversion for candidate extrusion.
+
+## Final consistency result
+After the corrections above:
+- one canonical ADR sequence exists: 0001 through 0010;
+- normative documents use posSimplifyPath;
+- ZAA relative-Z and local-flow semantics are consistent;
+- 0.08 mm semantics are effective bead height, not neighbor spacing;
+- source boundary and nozzle centerline are separated;
+- original structural wall is unchanged in v1;
+- machine-coordinate emission requires validated execution-frame translation;
+- injected E includes filament_flow_ratio;
+- final G-code processing is streaming/all-or-nothing.
+
+No known document-level contradiction remains in the reviewed v1 architecture at this audit point.
