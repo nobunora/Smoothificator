@@ -327,7 +327,7 @@ Integration:
 
 Expected plugin rejection must not destroy valid original export.
 
-## Gate U — Streaming atomic injector
+## Gate U — Binary byte-preserving streaming atomic injector
 
 Three passes:
 1. validation;
