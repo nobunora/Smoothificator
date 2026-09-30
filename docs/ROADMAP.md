@@ -6,7 +6,8 @@ Implementation is gated. Do not advance until the previous phase exit criteria p
 Complete before code:
 - architecture boundaries
 - document precedence
-- canonical ADR set 0001-0008
+- canonical ADR set 0001-0011
+- project-template AGENTS/workflow rules integrated
 - dependency/feasibility audit
 - stock-Orca execution architecture
 - source-verified ZAA Z/flow semantics
@@ -17,6 +18,22 @@ Exit:
 - no duplicate/conflicting Accepted ADRs
 - normative docs consistent
 - no known source-level blocker in v1 domain
+- final full-text consistency audit completed
+- handoff spec updated to the audited canonical commit
+
+## Phase 0.25 — repository validation handoff
+Before implementation:
+- update `docs/specs/adaptive-subedge-v1.md` with the final audited canonical commit
+- create an implementation record from `docs/implementation/TASK_TEMPLATE.md`
+- run a review-only repository pass using `.codex/repository-review.md`
+- disposition must be `validated`
+- any spec conflict returns to adjudication
+
+Specification/design PR and production implementation PR should remain separate.
+
+Exit:
+- repository review validated
+- approved implementation scope and verification plan recorded
 
 ## Phase 0.5 — architecture skeleton
 Implement only:
@@ -173,8 +190,19 @@ Exit:
 - original bytes unchanged on every failure
 - repeated export/upload copies handled independently
 
+## Phase 4F — independent implementation review
+Before hardware:
+- primary implementation review
+- blind review under `docs/REVIEW_PROCESS.md`
+- finding reconciliation
+- zero unresolved Critical/High findings
+
+Exit:
+- review convergence criteria satisfied
+- exact fixture/profile evidence recorded
+
 ## Phase 5 — first physical PoC
-Only after all prior gates.
+Only after all prior gates and Phase 4F review convergence.
 
 Initial:
 - supported Bambu 0.4 mm
