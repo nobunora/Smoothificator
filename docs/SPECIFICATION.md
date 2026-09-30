@@ -42,7 +42,9 @@ Sub-edges are not purely additive.
 For a refined outer-wall interval:
 - intermediate passes are added at optimized Z values;
 - the original outer-wall path at Z1 remains at Orca's original XY geometry;
-- its extrusion is reduced to the remaining top-pass height.
+- its extrusion is reduced to the remaining local top-pass height.
+
+If ZAA made the upper wall non-planar, the remaining top-pass height is computed per matched extrusion segment from that segment's actual absolute command Z.
 
 Pass heights are derived from adjacent command Z values.
 
@@ -148,6 +150,8 @@ Injection is enabled only for:
 - no classic post-processing scripts;
 - no other mutating slicing-pipeline plugin;
 - no support-dependent refined region;
+- not the first printed layer;
+- no bridge-role target segment;
 - supported Orca/printer G-code fixture family;
 - outward/top-facing non-crossing external wall.
 
