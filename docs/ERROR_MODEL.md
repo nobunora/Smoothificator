@@ -57,9 +57,7 @@ h_{local}=h_{path}+d
 
 and Orca's local ZAA volume ratio is:
 
-[
-r_{zaa}=rac{h_{path}+d}{h_{path}}.
-]
+zaa_ratio = (path.height + d) / path.height
 
 Define the v1 local **geometric** volumetric target as:
 
@@ -89,9 +87,7 @@ Constraints:
 
 Given a fixed (h) and geometric volume (q), an effective width may be reconstructed as:
 
-[
-w=rac{q}{h}+h(1-pi/4).
-]
+w = q / h + h * (1 - pi/4)
 
 This is useful for ZAA structural envelope reconstruction.
 
@@ -129,9 +125,7 @@ No assumption is made that a calibration multiplier such as `filament_flow_ratio
 
 The initial 0.4 mm nozzle research value:
 
-[
-h_{min}=0.08	ext{ mm}
-]
+h_min_mm = 0.08
 
 applies to the candidate's **effective bead height above its local supporting material**:
 
@@ -232,10 +226,7 @@ If quantization invalidates the solution, the plan is skipped; the injector does
 
 For each segment:
 
-[
-v_{vol}=
-rac{V_{max}}{q_{cmd}}
-]
+v_vol = V_max / q_cmd
 
 where (V_{max}) is resolved filament max volumetric speed.
 
