@@ -74,6 +74,7 @@ orca_plugin/
     execution_frame.py
     quantization.py
     retraction.py
+    downstream_clearance.py
     anchors.py
     validation.py
     emitter.py
@@ -101,6 +102,8 @@ The domain package owns immutable vocabulary only.
 
 Primary types include:
 - `ErrorMetrics`;
+- `NozzleClearanceModel`;
+- `PluginSettingsFingerprint`;
 - `StructuralPathSegment`;
 - `StructuralLoopReference`;
 - `SurfaceBand`;
@@ -199,6 +202,7 @@ It owns:
 - streaming lexical/parser state;
 - actual emitted machine-state reconstruction;
 - plan selection/matching;
+- downstream-original-motion clearance simulation against candidate material;
 - seam-invariant structural-loop matching;
 - execution-frame translation;
 - Orca-compatible quantization;
@@ -259,7 +263,8 @@ Do not assume spatially constant flow for ZAA paths.
 ## 12. Candidate plan semantics
 
 `SubEdgeSegment` stores:
-- high-precision print-space start/end XYZ;
+- high-precision print-space start/end XY;
+- plan-space Z inherited from the parent path's constant `command_z_mm`;
 - local support Z;
 - effective bead height;
 - width;
@@ -269,6 +274,8 @@ Do not assume spatially constant flow for ZAA paths.
 - validation/support metadata.
 
 It MUST NOT store machine-coordinate XYZ or authoritative final emitted E.
+
+Every printable v1 `SubEdgePath` is already an open execution path at one constant `command_z_mm`. Closed source contours are canonicalized/seam-clipped before the plan is frozen.
 
 Final E is derived at export after execution-frame mapping and XYZ quantization per ADR-0021.
 
@@ -471,6 +478,7 @@ No guessed fallback may modify printer behavior.
 
 Structured diagnostics should reconstruct:
 - plan hash / attempt id;
+- plugin-settings fingerprint;
 - plugin + audited Orca compatibility version;
 - execution config fingerprint;
 - phase durations;
@@ -510,7 +518,31 @@ Each supported Orca/profile family has:
 
 Compatibility expansion requires fixtures/tests and ADR when safety semantics change.
 
-## 28. File and change discipline
+## 28. Source-mesh validity
+
+Printable v1 source geometry must pass the ADR-0027 validity contract before engine use:
+- finite vertices;
+- valid triangle indices;
+- current bound ModelVolume reports manifold;
+- non-degenerate transformed bounds;
+- unambiguous required plane sections.
+
+The plugin does not create an independent mesh-repair authority.
+
+## 29. Downstream clearance ownership
+
+`downstream_clearance.py` consumes only:
+- final parsed original motion;
+- quantized machine-space candidate bead envelopes;
+- a versioned NozzleClearanceModel.
+
+It does not change candidate geometry.
+
+It checks future unchanged Orca motion because Orca generated that motion before candidate material existed.
+
+Software clearance is a conservative proxy. Physical hotend/nozzle envelope calibration belongs to printer-fixture evidence, not the geometry engine.
+
+## 30. File and change discipline
 
 - one responsibility per file/function;
 - target <400 logical lines;
