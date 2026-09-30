@@ -1,72 +1,119 @@
 # Plugin Requirements — Stock Orca Printable Architecture
 
-## Orca
-Target Orca builds with Python Plugin System + SlicingPipeline. Pin exact tested version/build because the API is experimental.
+## 1. Orca requirement
+Target Orca builds with Python Plugin System and SlicingPipeline.
 
-## Capabilities
-One package registers:
-1. SlicingPipeline
-   - posSimplifyPath Analyzer
-   - psGCodePostProcess Injector
+Pin exact tested Orca versions per plugin release because SlicingPipeline is experimental.
+
+## 2. Required plugin capabilities
+One plugin package MUST register:
+1. SlicingPipeline capability
+   - posSimplifyPath analyzer
+   - psGCodePostProcess matcher/rewriter/injector
 2. Script capability
-   - Preview/diagnostics on UI thread
+   - user-triggered preview/diagnostics using copied PlanStore data
 
-Never call host UI from SlicingPipeline execution.
+Orca package registration supports multiple capability classes.
 
-## Shared state
-PlanStore is plugin-owned, thread-safe, process-local.
+Never call orca.host.ui.* from SlicingPipeline execute().
 
-Live Orca objects never enter PlanStore.
+## 3. Why posSimplifyPath
+posContouring is conditional on Orca deciding contouring is needed.
 
-Fresh slice in current plugin load is required for Injection.
+posSimplifyPath is after contouring and path simplification and is therefore the canonical v1 analysis seam.
 
-## Printable v1 model gates
-- one object
-- one instance
-- one ModelPart volume
-- no NegativeVolume/ParameterModifier
-- no support/raft
-- nested top-facing target
-- validated coordinate frame
+## 4. Stock Orca feasibility
+Stock Orca exposes enough read-only geometry to compute:
+- source mesh;
+- structural layers;
+- final simplified 3D extrusion paths including any ZAA offsets;
+- width/height/mm3_per_mm;
+- residual error;
+- complete WallPassSchedules.
 
-## Printable v1 process gates
-- one tool/material
-- 0.4 mm nozzle initial target
-- relative E
-- firmware retraction off
-- arc fitting off
-- line number/checksum mode off
-- spiral vase off
-- ironing off
-- scarf seam off
-- no other slicing-pipeline capability
-- classic post_process empty
+psGCodePostProcess provides the exported working G-code path for intended in-place post-processing.
 
-## Initial printer profile family
-Current stock Bambu/Orca A1, P1P/P1S and X1 Carbon 0.4 mm profile family is the first Golden-G-code target.
+Therefore v1 can print without live perimeter mutation:
+- analyze geometry before export;
+- store immutable plan;
+- rewrite original outer-wall E and insert planned intermediate paths in exported G-code.
 
-Current inspected layer-change template contains motion-neutral M73/M991 notifications and before-layer code is empty through the inspected inheritance chain.
+## 5. Coordinate requirement
+ExtrusionPath Z is not assumed absolute.
 
-Profile/template hashes and config are revalidated per Orca release.
+Adapter MUST normalize:
+Z_abs = layer.print_z + unscale(point_z)
 
-## Geometry dependencies
-NumPy required.
+All plan/preview/injection geometry uses absolute print-space mm.
 
-Avoid mandatory external compiled polygon libraries in v1.
+## 6. Preview
+Orca standard G-code viewer is pre-post-process.
 
-Planar boolean/offset operations use a domain port; Orca-backed geometry implementation may be used during the live hook and must return copied domain data.
+Plugin preview uses the exact immutable plan later used for injection.
 
-## Nozzle model
-Physical Injection requires validated nozzle-envelope parameters/safety margin.
+Preview status combines immutable plan + separate execution status record.
 
-If unavailable, Analyzer/Preview may operate but Injector remains disabled.
+## 7. Cross-hook handoff
+Live geometry cannot cross hook boundaries.
 
-## Preview
-Standard Orca G-code viewer is pre-post-process.
+PlanStore MUST:
+- be process-local;
+- thread-safe;
+- store immutable plans;
+- store execution status separately;
+- permit candidate enumeration for G-code matching;
+- never store Orca live objects.
 
-Plugin Preview displays the exact immutable plan and runtime Injection status.
+At export, select a plan only if exactly one candidate matches all G-code anchors/state. Zero/multiple matches => no injection.
 
-## Post-process
-Injector edits ctx.gcode_path only after full validation.
+## 8. Printable v1 gates
+All must pass:
+- one PrintObject;
+- one printable instance;
+- one positive ModelPart volume;
+- no negative/modifier/helper volumes;
+- one tool/extruder;
+- By Layer print sequence;
+- absolute XYZ mode;
+- relative E in target interval;
+- arc fitting disabled;
+- scarf/seam-slope disabled;
+- fuzzy skin disabled;
+- spiral/vase disabled;
+- no classic post-processing scripts;
+- no other geometry/G-code-mutating slicing-pipeline plugin;
+- no support-dependent target;
+- supported G-code fixture family;
+- non-crossing outward/top-facing external wall.
 
-Unknown profile/API/dialect/state defaults to Injection disabled.
+Unsupported configurations enter analysis-only mode or INJECTION_SKIPPED.
+
+## 9. Flow/rewrite requirement
+Refinement MUST redistribute outer-wall extrusion.
+
+The original upper external-wall loop is matched and its E increments are scaled/recomputed for the remaining effective pass height.
+
+Intermediate passes are then added below it.
+
+Additive-only injection is forbidden.
+
+## 10. Packaging
+Target a pure-Python wheel.
+
+No compiled/native plugin dependency in v1.
+
+## 11. Golden-fixture prerequisite
+Before physical injection support is enabled for a printer/profile family, repository MUST contain:
+- exact Orca version/profile metadata;
+- original representative G-code fixture;
+- parser-state expectations;
+- layer/wall anchor expectations;
+- expected rewritten/injected output;
+- idempotence fixture.
+
+Without a golden fixture, mode is analysis-only.
+
+## 12. Compatibility behavior
+Unknown Orca API, profile, dialect, or state defaults to non-destructive disablement.
+
+Never use best-effort mutation.
