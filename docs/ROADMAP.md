@@ -57,7 +57,7 @@ Implement/test:
 - rounded-rectangle geometric bead formula;
 - ZAA local geometry ratio;
 - geometric versus commanded volume separation;
-- Orca external-wall command-flow multipliers;
+- Orca external-wall command-flow multipliers including print/filament/optional outer-wall ratios;
 - effective bead height above support;
 - no-refinement baseline identity.
 
