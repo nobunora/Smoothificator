@@ -75,7 +75,7 @@ orca_plugin/
     execution_frame.py
     quantization.py
     retraction.py
-    downstream_clearance.py
+    tool_clearance.py
     anchors.py
     validation.py
     emitter.py
@@ -103,6 +103,8 @@ The domain package owns immutable vocabulary only.
 
 Primary types include:
 - `ErrorMetrics`;
+- `FinalSurfaceEnvelope` / support-state value types;
+- `ChronologicalSupportEnvelope` / candidate support dependency metadata;
 - `ToolClearanceProfile`;
 - `PluginSettingsFingerprint`;
 - `StructuralPathSegment`;
@@ -135,6 +137,8 @@ The engine owns pure physical/geometric decision logic:
 - residual surface-band derivation;
 - centerline placement;
 - finite-bead prediction;
+- FinalSurfaceEnvelope construction;
+- ChronologicalSupportEnvelope/support dependency evaluation;
 - geometric flow model;
 - support/nesting;
 - collision/clearance;
@@ -206,7 +210,7 @@ It owns:
 - binary line-stream lexical/parser state with raw-byte preservation;
 - actual emitted machine-state reconstruction;
 - plan selection/matching;
-- downstream-original-motion clearance simulation against candidate material;
+- chronological plugin + downstream-original tool-clearance simulation against printed material;
 - seam-invariant structural-loop matching;
 - execution-frame translation;
 - Orca-compatible quantization;
@@ -536,7 +540,7 @@ Printable v1 source geometry must pass ADR-0027 and ADR-0030 before engine use:
 
 The plugin does not create an independent mesh-repair authority.
 
-## 29. Downstream clearance ownership
+## 29. Final chronological tool-clearance ownership
 
 ToolClearanceProfile ownership:
 - schema/value object lives in domain/settings;
@@ -546,14 +550,16 @@ ToolClearanceProfile ownership:
 
 
 
-`downstream_clearance.py` consumes only:
-- final parsed original motion;
+`tool_clearance.py` consumes only:
+- quantized plugin execution motions;
+- final parsed original motions;
+- chronological printed-material state;
 - quantized machine-space candidate bead envelopes;
 - a versioned ToolClearanceProfile.
 
 It does not change candidate geometry.
 
-It checks future unchanged Orca motion because Orca generated that motion before candidate material existed.
+It validates plugin-generated and resumed-original motion in one chronological simulation. Earlier deposited candidate material becomes an obstacle for later motions; future material does not. A narrower downstream-original helper may exist internally, but `tool_clearance.py` owns the final physical clearance decision.
 
 Software clearance is a conservative proxy. Physical hotend/nozzle envelope calibration belongs to printer-fixture evidence, not the geometry engine.
 
