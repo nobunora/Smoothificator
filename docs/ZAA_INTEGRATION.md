@@ -30,9 +30,7 @@ Domain/engine uses absolute centered-slice Z only.
 
 Audited Orca G-code applies:
 
-[
-r_{zaa}=rac{path.height+d}{path.height}
-]
+zaa_ratio = (path.height + d) / path.height
 
 for non-ironing Z-contoured segment extrusion.
 
