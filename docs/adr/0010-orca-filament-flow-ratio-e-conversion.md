@@ -1,6 +1,6 @@
 # ADR-0010: Match Orca filament flow ratio when converting candidate volume to E
 
-Status: Accepted
+Status: Superseded by ADR-0015
 Date: 2026-09-30
 
 ## Context
@@ -52,3 +52,6 @@ Add:
 - plan/profile mismatch rejection when filament flow ratio changes after planning.
 
 Supersedes: none.
+
+
+Supersession note: ADR-0015 retains the requirement to account for filament_flow_ratio but replaces this incomplete standalone formula with Orca's complete v1 external-wall flow-modifier chain.
