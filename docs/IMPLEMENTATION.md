@@ -49,7 +49,7 @@ Read all non-superseded ADRs relevant to the task.
 As of this audit:
 - ADR-0001 through ADR-0009;
 - ADR-0010 is superseded by ADR-0015;
-- ADR-0011 through ADR-0031, subject to explicit supersession notes.
+- ADR-0011 through ADR-0033, subject to explicit supersession notes.
 
 Later ADRs override earlier clauses only where stated.
 
@@ -110,7 +110,7 @@ orca_plugin/
     execution_frame.py
     quantization.py
     retraction.py
-    downstream_clearance.py
+    tool_clearance.py
     anchors.py
     validation.py
     emitter.py
@@ -501,8 +501,10 @@ Inputs:
 - speed/volumetric constraints.
 
 For each candidate set:
-- validate support/collision;
-- predict combined nominal surface;
+- simulate chronological support in immutable execution order;
+- reject any future-material or cyclic support dependency;
+- validate candidate geometry/collision;
+- predict the separate completed FinalSurfaceEnvelope;
 - compute required error metrics;
 - score cost;
 - choose minimum-cost feasible set.
@@ -539,7 +541,7 @@ Display:
 - candidate paths/segments;
 - geometric versus commanded flow;
 - local bead-height range;
-- support/nesting;
+- support/nesting and candidate dependency/order diagnostics;
 - error metrics;
 - compatibility gates;
 - plan hash/status.
@@ -769,7 +771,7 @@ Pass 1 — validation:
 - derive one execution-frame translation;
 - quantize and derive all candidate execution commands;
 - validate speed/Zsafe/retraction;
-- validate quantized candidate bead envelopes against unchanged downstream original motions using downstream_clearance.py and the versioned ToolClearanceProfile.
+- validate the complete quantized plugin-motion schedule plus unchanged downstream original motions using tool_clearance.py, the chronological printed-material state, and the versioned ToolClearanceProfile.
 
 No file mutation.
 
@@ -862,7 +864,8 @@ No physical printing until all software/fixture gates and independent review req
 - no first-layer candidate injection;
 - no blind trust in raw triangle normals/material side;
 - no text-mode G-code rewrite or newline normalization;
-- no injection without validated downstream original-motion clearance and ToolClearanceProfile;
+- no injection without validated chronological plugin + downstream-original tool clearance and ToolClearanceProfile;
+- no support from future material or cyclic candidate dependencies;
 - no ordered raw-loop hash final matching;
 - no direct print-space coordinate emission;
 - no Python default rounding for Orca G-code;
