@@ -1,139 +1,284 @@
-# Surface Error, Bead and Support Model
+# Surface Error, Bead, Support, and Flow Model
 
-## 1. Coordinate semantics
-All engine coordinates are absolute print-space millimeters.
+This document defines the v1 ideal geometry model. It does not claim to be a complete empirical extrusion model.
 
-Orca ZAA path points are normalized by the adapter:
-Z_abs = layer.print_z + unscale(path_point.z)
+## 1. Coordinate frame
 
-For Z-contoured non-ironing segments, Orca's emitted extrusion is also locally scaled:
-effective_flow_ratio = (path.height + z_offset) / path.height
+All engine geometry uses Orca's centered PrintObject slice-space in millimeters.
 
-The baseline predictor MUST reproduce both Z and local flow effects.
+The Orca adapter owns:
+- scaled XY -> mm;
+- centered source-mesh reconstruction per ADR-0012;
+- ZAA relative-Z -> absolute centered-slice Z.
+
+No engine code performs Orca transform reconstruction.
 
 ## 2. Surface error
-Let M be the ideal model boundary and P the predicted printed envelope.
 
-Primary error:
-e_n(q) = (q - p) dot n(p)
+Let:
+- (M) = ideal source-model material boundary;
+- (P) = predicted nominal printed bead envelope.
 
-where p is nearest/corresponding point on M and n(p) is its outward normal.
+For a sampled point (q) on/near the predicted envelope, define signed normal-oriented error against corresponding/closest source point (p) with outward normal (n(p)):
+
+[
+e_n(q)=(q-p)cdot n(p).
+]
+
+Initial implementation may use a robust closest-point approximation plus sign from source normal/inside-outside evidence.
 
 Required metrics:
-- E_max absolute normal error
-- E_rms
-- E_p95
-- mean signed bias
+- (E_{max}): maximum absolute error;
+- (E_{rms});
+- (E_{p95});
+- signed mean/bias.
 
-Both underfill and overbuild matter.
+Underfill and overbuild are both errors.
 
-## 3. Final combined surface
-v1 does NOT replace or rewrite Orca structural beads.
+## 3. Structural baseline
 
-Candidate quality is evaluated on the combined envelope of:
-- lower structural/post-ZAA beads;
-- all candidate SubEdge beads;
-- upper structural/post-ZAA beads that Orca will print unchanged.
+The baseline includes the final simplified Orca structural paths visible at `posSimplifyPath`.
 
-This is the authoritative overfill/overlap model.
+### Normal planar segment
 
-## 4. Flow model
-For a normal non-bridge candidate bead with width w and effective bead height h:
+Use:
+- path width;
+- path nominal height;
+- path nominal geometric `mm3_per_mm`;
+- absolute layer/path Z.
 
-A = h * (w - h * (1 - pi/4))
+### ZAA segment
 
-mm3_per_mm = A
+For local ZAA offset (d):
 
-This matches Orca Flow::mm3_per_mm() rounded-rectangle model.
+[
+h_{local}=h_{path}+d
+]
 
-A candidate is invalid if required width/height/flow is outside calibrated printable bounds.
+and Orca's local ZAA volume ratio is:
 
-ZAA structural beads use Orca's local extrusion scaling described in section 1.
+[
+r_{zaa}=rac{h_{path}+d}{h_{path}}.
+]
 
-## 5. Meaning of the 0.08 mm constraint
-Initial h_min = 0.08 mm for the 0.4 mm nozzle target.
+Define the v1 local **geometric** volumetric target as:
 
-It applies to **effective deposited bead height above local supporting material**, not to pairwise Z distance between candidate paths.
+[
+q_{geom,zaa}=q_{path}cdot r_{zaa}.
+]
 
-For candidate j:
-h_eff,j = z_nozzle,j - z_support,j
+This is paired with (h_{local}) to reconstruct an effective finite bead for nominal geometry prediction.
 
-Require:
-h_min <= h_eff,j <= configured maximum.
+Global print/filament/outer-wall flow calibration ratios are NOT multiplied into the ideal geometric envelope; they are execution calibration values handled separately.
 
-Two non-crossing candidate paths may have |z_i-z_j| < 0.08 mm if each has sufficient local support height and passes all clearance/overlap checks.
+## 4. Candidate geometric bead model
 
-## 6. Local support model
-For each candidate centerline, determine support height from the predicted lower material envelope at/under that path footprint.
+For a normal non-bridge candidate with effective bead height (h) and nominal width (w), initial rounded-rectangle cross-section:
 
-v1 supports only nested/self-supported top-facing geometry.
+[
+q_{geom}
+=
+hleft(w-h(1-pi/4)ight).
+]
 
-Required local nesting:
-higher material sections must not expand outward beyond lower support beyond tolerance.
+Constraints:
+- (h>0);
+- (w>0);
+- printable calibration bounds apply;
+- any invalid/non-positive cross-section is infeasible.
 
-Reject unsupported outward-expanding/overhang regions in printable v1.
+Given a fixed (h) and geometric volume (q), an effective width may be reconstructed as:
 
-## 7. Surface boundary vs nozzle centerline
-A mesh-plane intersection C(z) is the target **material boundary**, not the extrusion centerline.
+[
+w=rac{q}{h}+h(1-pi/4).
+]
 
-The planner must derive centerlines inside the material side based on:
-- bead width/shape
-- available surface band
-- lower support envelope
-- target final boundary
+This is useful for ZAA structural envelope reconstruction.
 
-No fixed half-width offset is assumed exact.
+## 5. Geometric versus commanded volume
 
-## 8. Surface-band coverage
-A wide shallow terrace may require multiple centerlines.
+Following ADR-0022:
 
-The optimizer may generate:
-- several paths at one Z;
-- several paths at different Z;
-- combinations of both.
+### Geometric volume
+Used for surface prediction/optimization.
 
-Coverage is scored by the final finite-bead envelope.
+Represents the nominal bead geometry the slicer/plugin is trying to create.
 
-The old assumption "one Z schedule for one whole wall loop" is not a v1 requirement.
+### Commanded volume
+Used for E generation and max-volumetric-speed checks.
 
-## 9. Candidate optimization
-For each eligible error region:
-1. predict baseline structural/ZAA bead envelope;
-2. identify residual surface band;
-3. generate candidate centerlines and nozzle Z values;
-4. derive local support height and bead height;
-5. assign candidate width/flow;
-6. combine candidate beads with unchanged structural beads;
-7. reject support/crossing/nozzle-clearance invalid candidates;
-8. recompute error;
-9. select minimum-cost feasible candidate set meeting tolerance.
+For v1 external-surface candidate segment:
 
-No fixed 1/2 or 1/3 pitch assumption.
+[
+q_{cmd}
+=
+q_{geom}
+cdot r_{print}
+cdot r_{filament}
+cdot r_{outer}.
+]
 
-## 10. Collision model
-Candidate paths are non-crossing and ordered so lower required nozzle Z paths are printed before higher ones where order matters.
+Where (r_{outer}=1) unless Orca `set_other_flow_ratios` enables `outer_wall_flow_ratio`.
 
-Pairwise Z alone does not establish safety.
+### Physical empirical volume
+Not yet modeled.
 
-Validate:
-- support footprint
-- finite bead envelope
-- nozzle-body clearance
-- safe travel path
-- path crossings
-- structural-layer ceiling
+No assumption is made that a calibration multiplier such as `filament_flow_ratio=0.98` means the real bead becomes exactly 2% smaller. Physical calibration is a later phase.
 
-G-code execution additionally uses the safe-ceiling travel invariant defined by ADR-0007.
+## 6. Effective bead height and 0.08 mm rule
 
-## 11. Validation geometry
-Initial:
-- fixed 1, 5, 10, 15, 20, 25, 30 degree coupons
-- continuous 1-30 degree smooth curve
+The initial 0.4 mm nozzle research value:
+
+[
+h_{min}=0.08	ext{ mm}
+]
+
+applies to the candidate's **effective bead height above its local supporting material**:
+
+[
+h_{eff,j}=Z_{nozzle,j}-Z_{support,j}.
+]
+
+It is NOT a minimum pairwise Z difference between two candidate paths.
+
+Two nearby candidate centerlines may differ by less than 0.08 mm in absolute Z if each has valid local support and all overlap/clearance/collision checks pass.
+
+## 7. Local support envelope
+
+For each candidate segment:
+1. query the predicted material already present below/at the segment footprint;
+2. determine local support height/overlap;
+3. derive (h_{eff});
+4. reject unsupported/excessively weak contact;
+5. evaluate candidate bead overlap with existing/candidate material.
+
+Printable v1 requires nested/self-supported top-facing surface bands.
+
+Higher target material sections must remain contained/supported by lower predicted material within tolerance.
+
+## 8. Material boundary versus nozzle centerline
+
+A mesh-plane intersection (C(z)) is a target material boundary.
+
+It MUST NOT be emitted directly as nozzle centerline.
+
+The surface-band planner derives one or more centerlines inside the material side considering:
+- bead width/shape;
+- target boundary;
+- lower support envelope;
+- desired final outer envelope;
+- local coverage;
+- nozzle clearance.
+
+No fixed half-width inset is assumed universally exact.
+
+## 9. Multi-path surface-band coverage
+
+A shallow terrace may require several candidate centerlines.
+
+The optimizer may place:
+- multiple paths at the same Z;
+- paths at different Z;
+- path segments with locally varying support/effective bead height.
+
+Candidate properties are segment-local per ADR-0014.
+
+No fixed vertical pass schedule is a v1 invariant.
+
+## 10. Final combined nominal surface
+
+For scoring, combine:
+- lower structural/ZAA geometric beads;
+- all candidate geometric beads;
+- upper structural/ZAA geometric beads.
+
+Original structural Orca paths remain unchanged.
+
+The optimizer must detect when added candidate material creates overbuild that outweighs residual-error improvement.
+
+## 11. Candidate optimization
+
+For each eligible residual region:
+
+1. build normalized structural baseline;
+2. compute residual surface-error field;
+3. derive target residual surface band;
+4. generate candidate centerlines/Z choices;
+5. determine local support/effective bead height;
+6. compute candidate geometric flow;
+7. compute execution commanded flow separately;
+8. reject unsupported/crossing/nozzle-clearance invalid candidates;
+9. build combined nominal finite-bead envelope;
+10. calculate error metrics;
+11. choose minimum-cost feasible set meeting tolerance.
+
+First solver may use bounded grid/beam search.
+
+Continuous optimization is optional later.
+
+## 12. Execution quantization check
+
+The optimizer may work at higher precision, but an injectable plan is not fully execution-valid until the G-code adapter:
+
+1. maps print-space to machine space;
+2. applies Orca-compatible XYZ quantization;
+3. recomputes emitted segment lengths;
+4. derives and quantizes E;
+5. rechecks execution-sensitive constraints.
+
+If quantization invalidates the solution, the plan is skipped; the injector does not mutate it.
+
+## 13. Speed/volumetric constraint
+
+For each segment:
+
+[
+v_{vol}=
+rac{V_{max}}{q_{cmd}}
+]
+
+where (V_{max}) is resolved filament max volumetric speed.
+
+Candidate speed must be no greater than:
+- resolved outer-wall speed;
+- (v_{vol});
+- any lower configured plugin cap.
+
+Geometric scoring may estimate time from the resulting conservative speed.
+
+## 14. Collision and travel
+
+Geometry feasibility validates:
+- bead overlap;
+- path crossing;
+- support footprint;
+- nozzle-body clearance;
+- upper structural/candidate interaction.
+
+Execution travel safety is separate:
+- actual machine state from parser;
+- safe-ceiling vertical lift;
+- no non-extruding XY below Zsafe;
+- exact state restore.
+
+Do not mix path-planning geometry collision with G-code modal-state correctness.
+
+## 15. Validation geometry
+
+Initial deterministic geometry suite:
+- fixed slopes: 1°, 5°, 10°, 15°, 20°, 25°, 30°;
+- continuous tangent-angle sweep approximately 1°–30°;
+- translated/rotated/scaled source-transform fixtures;
+- synthetic ZAA varying-Z structural paths;
+- shallow terraces requiring multiple centerlines.
 
 Report:
-- E_max/E_rms/E_p95/bias
-- candidate path length
-- material delta
-- estimated time
-- candidate bead heights
-- measured roughness where available
+- E_max / E_rms / E_p95 / bias;
+- added path length;
+- geometric added volume;
+- commanded added volume;
+- candidate effective bead-height range;
+- estimated time;
+- infeasibility reason where relevant.
+
+Physical roughness/material calibration is a later gate.
