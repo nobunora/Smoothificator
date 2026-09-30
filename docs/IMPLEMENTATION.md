@@ -202,7 +202,8 @@ Algorithm:
 4. compute raw transformed bbox center XY;
 5. build centered PrintObject source transform using that center offset + PrintObject.trafo();
 6. transform source mesh;
-7. verify footprint/bounds/path parity.
+7. validate/construct the non-mutating consistent orientation view and deterministic material side per ADR-0030;
+8. verify footprint/bounds/path parity.
 
 Do not assume matrix storage/multiplication order; prove with fixtures.
 
@@ -567,7 +568,7 @@ Track at minimum:
 
 Unknown state-changing command in relevant regions => Skipped.
 
-Parser must scale to large files without loading the full G-code into memory.
+Parser must scale to large files without loading the full G-code into memory. It operates on binary lines, preserves untouched raw bytes, parses only the supported ASCII-compatible command/token subset, and never uses errors=replace or universal-newline normalization.
 
 ## 24. Structural-loop matcher
 
@@ -780,10 +781,12 @@ Pass 2 — temp emission:
 - preserve required original file mode/permissions.
 
 Pass 3 — sanity:
-- stream-parse temp;
+- binary-stream parse temp;
 - verify marker count/hash;
 - verify injection count/order;
-- verify state restoration and integrity.
+- verify state restoration and integrity;
+- verify untouched original byte sequences remain identical outside insertion ranges;
+- flush/fsync as supported before atomic replace.
 
 Only then atomically replace ctx.gcode_path.
 
@@ -857,6 +860,8 @@ No physical printing until all software/fixture gates and independent review req
 - no final-E field in immutable plan;
 - no candidate seam/gap changes in postprocess;
 - no first-layer candidate injection;
+- no blind trust in raw triangle normals/material side;
+- no text-mode G-code rewrite or newline normalization;
 - no injection without validated downstream original-motion clearance and ToolClearanceProfile;
 - no ordered raw-loop hash final matching;
 - no direct print-space coordinate emission;
