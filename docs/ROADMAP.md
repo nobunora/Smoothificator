@@ -77,7 +77,9 @@ Implement:
 - constant-Z SubEdgePath invariant;
 - same-Z and different-Z multi-path coverage;
 - deterministic candidate seam/gap;
-- nesting/support checks.
+- nesting/support checks;
+- chronological support envelope;
+- acyclic candidate support dependency/order.
 
 Exit:
 - boundary is never treated as centerline;
@@ -209,17 +211,21 @@ Exit:
 - all Gates N–Q pass on fixture copies;
 - no original-file mutation.
 
-## Phase 4E — downstream original-motion clearance
+## Phase 4E — chronological final tool-clearance validation
 
 Implement:
 - quantized candidate bead envelopes;
 - ToolClearanceProfile swept volume;
+- chronological printed-material simulation;
+- plugin-generated vertical/travel/extrusion/return validation;
 - downstream original travel/extrusion classification;
 - conservative validation horizon;
 - full-file fallback when no earlier barrier is proven.
 
 Exit:
 - safe cases pass;
+- plugin self-motion/body collisions reject;
+- later-candidate versus earlier-candidate collisions reject;
 - low-Z ZAA/travel collisions reject;
 - missing keep-out evidence disables physical mode;
 - deterministic clearance tests pass.
