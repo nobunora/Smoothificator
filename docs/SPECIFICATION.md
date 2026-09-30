@@ -141,6 +141,8 @@ Injection is enabled only for:
 - no negative/modifier/helper volumes;
 - single tool/extruder;
 - By Layer print sequence;
+- wall sequence Outer Wall -> Inner Wall;
+- infill-first disabled;
 - absolute XYZ positioning;
 - relative E in target intervals;
 - arc fitting disabled;
