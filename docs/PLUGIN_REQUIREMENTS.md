@@ -83,6 +83,8 @@ All must pass:
 - no classic post-processing scripts;
 - no other geometry/G-code-mutating slicing-pipeline plugin;
 - no support-dependent target;
+- not first printed layer;
+- no bridge-role target segment;
 - supported G-code fixture family;
 - non-crossing outward/top-facing external wall.
 
@@ -91,7 +93,7 @@ Unsupported configurations enter analysis-only mode or INJECTION_SKIPPED.
 ## 9. Flow/rewrite requirement
 Refinement MUST redistribute outer-wall extrusion.
 
-The original upper external-wall loop is matched and its E increments are scaled/recomputed for the remaining effective pass height.
+The original upper external-wall loop is matched and its E increments are scaled/recomputed per extrusion segment for the remaining local effective height. This is mandatory when ZAA makes the upper wall non-planar.
 
 Intermediate passes are then added below it.
 
