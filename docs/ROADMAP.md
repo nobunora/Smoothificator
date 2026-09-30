@@ -90,6 +90,7 @@ Exit:
 - real Orca coupon plan
 - unsupported configs marked analysis-only
 - plan hash deterministic
+- ExecutionConfigFingerprint deterministic
 - cache/no-plan behavior tested
 
 ## Phase 3 — Preview
@@ -132,10 +133,15 @@ Exit:
 - manually verified report matches fixture
 - unknown critical state => reject
 
-## Phase 4C — plan matcher
-Match stored plan candidates to final G-code.
+## Phase 4C — export config validation + plan matcher
+At psGCodePostProcess:
+- recompute required config fingerprint through ctx.config_value()
+- reject missing/mismatched plan config
+- then match stored plan candidates to final G-code.
 
 Exit:
+- same-config fingerprint accepted
+- every safety-key mismatch rejected
 - exactly one correct match
 - zero/multiple/stale plan safe skip
 - runtime ObjectIDs not required
