@@ -2,316 +2,357 @@
 
 Tests are organized by ownership boundary so failures identify the responsible component.
 
-Apply `docs/QUALITY_GATES.md` before broad behavioral suites.
+Apply docs/QUALITY_GATES.md before broad behavioral suites.
 
 Physical printing is forbidden until every preceding software, fixture, and review gate required by this document passes for the exact target compatibility descriptor.
 
 ## Gate A — Governance and architecture
 
-Owner: `tests/architecture/`
-
 Check:
 - ADR identifiers unique;
 - superseded ADR status/reference consistency;
-- required handoff/canonical revisions present;
+- handoff/canonical revision present;
 - forbidden imports;
 - no live Orca types in domain/engine;
 - G-code adapter does not import optimizer/source-mesh modules;
 - UI does not import optimizer/live Orca;
-- config-resolution owner is unique;
-- quantizer owner is unique;
-- no generic utility dumping-ground introduced.
+- one config-resolution owner;
+- one Orca-quantizer owner;
+- no generic utility dumping ground.
 
 ## Gate B — Domain determinism
 
 Check:
-- frozen domain DTOs;
+- frozen DTOs;
 - schema versioning;
 - canonical serializer;
 - deterministic plan hash;
-- timestamp/runtime ObjectID/machine translation excluded from plan hash;
+- timestamp/runtime ObjectID/machine translation/final E excluded from plan hash;
 - PlanExecutionStatus separate from plan;
-- deterministic ExecutionConfigFingerprint canonicalization.
+- deterministic ExecutionConfigFingerprint;
+- deterministic PluginSettingsFingerprint;
+- ToolClearanceProfile canonicalization/versioning.
 
-## Gate C — Orca centered-frame adapter
+## Gate C — Source mesh and centered-frame adapter
 
 Pinned Orca/source fixtures verify:
-- exactly one total instance accepted;
-- multiple total instances reject injection;
-- volume-local -> centered PrintObject frame parity;
+- one total source instance accepted;
+- multiple total instances rejected for injection;
+- one ModelPart volume;
+- finite vertices/indices;
+- manifold gate;
+- non-degenerate transformed bounds;
 - translated instance;
 - rotated instance;
 - scaled instance;
 - shrink-compensated PrintObject transform;
-- mirrored case if target profile/model supports it;
-- bounding/path parity tolerance;
-- wrong transform rejection;
+- mirrored case if supported;
+- centered-frame parity;
+- ambiguous/open candidate section rejection;
 - no live/zero-copy reference escape.
 
 ## Gate D — Orca ZAA parity
 
-Verify against audited source behavior:
-- path Z offset -> absolute Z;
+Verify:
+- relative path Z -> absolute centered-slice Z;
 - local effective height;
 - local ZAA geometry-directed volume ratio;
 - non-ZAA planar identity;
 - invalid effective height rejection;
-- ZAA enabled/disabled `posSimplifyPath` behavior.
+- ZAA enabled/disabled posSimplifyPath behavior.
 
 ## Gate E — Flow semantics
 
-### Geometric bead
-- rounded-rectangle geometric area formula;
+Geometric model:
+- rounded-rectangle formula;
 - invalid width/height;
-- effective width reconstruction where used.
+- geometric envelope independent from global calibration ratios.
 
-### Commanded flow
-Parity for:
+Commanded model:
 - print_flow_ratio;
 - filament_flow_ratio;
-- set_other_flow_ratios off/on;
+- set_other_flow_ratios on/off;
 - outer_wall_flow_ratio;
 - filament cross-section conversion.
 
-### Modeling separation
+Separation:
 - changing filament_flow_ratio changes commanded E/material diagnostics;
-- it does not directly change the ideal geometric envelope;
-- ZAA local geometry ratio does change nominal local envelope.
+- it does not directly change nominal geometric bead envelope;
+- ZAA local height/volume behavior does change the nominal local envelope.
 
-## Gate F — Surface-band geometry
+## Gate F — Surface-band and candidate topology
 
-Analytic tests:
-- mesh section is material boundary, not centerline;
-- inward centerline layout;
+Check:
+- mesh section is boundary, not centerline;
+- inward/material-side centerline placement;
 - multiple same-Z paths;
 - multiple different-Z paths;
-- shallow terrace coverage;
-- local support height;
-- candidate segment-local flow;
-- nested-section acceptance;
-- outward-expanding/unsupported rejection;
-- path crossing/nozzle-clearance rejection.
+- every v1 SubEdgePath has constant command Z;
+- varying-Z candidate construction rejected;
+- segment-local support/effective height;
+- nested/self-supported acceptance;
+- outward-expanding unsupported rejection;
+- candidate crossing/nozzle-clearance rejection.
 
-## Gate G — Error and optimizer
+## Gate G — Candidate seam/gap
 
-Models:
-- fixed slopes 1°, 5°, 10°, 15°, 20°, 25°, 30°;
-- continuous ~1°–30° curve;
-- synthetic curved/nested surface bands.
+Check:
+- deterministic seam selection;
+- cyclic/reversed closed-loop input gives same canonical result;
+- candidate seam/gap stored in plan;
+- finite-bead scoring includes gap;
+- preview shows exact gap;
+- translation does not change seam choice;
+- invalid short-loop gap rejects candidate;
+- postprocessor cannot change seam/gap.
+
+## Gate H — Error and optimizer
+
+Analytic geometry:
+- fixed slopes 1, 5, 10, 15, 20, 25, 30 degrees;
+- continuous approximately 1–30 degree surface;
+- shallow terraces requiring multiple paths;
+- synthetic varying-support surface.
 
 Verify:
 - E_max / E_rms / E_p95 / signed bias;
-- combined structural + candidate envelope;
+- combined structural + candidate nominal envelope;
 - overbuild rejection;
 - deterministic candidate selection;
-- cost tie determinism;
+- deterministic ties;
 - infeasible result rather than unsafe fallback;
 - cancellation polling.
 
-## Gate H — Plan/config/preview
+## Gate I — Plan / config / preview
 
 Check:
-- ExecutionConfigFingerprint same-config equality;
-- every required safety semantic mismatch rejects injection;
-- missing required semantic rejects injection;
-- plan schema contains segment-local geometric/commanded flow but no authoritative final E;
-- preview hash equals injector plan hash;
-- preview reads separate status;
-- preview cannot mutate/reoptimize plan;
-- compatibility gate reasons displayed.
+- both fingerprints stored in plan;
+- same plugin settings/config accepted;
+- tolerance/min-height/seam-gap/speed-cap/ToolClearanceProfile changes reject;
+- every required Orca safety-semantic change rejects;
+- missing required value rejects;
+- plan segment has geometric/commanded flow but no final E;
+- preview plan hash equals injector plan hash;
+- preview status separate from plan;
+- preview cannot reoptimize/mutate;
+- compatibility gate reasons visible.
 
-## Gate I — Golden Bambu fixture acquisition
+## Gate J — Golden Bambu fixture acquisition
 
-Before parser/emitter implementation is considered printable, record exact:
-- Orca release/commit;
-- plugin API compatibility descriptor;
-- Bambu machine/process/filament profile files;
-- effective resolved config;
-- G-code fixture.
+Record exact:
+- Orca version/commit;
+- plugin compatibility descriptor;
+- machine/process/filament profiles;
+- resolved semantic config;
+- plugin settings;
+- ToolClearanceProfile id/version/evidence;
+- source G-code.
 
-Verify fixture assumptions:
-- one object/one total instance/one ModelPart;
+Verify fixture:
+- one object / one total instance / one ModelPart;
+- not first-layer target;
 - relative E;
 - firmware retract off;
-- restart-extra zero;
-- positive layer-change retraction state;
+- restart extra zero;
+- positive unambiguous anchor retraction;
 - arc fitting off;
 - line numbers off;
 - adaptive PA off;
+- filament adaptive volumetric speed off;
+- fuzzy skin off;
 - role-change custom G-code empty;
 - spiral/ironing/scarf/support/raft off;
-- verbose G-code/comments on;
+- verbose comments on;
 - no classic post_process;
-- no other slicing-pipeline plugin;
-- motion-neutral supported layer-change custom G-code;
-- normal print, not calibration mode;
+- no other slicing-pipeline capability;
+- supported motion-neutral layer-change custom G-code;
+- normal non-calibration print;
 - positive Z hop;
 - printable-height margin.
 
-A standard Bambu profile with arc fitting still enabled must be proven analysis-only by a gate test.
+A standard Bambu profile with arc fitting still enabled must be proven analysis-only.
 
-## Gate J — Streaming parser state
+## Gate K — Streaming parser state
 
 Read-only, no writes.
 
-Track and verify:
+Track:
 - actual XYZ;
 - G90/G91;
 - M82/M83;
 - active tool;
 - relative-E moves;
 - feed;
-- retraction debt/state;
+- retraction state;
 - supported acceleration/modal state;
-- layer tags/markers;
-- comments/role evidence;
+- layer/reserved markers;
+- comment/type evidence;
 - plugin markers.
 
 Cases:
 - normal layer-change retract;
 - filament retraction override;
 - wipe-enabled source;
-- no-retract/ambiguous state rejection;
-- unknown critical command rejection;
-- calibration block rejection.
+- no-retract/ambiguous state reject;
+- unknown critical command reject;
+- calibration block reject.
 
-## Gate K — Seam-invariant structural matcher
+## Gate L — Seam-invariant structural matcher
 
 Check:
-- cyclic start change;
+- cyclic start;
 - seam split;
-- Orca-resolved nonzero seam gap;
+- nonzero Orca seam gap;
 - collinear subdivision;
-- final coordinate translation;
-- geometry tolerance;
-- incorrect loop rejection;
-- two plausible loop matches => ambiguous skip;
-- comments absent from core geometry evidence.
+- final translation;
+- quantization tolerance;
+- incorrect loop reject;
+- ambiguous multiple loops -> Skipped;
+- comments are supporting, not sole, evidence.
 
-No raw ordered-loop hash may be required.
+No raw ordered-loop hash dependency.
 
-## Gate L — Execution-frame mapping
+## Gate M — Execution-frame mapping
 
 Fixtures:
-- non-zero instance translation;
-- synthetic/non-zero extruder XY offset;
-- non-zero Z offset;
-- multiple non-collinear anchors.
+- nonzero instance translation;
+- nonzero/synthetic extruder XY offset;
+- nonzero Z offset;
+- multiple non-collinear references.
 
 Verify:
-- one constant ((dx,dy,dz));
+- one constant dx/dy/dz;
 - translation-only acceptance;
-- rotation/scale/shear/non-constant mismatch rejection;
-- plan coordinates unchanged;
+- rotation/scale/shear/non-constant reject;
+- immutable plan coordinates unchanged;
 - only G-code adapter applies mapping.
 
-## Gate M — Orca quantization parity
+## Gate N — Orca quantization parity
 
 Check:
 - XYZ/F 3-decimal parity;
 - E 5-decimal parity;
-- positive and negative midpoint ties;
-- C++ std::round-compatible half-away-from-zero;
+- positive/negative midpoint ties;
+- half-away-from-zero;
 - no Python bankers-rounding leakage;
-- pre-valid/post-invalid candidate rejection;
-- final E recomputed from quantized XYZ segment length.
+- post-quantization validity rerun;
+- short-segment emitted length changes;
+- final E derived after quantized XYZ.
 
-## Gate N — E and speed derivation
+## Gate O — E and speed derivation
 
-For quantized segment:
+For quantized segment verify:
 - emitted 3D length;
-- commanded mm³/mm;
+- commanded mm3/mm;
 - filament area;
-- quantized E.
+- quantized relative E;
+- max-volumetric-speed cap uses commanded mm3/mm;
+- outer-wall speed cap;
+- optional plugin cap;
+- fixture-required matched-wall feed cap;
+- missing/non-positive bound rejects.
 
-Verify:
-- flow ratios and role factor;
-- max-volumetric-speed limit;
-- outer-wall speed limit;
-- optional lower plugin cap;
-- missing/non-positive limits reject.
-
-## Gate O — Retraction controller
+## Gate P — Retraction controller
 
 Verify:
 - saved retracted amount reconstruction;
-- no extra retract before first safe travel;
+- no blind extra retract;
 - exact temporary unretract;
 - candidate extrusion;
 - exact re-retract;
 - final retraction equality;
-- restart-extra nonzero rejection;
-- firmware-retract rejection;
-- ambiguous state rejection.
+- restart-extra nonzero reject;
+- firmware-retract reject;
+- ambiguous state reject.
 
-## Gate P — Safe-ceiling motion and state restoration
+## Gate Q — Safe-ceiling and actual-state restoration
 
 Verify:
-- actual emitted pre-insertion Z may differ from nominal upper layer;
+- insertion physical Z may differ from nominal layer Z;
 - vertical raise before any XY;
-- no non-extruding XY below Zsafe;
+- no plugin non-extruding XY below Zsafe;
 - vertical descend at destination;
-- Zsafe uses positive active Z hop;
-- printable-height overflow rejects;
-- travel feed rates use resolved profile values;
-- final X/Y/Z/feed/modal/retraction state equals saved actual emitted state;
-- original deferred Orca Z behavior remains untouched.
+- positive active Z hop required;
+- printable-height overflow reject;
+- resolved travel feeds;
+- final actual XYZ/feed/modal/retraction equality;
+- original deferred Orca layer-Z behavior remains untouched.
 
-## Gate Q — Advanced-feature rejection
+## Gate R — Downstream original-motion clearance
+
+Using quantized machine-space candidate bead envelopes and ToolClearanceProfile verify:
+- safe upper structural motion;
+- low-Z ZAA extrusion collision -> reject;
+- original low-Z travel collision -> reject;
+- spatially distant low-Z motion accepted;
+- pure Z safe motion;
+- near miss inside safety margin -> reject;
+- missing ToolClearanceProfile -> physical gate disabled;
+- unsupported arc/unknown motion in validation horizon -> reject;
+- horizon extends beyond immediate upper layer when needed;
+- full-remaining-file fallback;
+- broad-phase and exact check deterministic parity.
+
+## Gate S — Advanced-feature rejection
 
 Fixtures reject:
-- adaptive pressure advance;
+- first-layer target;
+- fuzzy skin;
+- filament adaptive volumetric speed;
+- adaptive PA;
 - non-empty role-change custom G-code;
-- calibration/tower modes;
+- calibration/tower mode;
 - arc fitting;
 - line-number/checksum;
 - unsupported tool/multifilament;
 - unsupported classic postprocess/other slicing pipeline;
-- unsupported support/bridge/scarf/spiral/ironing combinations.
+- unsupported support/bridge/scarf/spiral/ironing.
 
 Static PA may remain and must be preserved unchanged.
 
-## Gate R — PluginResult policy
+## Gate T — PluginResult policy
 
-Integration tests:
+Integration:
 - expected unsupported/config mismatch -> Skipped;
 - plan missing/ambiguous -> Skipped;
-- parser/matcher/frame/retraction validation -> Skipped;
+- parser/matcher/frame/retraction/downstream-clearance validation -> Skipped;
 - successful injection -> Success;
 - validated already-injected -> Success/no duplicate;
 - unexpected exception before mutation with original intact -> Skipped + failure status;
-- cannot guarantee working-file integrity -> FatalError.
+- file integrity uncertain -> FatalError.
 
-Verify valid original export is not destroyed by expected plugin rejection.
+Expected plugin rejection must not destroy valid original export.
 
-## Gate S — Streaming atomic injector
+## Gate U — Streaming atomic injector
 
-Three-pass test:
+Three passes:
 1. validation;
 2. temp emission;
 3. sanity scan.
 
 Check:
-- bounded memory on large generated fixture;
+- bounded memory on large fixture;
 - original unchanged on every failure;
 - temp cleanup;
-- markers/hash/count;
+- marker/hash/count;
 - state restoration;
+- downstream-clearance decision preserved;
 - atomic replace only after sanity;
 - repeated export/upload working copies;
 - no duplicate injection.
 
-## Gate T — Package/runtime
+## Gate V — Package/runtime
 
 Check:
-- target embedded Python version;
+- embedded Python version;
 - NumPy availability/version;
 - wheel metadata;
 - clean install/load;
-- both SlicingPipeline and Script capability registration;
+- SlicingPipeline + Script capability registration;
+- current capability get_config available at postprocess;
 - unsupported runtime fails clearly.
 
-## Gate U — Primary implementation review
+## Gate W — Primary implementation review
 
 Review:
 - final diff;
@@ -321,37 +362,40 @@ Review:
 - tests/gates;
 - residual gaps.
 
-All findings receive dispositions.
+Every finding gets a disposition.
 
-## Gate V — Independent blind review
+## Gate X — Independent blind review
 
 Before first physical injection:
-- independent reviewer receives specification/source/diff but not primary findings;
-- review follows `docs/REVIEW_PROCESS.md`;
-- reconciliation happens only after blind report completion;
-- no unresolved Critical/High finding remains.
+- reviewer receives authoritative spec/source/diff, not primary findings;
+- follow REVIEW_PROCESS;
+- reconcile only after blind report completion;
+- no unresolved Critical/High finding.
 
-## Gate W — First physical coupon
+ToolClearanceProfile evidence must be included.
 
-Only after A–V PASS for the exact fixture.
+## Gate Y — First physical coupon
+
+Only after A–X PASS for the exact fixture.
 
 Sequence:
-1. simple 5° nested coupon;
-2. 10° / 20°;
-3. smooth 1°–30° coupon.
+1. conservative 5-degree nested coupon;
+2. 10/20-degree coupons;
+3. smooth 1–30-degree coupon;
+4. deliberate conservative near-clearance coupon.
 
 Inspect:
-- nozzle contact;
+- nozzle/hotend clearance;
+- unexpected machine motion;
 - stringing/retraction;
 - overbuild/underfill;
 - bonding;
 - dimensional bias;
-- surface roughness;
-- unexpected machine motion.
+- surface roughness.
 
-Any unsafe/unexplained behavior pauses physical testing and returns to model/spec adjudication.
+Any unsafe/unexplained behavior returns to model/spec adjudication.
 
-## Gate X — Comparative benchmark
+## Gate Z — Comparative benchmark
 
 Compare:
 - normal layer;
@@ -361,27 +405,17 @@ Compare:
 
 Report:
 - E metrics;
-- measured surface roughness where available;
-- material;
+- roughness where measured;
+- geometric and commanded added material;
 - print time;
 - failure/artifact modes.
 
-Do not claim superiority outside measured geometry/profile classes.
+Do not generalize beyond measured geometry/profile/hardware classes.
 
 ## Compatibility expansion rule
 
-Every newly supported:
-- Orca version;
-- printer/process/filament family;
-- G-code mode;
-- object topology;
-- support/overhang class;
-- E mode;
-- PA/role behavior;
-- firmware/tool architecture;
-
-requires:
+Every newly supported Orca version, printer/profile, G-code mode, object topology, hardware keep-out profile, support class, E mode, PA/role behavior, firmware, or tool architecture requires:
 - explicit fixture;
 - focused compatibility tests;
-- full relevant regression gates;
-- ADR if a safety/architecture contract changes.
+- relevant full regression gates;
+- ADR when a safety/architecture contract changes.
