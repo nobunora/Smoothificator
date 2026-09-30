@@ -1,7 +1,8 @@
 # ADR-0010: Match Orca filament flow ratio when converting candidate volume to E
 
-Status: Superseded by ADR-0015
+Status: Superseded
 Date: 2026-09-30
+Superseded by: ADR-0015
 
 ## Context
 Adaptive Sub-Edge candidate geometry is planned in volumetric units (mm3_per_mm).
