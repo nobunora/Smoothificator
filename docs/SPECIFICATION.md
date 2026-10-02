@@ -62,7 +62,7 @@ The injector MUST NOT:
 - infer replacement geometry from G-code;
 - silently alter the plan to make it executable.
 
-Execution status is separate from the plan.
+Execution status is separate from the plan. Runtime postprocess results are recorded per InjectionAttemptId; a single overwrite-prone mutable status per plan is not authoritative.
 
 ## 4. Printable v1 source geometry
 
@@ -70,6 +70,7 @@ Printable v1 requires:
 - exactly one PrintObject;
 - exactly one total source ModelInstance;
 - exactly one positive ModelPart volume;
+- exactly one connected closed triangle shell after centered/orientation validation;
 - no NegativeVolume, ParameterModifier, or equivalent CSG/helper volume;
 - non-empty finite vertices/triangles;
 - valid triangle indices;
@@ -77,9 +78,9 @@ Printable v1 requires:
 - shared-edge winding/material orientation can be validated consistently;
 - global outward/material side can be determined deterministically, including mirrored transforms;
 - non-degenerate transformed bounds;
-- every required candidate-Z section used for a printable path has an unambiguous closed material boundary.
+- every required candidate-Z section used for a printable path has exactly one simple relevant outer boundary, with no hole/disconnected/branched/self-intersecting target topology in the interaction region.
 
-The plugin does not create an independent mesh-repair authority. Signed error and material-side insetting use a validated orientation view plus an independent inside/outside check per ADR-0030. Raw source normals are not trusted until orientation/material-side validation passes. Raw source normals are not trusted until orientation/material-side validation passes.
+The plugin does not create an independent mesh-repair authority. Signed error and material-side insetting use a validated orientation view plus an independent inside/outside check per ADR-0030. Raw source normals are not trusted until orientation/material-side validation passes.
 
 A model Orca can slice may still be analysis-only for this plugin.
 
@@ -327,6 +328,8 @@ The fingerprint includes every supported semantic that can affect:
 - retraction;
 - motion/speed/Zsafe;
 - printable machine height;
+- timelapse / farthest-point timelapse / wrapping detection / wipe-tower behavior;
+- object-exclusion behavior;
 - custom layer/role G-code;
 - printable feature gates.
 
@@ -379,6 +382,30 @@ Exactly one plan/structural reference must match.
 
 Zero or multiple matches => Skipped.
 
+## 21A. Final structural deposition revalidation
+
+Successful shape matching is not enough to prove that the planning-time material envelope is still physically valid.
+
+After the relevant structural loops are matched in final G-code, reconstruct a local FinalStructuralDepositionContext from the actual positive-E structural moves around each candidate interaction region.
+
+This context accounts for:
+- final seam-gap clipping;
+- final quantized XYZ;
+- final actual feed;
+- nearby already-printed positive-E structural material relevant to support/collision.
+
+Before injection, revalidate:
+- chronological candidate support against actual lower structural deposition;
+- minimum effective bead height;
+- candidate/structural hard overbuild and clearance limits;
+- hard requested tolerance when final structural deposition materially changes the candidate region.
+
+A lower structural seam gap that removes required support causes Skipped.
+
+Postprocess may only accept/reject; it may not re-optimize.
+
+Candidate speed is additionally capped by the minimum relevant actual matched final-G-code external-wall feed in the target neighborhood.
+
 ## 22. Print-space to machine-G-code frame
 
 Plan coordinates MUST NOT be emitted directly.
@@ -416,6 +443,26 @@ For each candidate segment:
 7. revalidate the resulting execution command.
 
 Postprocess derives execution commands deterministically but may not change candidate intent.
+
+## 24A. G-code modal execution envelope
+
+Printable v1 candidate execution requires:
+- millimeter units (G21 semantic state);
+- absolute XYZ positioning (G90);
+- relative E positioning (M83);
+- firmware retraction disabled;
+- firmware volumetric-E mode disabled;
+- file-level M220 speed override = 100%;
+- file-level M221 flow override = 100%;
+- no unsupported/nontrivial G92 XYZ origin remap in the injection context.
+
+The parser tracks logical E coordinate separately from physical retraction debt.
+
+G92 E may reset the logical E coordinate but MUST NOT erase physical retraction debt.
+
+Feed F remains modal and is restored exactly.
+
+Offline validation assumes printer-side live speed/flow overrides remain at 100% during the validated physical print. Changing live overrides voids the validated execution envelope.
 
 ## 25. Relative-E / retraction contract
 
@@ -472,6 +519,12 @@ Use resolved XY and Z travel-speed semantics from the supported profile.
 Printable v1 requires:
 - normal non-calibration print;
 - one tool / one filament execution context;
+- one connected-shell/simple-target topology;
+- smooth timelapse disabled;
+- farthest_point_timelapse disabled;
+- wrapping detection disabled;
+- no generated prime/wipe tower execution;
+- exclude_object disabled;
 - adaptive pressure advance disabled;
 - filament adaptive volumetric speed disabled;
 - machine/filament/process extrusion-role-change custom G-code empty;
@@ -485,6 +538,7 @@ Printable v1 requires:
 - fuzzy skin off for target;
 - no classic post_process script;
 - no other slicing-pipeline capability besides this plugin;
+- traditional timelapse only when the exact fixture proves all generated timelapse motion/state is parser-visible and supported;
 - verbose G-code/comments enabled for initial physical fixtures;
 - fresh current-session plan.
 
@@ -555,6 +609,7 @@ A standard Bambu process with arc fitting still enabled is analysis-only until t
 psGCodePostProcess uses binary, byte-preserving, streaming all-or-nothing processing per ADR-0031.
 
 Pass 1:
+- allocate a unique InjectionAttemptId and snapshot immutable candidate plans;
 - validate plugin settings fingerprint;
 - validate Orca config fingerprint;
 - parse actual state;
@@ -564,6 +619,7 @@ Pass 1:
 - validate retraction, motion, and downstream clearance.
 
 Pass 2:
+- recompute/compare the original working-file digest while streaming;
 - stream the original as raw binary lines into a same-directory temp file;
 - preserve every untouched original byte and original newline convention;
 - inject only fully prevalidated ASCII-compatible blocks at exact anchors.
@@ -572,7 +628,7 @@ Pass 3:
 - binary-stream sanity-check temp;
 - verify markers, order, state restoration, integrity.
 
-Only then atomically replace ctx.gcode_path.
+Immediately before commit, re-read current plugin settings and require PluginSettingsFingerprint equality again; also require source working-file identity/metadata to remain unchanged. Only then atomically replace ctx.gcode_path.
 
 Expected unsupported/validation failure => PluginResult.Skipped and original output unchanged.
 
@@ -588,10 +644,11 @@ Any uncertainty in:
 - structural-loop match;
 - machine translation;
 - formatter parity;
-- actual modal/retraction state;
+- actual modal/retraction state, including G21/G90/M83/M200/M220/M221/G92 semantics;
 - flow/speed limits;
 - support/collision;
 - candidate seam/gap;
+- timelapse/wrapping/wipe-tower/object-exclusion behavior;
 - calibration/custom G-code;
 - Zsafe;
 - chronological plugin + downstream-original tool-clearance validation;
@@ -620,6 +677,9 @@ The project always prefers unchanged valid Orca G-code over guessed modification
 - support/overhang reconstruction;
 - first-layer SubEdge refinement;
 - calibration-mode injection;
+- smooth/farthest-point timelapse injection;
+- object-cancellation/skip-object integration;
+- modeled non-100 M220/M221 runtime override support;
 - automatic plugin/downstream travel replanning;
 - generic collision claims without hardware keep-out evidence;
 - claiming Orca standard preview contains postprocessed paths.
