@@ -326,3 +326,114 @@ The highest-risk implementation areas are:
 The first four are software contracts with deterministic fixtures.
 
 The last remains a physical-model hypothesis and requires coupon calibration before production-quality claims.
+
+
+## 23. Supplementary current-main drift audit — 2026-10-02
+
+Current OrcaSlicer main checked:
+`1a5f91d727f43d455b40ab475a00d622b34648e0`
+
+This is 150 commits ahead of the original 2026-09-29 audit baseline `789f848694b955d293ca6b277d1c8046aa6f7436`.
+
+Findings:
+- audited SlicingPipeline capability binding source remained unchanged;
+- audited PluginHostSlicing binding source remained unchanged;
+- bundled Python remains 3.12.13;
+- GCode.cpp and Print.cpp changed;
+- profile content continues to evolve;
+- current G-code contains/expands dynamic paths such as farthest-point timelapse handling.
+
+Conclusion:
+the plugin seam itself remains viable, but production compatibility MUST remain pinned to exact Orca + machine/process/filament fixtures. Do not promote the old source baseline into a blanket current-main compatibility claim.
+
+## 24. Modal/runtime override finding
+
+Audited Bambu common start G-code explicitly emits:
+- `M220 S100`;
+- `M221 S100`;
+- `G90`;
+- several `G92 E0` commands.
+
+This confirms that candidate execution needs an explicit modal contract, not only a profile assumption.
+
+ADR-0035 therefore requires:
+- G21 semantics;
+- G90;
+- M83;
+- firmware-volumetric E off;
+- M220/M221 at 100%;
+- separate logical-E and physical-retraction state across G92 E.
+
+## 25. Timelapse/wrapping drift finding
+
+Current Orca supports additional timelapse paths, including farthest-point timelapse state in GCode.cpp.
+
+Traditional timelapse is not globally assumed motion-free.
+
+ADR-0036 gates:
+- smooth timelapse;
+- farthest-point timelapse;
+- wrapping detection;
+- generated wipe/prime tower;
+- object exclusion.
+
+Traditional timelapse is only supported through exact fixtures where generated behavior is parser/state/clearance covered.
+
+## 26. Final structural deposition finding
+
+The planning path at posSimplifyPath precedes final seam-gap clipping and final speed transforms.
+
+A successful shape match therefore does not itself prove:
+- lower candidate support still exists at the final seam;
+- final local hard surface error is unchanged;
+- the candidate speed is no higher than the actually emitted surrounding wall.
+
+ADR-0034 adds a final local structural-deposition context and revalidation gate.
+
+## 27. Runtime attempt / source TOCTOU finding
+
+Postprocess may run multiple times for export/upload copies.
+
+One mutable status per plan is insufficient and multi-pass file mutation creates a source-identity TOCTOU surface.
+
+ADR-0037 adds:
+- AnalysisGenerationId;
+- InjectionAttemptId;
+- attempt-scoped records;
+- plan snapshot selection;
+- Pass-1/Pass-2 source digest equality;
+- precommit source identity check;
+- precommit PluginSettingsFingerprint recheck.
+
+## 28. Extrusion-rate smoothing finding
+
+Current Orca exposes `max_volumetric_extrusion_rate_slope` (Pressure Equalizer / extrusion rate smoothing).
+
+Positive values cause an Orca G-code transformation that inserted postprocess SubEdge paths would bypass.
+
+The current default is zero.
+
+ADR-0039 therefore requires the feature disabled for printable v1.
+
+## 29. Inherited acceleration finding
+
+Candidate G1 extrusion inherits the actual acceleration modal state because v1 does not emit its own role-specific acceleration commands.
+
+A layer-boundary anchor may inherit a higher travel/infill acceleration.
+
+ADR-0040 requires:
+- parser-known active acceleration;
+- a plugin max_subedge_acceleration cap;
+- that cap no higher than the exact fixture external-wall acceleration limit.
+
+## 30. Postprocess estimate/progress finding
+
+SubEdge is injected after Orca has generated preview/time/material/progress metadata.
+
+Therefore standard Orca:
+- time;
+- filament/material statistics;
+- M73/progress metadata
+are not exact for the modified final file.
+
+ADR-0041 makes this an explicit v1 limitation and requires separate plugin delta estimates rather than pretending Orca recalculated them.
