@@ -49,7 +49,7 @@ Read all non-superseded ADRs relevant to the task.
 As of this audit:
 - ADR-0001 through ADR-0009;
 - ADR-0010 is superseded by ADR-0015;
-- ADR-0011 through ADR-0033, subject to explicit supersession notes.
+- ADR-0011 through ADR-0038, subject to explicit supersession notes.
 
 Later ADRs override earlier clauses only where stated.
 
@@ -175,11 +175,13 @@ Printable eligibility requires:
 - exactly one PrintObject;
 - exactly one total source ModelInstance;
 - exactly one positive ModelPart volume;
+- exactly one connected closed triangle shell;
 - no NegativeVolume/ParameterModifier or equivalent CSG/modifier volume;
 - finite valid triangle coordinates/indices;
 - manifold topology plus deterministic orientation/material-side validation;
 - one tool / one filament execution context;
 - target geometry nested/self-supported;
+- every printable target section has one simple relevant outer loop with no target-region hole/disconnected/branched topology;
 - target not bridge/support-dependent.
 
 Unsupported models may produce analysis-only diagnostics but no injectable plan.
@@ -511,9 +513,15 @@ For each candidate set:
 
 No G-code dependency.
 
-## 21. PlanStore
+## 21. PlanStore and attempt store
 
-Process-local, thread-safe, bounded.
+PlanStore is process-local, thread-safe, bounded.
+
+Plans are fully constructed before atomic publication. No partial plan is visible.
+
+Postprocess takes an immutable candidate-plan snapshot under lock and releases the lock before long parsing.
+
+InjectionAttemptStore is the single owner of attempt-scoped runtime evidence and monotonic attempt-state transitions.
 
 On each fresh applicable analysis generation:
 - store immutable plan;
@@ -521,8 +529,9 @@ On each fresh applicable analysis generation:
 - invalidate or age stale incompatible candidates deterministically.
 
 At export:
-1. require current PluginSettingsFingerprint equality;
-2. require current ExecutionConfigFingerprint equality;
+1. allocate InjectionAttemptId and snapshot candidate plans;
+2. require current PluginSettingsFingerprint equality;
+3. require current ExecutionConfigFingerprint equality;
 3. filter to current-session injectable plans;
 4. use final G-code structural matcher;
 5. exactly one plan must survive.
@@ -548,7 +557,7 @@ Display:
 
 Preview may not mutate or regenerate the plan.
 
-## 23. Streaming G-code parser
+## 23. Binary streaming G-code parser
 
 No regex-only mutation.
 
@@ -593,6 +602,27 @@ Geometry match must provide:
 - multiple non-collinear anchor correspondences.
 
 Comments/tags are supporting evidence only.
+
+## 24A. Final structural deposition revalidation
+
+After structural-loop matching but before candidate execution derivation, reconstruct FinalStructuralDepositionContext from the actual final G-code around each candidate region.
+
+Include relevant:
+- lower/upper external wall;
+- nearby positive-E structural material within support/collision distance;
+- seam-gap clipping;
+- quantized coordinates;
+- actual feed.
+
+Revalidate against immutable plan/reference geometry:
+- chronological support;
+- h_min;
+- hard overlap/overbuild;
+- hard tolerance where final seam/quantization materially changes the region.
+
+Any mismatch => whole injection Skipped. No re-optimization.
+
+The minimum relevant actual matched final external-wall feed is a mandatory candidate speed ceiling.
 
 ## 25. Execution-frame resolver
 
@@ -652,7 +682,7 @@ v_segment must not exceed:
 - resolved outer-wall speed;
 - v_vol;
 - optional lower plugin speed cap;
-- actual matched structural-wall feed where the pinned fixture contract requires a lower bound.
+- minimum relevant actual matched final-G-code external-wall feed in the target neighborhood.
 
 q_cmd is the Orca-compatible commanded volumetric line flow.
 
@@ -664,6 +694,12 @@ Do not silently raise Orca speed.
 
 Printable injection is disabled if:
 - target is first-layer refinement;
+- source/target topology violates the one-connected-shell/simple-section contract;
+- smooth timelapse is enabled;
+- farthest_point_timelapse is enabled;
+- wrapping detection is enabled;
+- generated prime/wipe tower execution is present;
+- exclude_object is enabled;
 - calibration/tower mode is detected;
 - fuzzy skin is active for the target;
 - filament adaptive volumetric speed is enabled;
@@ -679,6 +715,7 @@ Printable injection is disabled if:
 - multitool/multifilament execution is present;
 - classic post_process is non-empty;
 - another slicing-pipeline capability is active;
+- traditional timelapse behavior is not exactly fixture-known/parser-supported;
 - verbose G-code/comments are disabled for the initial physical-fixture contract.
 
 Static pressure advance may remain enabled. The plugin does not modify PA state.
@@ -764,10 +801,14 @@ Malformed/partial plugin markers => do not overwrite blindly; fail according to 
 ## 35. Streaming all-or-nothing postprocess
 
 Pass 1 — validation:
+- allocate InjectionAttemptId and record STARTED;
+- snapshot immutable candidate plans;
+- record SourceFileIdentity including size/mtime/digest;
 - validate PluginSettingsFingerprint;
 - validate ExecutionConfigFingerprint;
 - stream-parse actual machine/modal/retraction state;
 - identify and seam-invariant-match all planned StructuralLoopReferences;
+- reconstruct final structural deposition and revalidate support/hard geometry;
 - derive one execution-frame translation;
 - quantize and derive all candidate execution commands;
 - validate speed/Zsafe/retraction;
@@ -777,6 +818,7 @@ No file mutation.
 
 Pass 2 — temp emission:
 - re-open original in binary mode;
+- recompute source digest while copying and require Pass-1 equality;
 - create temp in the same directory;
 - copy original raw bytes/line endings exactly;
 - inject only fully prevalidated blocks at exact anchors using the validated local newline convention;
@@ -790,7 +832,7 @@ Pass 3 — sanity:
 - verify untouched original byte sequences remain identical outside insertion ranges;
 - flush/fsync as supported before atomic replace.
 
-Only then atomically replace ctx.gcode_path.
+Immediately before replace, re-read current plugin settings and require PluginSettingsFingerprint equality again; require source working-file identity/metadata unchanged. Only then atomically replace ctx.gcode_path and commit the attempt record.
 
 Any earlier failure leaves original unchanged.
 
