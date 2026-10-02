@@ -8,10 +8,10 @@
 - Plugin/runtime requirements: `docs/PLUGIN_REQUIREMENTS.md`
 - Error/physical model: `docs/ERROR_MODEL.md`
 - Test strategy: `docs/TEST_STRATEGY.md`
-- Full audit: `docs/FULL_CONSISTENCY_AUDIT_2026-10-01.md`
-- Audited revision manifest: `docs/AUDIT_REVISION_2026-10-01.md`
-- Audited revision manifest blob SHA: `06079655a3849d5d75df92244722ee03ae3a5632`
-- ADRs: `docs/adr/0001-*.md` through `docs/adr/0033-*.md`
+- Full audit: `docs/FULL_CONSISTENCY_AUDIT_2026-10-02.md`
+- Audited revision manifest: `docs/AUDIT_REVISION_2026-10-02.md`
+- Audited revision manifest blob SHA: `<TO_BE_STAMPED_AFTER_2026-10-02_MANIFEST>`
+- ADRs: `docs/adr/0001-*.md` through `docs/adr/0041-*.md`
 - ADR-0010 is Superseded by ADR-0015.
 
 The audited blob manifest, rather than a possibly stale branch-head value, is the canonical revision reference for this handoff.
@@ -39,7 +39,8 @@ Initial approved implementation scope:
 - `ExecutionConfigFingerprint`;
 - `PluginSettingsFingerprint`;
 - deterministic canonical serialization and plan hashing;
-- bounded thread-safe PlanStore and separate execution-status store;
+- bounded thread-safe PlanStore plus attempt-scoped InjectionAttemptStore;
+- process-local AnalysisGenerationId / InjectionAttemptId lifecycle contracts;
 - architecture/import-boundary tests.
 
 Later work remains gated by `docs/ROADMAP.md` and requires its own implementation records.
@@ -70,9 +71,11 @@ Required invariants:
 - `SubEdgeSegment` owns local support/effective-height/geometric-flow/commanded-flow intent;
 - candidate seam/gap is immutable plan geometry;
 - geometric and commanded volume are different concepts;
-- runtime execution status is separate from the immutable plan;
+- runtime execution evidence is attempt-scoped and separate from the immutable plan;
+- no single mutable per-plan status is authoritative;
 - execution and plugin-settings fingerprints have distinct ownership;
 - `ToolClearanceProfile` is explicit plugin/hardware configuration, not inferred from nozzle diameter;
+- printable source topology is one connected shell and simple target-section topology;
 - support can come only from chronological pre-existing material; future material and cyclic support are forbidden;
 - final physical clearance covers plugin-generated and resumed-original motion;
 - source orientation/material side is an explicit validated contract rather than raw-normal trust;
@@ -105,7 +108,8 @@ Phase 0.5 is complete only when:
 - canonical serialization is deterministic;
 - identical semantic inputs produce identical fingerprints/hash;
 - timestamps, runtime ObjectIDs, machine translation, final E, and execution status do not affect plan hash;
-- PlanStore concurrency/bounds/current-session semantics are testable;
+- PlanStore atomic publication/concurrency/bounds/current-session semantics are testable;
+- InjectionAttemptRecord uniqueness/monotonic state/independence is testable;
 - forbidden imports fail architecture tests;
 - duplicate ADR identifier check is testable or covered by a deterministic repository check;
 - no production Orca/G-code behavior has been implemented prematurely;
@@ -124,7 +128,8 @@ Phase 0.5 repository-native validation should include, once its minimal tooling 
 - ExecutionConfigFingerprint determinism tests;
 - PluginSettingsFingerprint determinism tests;
 - canonical plan serialization/hash tests;
-- PlanStore status/bounds/concurrency tests;
+- PlanStore publish/bounds/concurrency tests;
+- InjectionAttemptStore uniqueness/monotonic-state tests;
 - package/build check if packaging metadata is introduced.
 
 Tool choice for lint/type checking is decided only after target Orca embedded runtime verification. A missing unconfigured analyzer is reported as NOT CONFIGURED, not silently installed.
