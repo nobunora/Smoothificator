@@ -6,13 +6,18 @@ Implementation is gated. Do not advance until the previous phase exit criteria p
 
 Complete before production code:
 - document precedence and AGENTS workflow;
-- unique ADR set through ADR-0031;
+- unique ADR set through ADR-0041;
 - source-verified Orca hook/ZAA/config/G-code semantics;
 - centered source-frame contract;
 - geometric versus commanded flow separation;
 - constant-Z candidate path and deterministic seam/gap contract;
 - final matcher/frame/quantization/retraction contract;
-- downstream original-motion clearance contract;
+- chronological plugin + downstream original-motion clearance contract;
+- final structural deposition/seam-gap parity validation;
+- modal/runtime override envelope;
+- attempt-scoped runtime evidence / TOCTOU protection;
+- timelapse/wrapping/object-exclusion gates;
+- extrusion-rate-smoothing and inherited-acceleration gates;
 - ToolClearanceProfile physical-evidence requirement;
 - full-text consistency audit.
 
@@ -46,7 +51,8 @@ Implement only:
 - PluginSettingsFingerprint;
 - ToolClearanceProfile schema;
 - canonical serializer/hash;
-- PlanStore/status store;
+- PlanStore + InjectionAttemptStore;
+- AnalysisGenerationId / InjectionAttemptId contracts;
 - architecture/import-boundary tests.
 
 No Orca/G-code/optimizer behavior yet.
@@ -115,7 +121,7 @@ Stock Orca read-only:
 Exit:
 - translated/rotated/scaled/shrink fixtures;
 - ZAA on/off fixtures;
-- manifold/section gates;
+- connected-shell/simple-section/manifold/orientation gates;
 - no live-reference escape.
 
 ## Phase 2B — Analyzer / PlanStore
@@ -124,6 +130,7 @@ Wire snapshot -> engine -> immutable plan.
 
 Implement:
 - both fingerprints;
+- AnalysisGenerationId / InjectionAttemptRecord infrastructure;
 - structural loop references;
 - candidate open paths/seams;
 - current-session plan state.
@@ -168,7 +175,8 @@ No physical injector support until fixtures exist.
 ## Phase 4B — binary streaming parser dry-run
 
 Read-only:
-- modal state;
+- units / XYZ / E / M200 / M220 / M221 / G92 modal state;
+- logical E versus physical retraction debt;
 - actual XYZ/feed/tool;
 - E/retraction debt;
 - layer/custom-code markers;
@@ -195,7 +203,20 @@ Exit:
 - wrong/ambiguous loop rejects;
 - non-constant transform rejects.
 
-## Phase 4D — Orca quantizer / E / speed / retraction
+## Phase 4C2 — final structural deposition parity
+
+Implement:
+- local final positive-E structural deposition reconstruction;
+- seam-gap/quantization-aware lower support parity;
+- nearby structural support/collision context;
+- actual final matched external-wall feed extraction.
+
+Exit:
+- support lost at final seam rejects;
+- hard local tolerance/overbuild revalidation passes;
+- actual matched feed upper bound established.
+
+## Phase 4D — Orca quantizer / E / speed / acceleration / retraction
 
 Implement:
 - XYZ/F 3-decimal parity;
@@ -204,6 +225,8 @@ Implement:
 - final E from quantized XYZ length;
 - commanded-flow conversion;
 - speed/volumetric limits;
+- Pressure Equalizer disabled gate;
+- inherited acceleration parsing/cap;
 - exact temporary unretract/retract state cycle;
 - Zsafe travel and actual-state restore.
 
@@ -230,6 +253,20 @@ Exit:
 - missing keep-out evidence disables physical mode;
 - deterministic clearance tests pass.
 
+## Phase 4E2 — runtime dynamic-feature compatibility
+
+Implement/validate:
+- timelapse mode gates;
+- farthest-point timelapse gate;
+- wrapping detection gate;
+- wipe/prime tower presence gate;
+- exclude_object gate;
+- exact supported Traditional timelapse fixture behavior.
+
+Exit:
+- every unreplicated dynamic feature fails closed;
+- permitted Traditional fixture is fully parser/state/clearance covered.
+
 ## Phase 4F — streaming atomic injector
 
 Implement:
@@ -240,6 +277,9 @@ Implement:
 
 Exit:
 - original unchanged on every failed validation;
+- source digest/metadata TOCTOU guards pass;
+- PluginSettingsFingerprint precommit recheck passes;
+- concurrent/repeated attempts preserve independent records;
 - PluginResult policy tested;
 - repeated export/upload copies handled independently;
 - idempotence passes;
@@ -276,6 +316,13 @@ Sequence:
 4. conservative near-clearance coupon.
 
 Unexpected motion/contact/overbuild/stringing returns project to specification/model review.
+
+## Phase 5.5 — estimate/progress validation
+
+Before broader benchmark:
+- verify UI labels Orca time/material/progress as pre-postprocess;
+- verify plugin delta estimates;
+- document M73/progress under-reporting limitation.
 
 ## Phase 6 — physical calibration and benchmark
 
