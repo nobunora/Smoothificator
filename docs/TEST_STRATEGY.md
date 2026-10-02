@@ -39,6 +39,8 @@ Pinned Orca/source fixtures verify:
 - one total source instance accepted;
 - multiple total instances rejected for injection;
 - one ModelPart volume;
+- exactly one connected closed shell;
+- simple target sections with no hole/disconnected/branched/self-intersection;
 - finite vertices/indices;
 - manifold gate;
 - globally reversed mesh handling;
@@ -176,16 +178,21 @@ Verify fixture:
 
 A standard Bambu profile with arc fitting still enabled must be proven analysis-only.
 
-## Gate K — Streaming parser state
+## Gate K — Streaming parser and modal state
 
 Read-only, no writes.
 
-Track:
+Track and verify:
 - actual XYZ;
+- units G20/G21;
 - G90/G91;
 - M82/M83;
+- M200 volumetric-E state where relevant;
+- M220 speed factor;
+- M221 flow factor;
+- G92 XYZ origin state;
+- logical E coordinate separately from physical retraction debt;
 - active tool;
-- relative-E moves;
 - feed;
 - retraction state;
 - supported acceleration/modal state;
@@ -194,12 +201,33 @@ Track:
 - plugin markers.
 
 Cases:
+- G21/G90/M83 accepted;
+- G20 reject;
+- G91 anchor reject;
+- M82 anchor reject;
+- M200 active reject;
+- M220 != 100 reject;
+- M221 != 100 reject;
+- G92 E does not clear retraction debt;
+- G92 XYZ target-context reject;
+- feed restore equality;
 - normal layer-change retract;
 - filament retraction override;
 - wipe-enabled source;
 - no-retract/ambiguous state reject;
 - unknown critical command reject;
 - calibration block reject.
+
+## Gate K2 — Final structural deposition parity
+
+After final structural matching verify:
+- lower-wall seam gap can remove required support -> reject;
+- candidate far from seam remains valid;
+- upper-wall final seam/quantization changes hard local error -> revalidate;
+- nearby inner/perimeter positive-E material participates in support/collision context;
+- final actual wall feed is a mandatory speed cap;
+- no representative final wall feed -> reject.
+
 
 ## Gate L — Seam-invariant structural matcher
 
@@ -241,7 +269,9 @@ Check:
 - no Python bankers-rounding leakage;
 - post-quantization validity rerun;
 - short-segment emitted length changes;
-- final E derived after quantized XYZ.
+- final E derived after quantized XYZ;
+- quantized segment collapsed to zero XYZ length -> reject;
+- nonzero path with quantized E=0 when material intent is nonzero -> reject.
 
 ## Gate O — E and speed derivation
 
@@ -303,22 +333,46 @@ Using quantized plugin motion, parsed original motion, chronological material st
 - full-remaining-file fallback;
 - broad-phase and exact check deterministic parity.
 
-## Gate S — Advanced-feature rejection
+## Gate S — Advanced-feature and dynamic-runtime rejection
 
 Fixtures reject:
 - first-layer target;
+- disconnected-shell / hole / multi-loop target topology;
 - fuzzy skin;
 - filament adaptive volumetric speed;
 - adaptive PA;
 - non-empty role-change custom G-code;
 - calibration/tower mode;
+- smooth timelapse;
+- farthest_point_timelapse;
+- wrapping detection;
+- generated prime/wipe tower;
+- exclude_object;
+- unknown traditional timelapse motion/state;
 - arc fitting;
 - line-number/checksum;
 - unsupported tool/multifilament;
 - unsupported classic postprocess/other slicing pipeline;
 - unsupported support/bridge/scarf/spiral/ironing.
 
+Traditional timelapse is accepted only through an exact parser-supported fixture.
+gcode_label_objects alone may remain enabled.
 Static PA may remain and must be preserved unchanged.
+
+## Gate S2 — Attempt state and TOCTOU
+
+Verify:
+- no partially constructed plan is visible;
+- plan publication is atomic;
+- each postprocess invocation gets a unique InjectionAttemptId;
+- simultaneous attempts on separate working files keep independent records;
+- attempt state transitions are monotonic;
+- newer analysis generation during an old matching export does not silently swap the selected immutable plan;
+- plugin settings change before commit -> abort/Skipped;
+- source working file changed between Pass 1 and Pass 2 -> abort;
+- source metadata/identity changed immediately before replace -> abort;
+- Pass-1 and Pass-2 source digests match for successful attempt.
+
 
 ## Gate T — PluginResult policy
 
