@@ -11,7 +11,7 @@ Original deeper source baseline retained for detailed parity fixtures:
 ## Core normative / governance blobs
 
 - `AGENTS.md` — `dac97cb887b6e5765c067a901be70154a0850385`
-- `docs/DOCUMENT_CONTRACT.md` — `4d92e0c6e1bb5a256bc9de03aa776bc05381658a`
+- `docs/DOCUMENT_CONTRACT.md` — `05fa567b620f56547a4db26326475c869dc4fb3f`
 - `docs/ADR_PROCESS.md` — `587fd4c7b0971c4e927482b5016c645e74c4e070`
 - `docs/SPECIFICATION.md` — `5b1a15f5873504be030395c69480560d12f085d3`
 - `docs/ARCHITECTURE.md` — `91deb4cf3a472d227e4997bb0ce40fea73f9ce57`
