@@ -527,6 +527,7 @@ Printable v1 requires:
 - exclude_object disabled;
 - adaptive pressure advance disabled;
 - filament adaptive volumetric speed disabled;
+- extrusion-rate smoothing / Pressure Equalizer disabled;
 - machine/filament/process extrusion-role-change custom G-code empty;
 - firmware retraction disabled;
 - line numbers/checksums off;
@@ -546,11 +547,25 @@ Static pressure advance may remain enabled and is inherited unchanged.
 
 Candidate segment speed MUST NOT exceed:
 - resolved outer-wall speed;
+- minimum relevant actual matched final-G-code external-wall feed;
 - resolved fixed filament max volumetric speed divided by candidate commanded mm3/mm;
 - optional lower plugin cap;
-- actual matched structural-wall feed when that feed is lower and the compatibility fixture requires it.
+- optional lower plugin cap.
 
 The plugin never silently changes Orca settings.
+
+## 28A. Inherited acceleration gate
+
+Printable v1 does not emit new acceleration/jerk/pressure-advance setup.
+
+At each injection anchor:
+- active acceleration must be parser-known, finite, and positive;
+- it must not exceed plugin setting max_subedge_acceleration_mm_s2;
+- that cap must not exceed the exact fixture's resolved external-wall acceleration limit.
+
+The plugin does not change acceleration in v1.
+
+Unknown or excessive inherited acceleration => Skipped.
 
 ## 29. Final chronological tool-clearance validation
 
@@ -634,6 +649,19 @@ Expected unsupported/validation failure => PluginResult.Skipped and original out
 
 Success => successful injection or validated already-injected no-op.
 
+## 31A. Postprocess metadata limitation
+
+SubEdge injection occurs after Orca generated its standard preview/time/material/progress metadata.
+
+Therefore:
+- standard Orca preview still excludes injected SubEdge paths;
+- Orca original time/material/progress estimates may under-report the modified file;
+- v1 does not rewrite M73/progress/statistics metadata.
+
+Plugin UI reports added path/material and estimated added time separately.
+
+Benchmarks use final modified G-code and/or actual printer measurements rather than original Orca estimates alone.
+
 ## 32. Failure behavior
 
 Any uncertainty in:
@@ -645,7 +673,8 @@ Any uncertainty in:
 - machine translation;
 - formatter parity;
 - actual modal/retraction state, including G21/G90/M83/M200/M220/M221/G92 semantics;
-- flow/speed limits;
+- flow/speed/acceleration limits;
+- extrusion-rate smoothing state;
 - support/collision;
 - candidate seam/gap;
 - timelapse/wrapping/wipe-tower/object-exclusion behavior;
