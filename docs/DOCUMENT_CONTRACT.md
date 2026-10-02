@@ -25,7 +25,7 @@ Highest to lowest:
 6. **ERROR_MODEL.md / ZAA_INTEGRATION.md** — normative technical models where referenced.
 7. **docs/specs/*.md handoff specs** — bounded implementation/review scope and acceptance criteria; MUST reference the canonical revision and MUST NOT override 1-6.
 8. **ROADMAP.md / TEST_STRATEGY.md / QUALITY_GATES.md / REVIEW_PROCESS.md** — sequencing, validation and release gates.
-9. **FULL_CONSISTENCY_AUDIT_2026-10-01.md / FULL_CONSISTENCY_AUDIT_2026-09-30.md / ORCASLICER_PLUGIN_RESEARCH.md / DEPENDENCY_AUDIT.md / SMOOTHIFICATOR_ANALYSIS.md / PROJECT_RULES_ADOPTION.md** — evidence/history/process-adoption record; may describe rejected/superseded approaches.
+9. **FULL_CONSISTENCY_AUDIT_2026-10-02.md / FULL_CONSISTENCY_AUDIT_2026-10-01.md / FULL_CONSISTENCY_AUDIT_2026-09-30.md / ORCASLICER_PLUGIN_RESEARCH.md / DEPENDENCY_AUDIT.md / SMOOTHIFICATOR_ANALYSIS.md / PROJECT_RULES_ADOPTION.md** — evidence/history/process-adoption record; may describe rejected/superseded approaches.
 10. **README.md** — summary only.
 
 If a lower-precedence document conflicts with a higher one, follow the higher document and fix the documentation before implementing behavior.
