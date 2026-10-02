@@ -208,7 +208,7 @@ Unknown/incompatible version facts fail closed.
 
 It owns:
 - binary line-stream lexical/parser state with raw-byte preservation;
-- actual emitted machine-state reconstruction, including units/XYZ/E modes, M220/M221, G92-origin state, logical E, and physical retraction debt;
+- actual emitted machine-state reconstruction, including units/XYZ/E modes, M220/M221, G92-origin state, logical E, physical retraction debt, feed, and active acceleration;
 - plan selection/matching;
 - chronological plugin + downstream-original tool-clearance simulation against printed material;
 - seam-invariant structural-loop matching;
@@ -501,6 +501,7 @@ Structured diagnostics should reconstruct:
 - plugin + audited Orca compatibility version;
 - execution config fingerprint;
 - phase durations;
+- parsed inherited acceleration and candidate acceleration margin;
 - candidate/segment summary;
 - structural match error;
 - execution-frame translation;
@@ -620,6 +621,17 @@ parser/state.py owns:
 - modal feed and supported acceleration state.
 
 No other module may infer these from comments/profile defaults once final G-code is available.
+
+## 29C. Estimate/metadata ownership
+
+The application/preview may report plugin-estimated deltas:
+- added path length;
+- added geometric/commanded material;
+- estimated added time.
+
+It MUST distinguish these from Orca's pre-postprocess estimates.
+
+The G-code adapter does not rewrite M73/progress/material-stat metadata in v1.
 
 ## 30. Binary G-code ownership
 
