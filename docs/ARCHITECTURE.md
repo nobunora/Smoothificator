@@ -163,7 +163,7 @@ Application owns workflow and durable-in-process plugin state:
 - plan validation;
 - canonical serialization/hash;
 - PlanStore;
-- separate PlanExecutionStatus store;
+- attempt-scoped InjectionAttemptStore / derived plan-runtime summary;
 - cancellation orchestration.
 
 The immutable plan owns execution intent.
@@ -208,7 +208,7 @@ Unknown/incompatible version facts fail closed.
 
 It owns:
 - binary line-stream lexical/parser state with raw-byte preservation;
-- actual emitted machine-state reconstruction;
+- actual emitted machine-state reconstruction, including units/XYZ/E modes, M220/M221, G92-origin state, logical E, and physical retraction debt;
 - plan selection/matching;
 - chronological plugin + downstream-original tool-clearance simulation against printed material;
 - seam-invariant structural-loop matching;
@@ -368,13 +368,23 @@ Locally mutable only.
 Owner: application.
 Frozen and deterministic.
 
-### PlanExecutionStatus
+### InjectionAttemptRecord
 Owner: application infrastructure.
-Mutable separately from plan.
+
+Each postprocess invocation has a unique InjectionAttemptId and its own monotonic attempt record.
+
+One plan may have multiple simultaneous/historical attempt records.
+
+A derived UI summary may expose latest/active/aggregate plan runtime state, but it is not authoritative execution evidence.
 
 ### PlanStore
 Thread-safe, bounded, process-local.
-Stores immutable plans + status metadata only.
+
+Plans are fully constructed and atomically published.
+
+A process-local AnalysisGenerationId tracks lifecycle/diagnostic generation but is not part of deterministic plan hash.
+
+Long postprocess work uses an immutable plan-selection snapshot rather than holding the store lock.
 
 ### G-code parser/emitter state
 Owned by one postprocess invocation.
@@ -382,7 +392,7 @@ Never shared with optimizer/UI.
 
 ### Temp output
 Owned by one injector attempt.
-Parser/emitter uses binary line streams. Untouched original bytes and line endings are copied exactly. Original working file is untouched until full validation/sanity succeeds.
+Parser/emitter uses binary line streams. Untouched original bytes and line endings are copied exactly. Original working file is untouched until full validation/sanity succeeds. Pass 1/Pass 2 source digests and a pre-commit source-identity check protect against TOCTOU modification.
 
 ## 19. Component contract checklist
 
@@ -540,6 +550,20 @@ Printable v1 source geometry must pass ADR-0027 and ADR-0030 before engine use:
 
 The plugin does not create an independent mesh-repair authority.
 
+## 28A. Simple connected topology
+
+Printable v1 source geometry contains exactly one connected closed triangle shell.
+
+Each printable candidate interaction section has:
+- one simple relevant outer loop;
+- no hole loop in the target interaction region;
+- no second disconnected target loop;
+- no branch/self-intersection ambiguity.
+
+Connected-component and section-topology validation belongs to the Orca adapter / geometry prerequisite boundary before engine candidate planning.
+
+Unsupported topology is analysis-only.
+
 ## 29. Final chronological tool-clearance ownership
 
 ToolClearanceProfile ownership:
@@ -562,6 +586,40 @@ It does not change candidate geometry.
 It validates plugin-generated and resumed-original motion in one chronological simulation. Earlier deposited candidate material becomes an obstacle for later motions; future material does not. A narrower downstream-original helper may exist internally, but `tool_clearance.py` owns the final physical clearance decision.
 
 Software clearance is a conservative proxy. Physical hotend/nozzle envelope calibration belongs to printer-fixture evidence, not the geometry engine.
+
+## 29A. Final structural deposition parity
+
+The planning-time structural baseline is provisional.
+
+After final G-code structural matching, the G-code adapter owns construction of a local FinalStructuralDepositionContext around each candidate interaction region.
+
+It may include:
+- final external-wall seam-gap geometry;
+- nearby positive-E structural paths relevant to support/collision;
+- final quantized geometry;
+- final actual feed.
+
+The application/engine exposes pure validation helpers for:
+- support parity;
+- hard bead-overlap/tolerance checks.
+
+The G-code adapter may accept/reject only. It cannot call the optimizer.
+
+## 29B. Modal execution-state ownership
+
+parser/state.py owns:
+- units;
+- G90/G91;
+- M82/M83;
+- logical E coordinate;
+- physical retraction debt;
+- M220 speed factor;
+- M221 flow factor;
+- M200 volumetric-E state;
+- G92 XYZ-origin state;
+- modal feed and supported acceleration state.
+
+No other module may infer these from comments/profile defaults once final G-code is available.
 
 ## 30. Binary G-code ownership
 
