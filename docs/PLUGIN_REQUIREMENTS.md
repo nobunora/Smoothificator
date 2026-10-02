@@ -49,12 +49,13 @@ Physical injection requires:
 - one PrintObject;
 - one total source ModelInstance;
 - one positive ModelPart volume;
+- exactly one connected closed triangle shell;
 - no NegativeVolume/ParameterModifier/helper CSG volume;
 - finite valid triangle mesh;
 - current bound ModelVolume manifold;
 - deterministic closed-mesh orientation/material-side validation, including mirrored transforms;
 - centered-frame parity;
-- unambiguous required plane sections.
+- every printable target interaction section has one simple relevant outer loop, with no hole/disconnected/branched/self-intersecting target topology.
 
 Unsupported source topology remains analysis-only.
 
@@ -156,7 +157,8 @@ Initial physical v1 requires:
 - fresh current-session plan;
 - positive active Z hop;
 - printable-height margin;
-- exact golden-fixtured profile family.
+- exact golden-fixtured profile family;
+- source working-file identity remains unchanged during the attempt.
 
 The plugin reports unmet settings but never silently changes them.
 
@@ -175,7 +177,7 @@ Raw ordered path equality is not sufficient.
 
 Exactly one structural match is required.
 
-## 13. Execution-frame mapping
+## 14. Execution-frame mapping
 
 Plan geometry is not machine G-code geometry.
 
@@ -185,7 +187,7 @@ Reject non-constant mapping, rotation, scale, shear, or ambiguity.
 
 Only G-code code applies machine translation.
 
-## 14. Orca formatter parity
+## 15. Orca formatter parity
 
 For the audited compatibility descriptor:
 - XYZ/F = 3 decimals;
@@ -196,7 +198,7 @@ Do not use Python default round for parity.
 
 Unknown formatter contract => no injection.
 
-## 15. Speed / volumetric limit
+## 16. Speed / volumetric limit
 
 Candidate speed is bounded by:
 - resolved outer-wall speed;
@@ -206,7 +208,7 @@ Candidate speed is bounded by:
 
 Filament adaptive volumetric speed is disabled in v1.
 
-## 16. Retraction/state behavior
+## 17. Retraction/state behavior
 
 Parser reconstructs actual final-G-code state.
 
@@ -221,7 +223,7 @@ The plugin does not reproduce wipe for its temporary cycle.
 
 Unknown state => Skipped.
 
-## 17. Safe-ceiling travel
+## 18. Safe-ceiling travel
 
 All plugin-generated non-extruding XY travel occurs at Zsafe.
 
@@ -232,7 +234,7 @@ Zsafe uses:
 
 Zsafe must remain inside active tool printable-height limit.
 
-## 18. Final chronological tool-clearance validation
+## 19. Final chronological tool-clearance validation
 
 Every physical candidate requires one final chronological swept-volume validation covering:
 - all plugin-generated candidate/travel/return motions;
@@ -257,7 +259,7 @@ No ToolClearanceProfile => analysis/preview only.
 
 v1 does not replan unsafe plugin or later original motion in postprocess; validation only accepts or rejects.
 
-## 19. File processing
+## 20. File processing
 
 Postprocess is:
 - binary-line streaming;
@@ -275,12 +277,14 @@ Postprocess is:
 Expected unsupported/validation condition:
 - stable internal reason;
 - PluginResult.Skipped;
-- original file unchanged byte-for-byte on failure.
+- original file unchanged byte-for-byte on failure;
+- source identity/digest revalidated across passes;
+- PluginSettingsFingerprint rechecked immediately before commit.
 
 Successful injection or validated already-injected no-op:
 - Success.
 
-## 20. Preview
+## 21. Preview
 
 Orca standard preview is pre-postprocess.
 
@@ -288,13 +292,13 @@ Plugin preview uses the exact immutable plan and separate runtime status.
 
 It shows unmet injection gates explicitly.
 
-## 21. Packaging
+## 22. Packaging
 
 Target pure-Python wheel.
 
 No native/custom-Orca dependency in v1.
 
-## 22. Golden fixture requirement
+## 23. Golden fixture requirement
 
 No printer/profile family becomes injectable until fixtures record:
 - exact Orca version/commit;
@@ -303,7 +307,9 @@ No printer/profile family becomes injectable until fixtures record:
 - plugin settings fingerprint;
 - ToolClearanceProfile id/evidence;
 - source G-code;
-- parser/retraction state;
+- final structural deposition/seam-gap support expectations;
+- actual matched final wall feed expectations;
+- parser/modal/retraction state, including M220/M221/G92 semantics;
 - structural matching;
 - execution-frame translation;
 - quantization;
@@ -312,11 +318,13 @@ No printer/profile family becomes injectable until fixtures record:
 - candidate support dependency/order expectations;
 - expected injected output;
 - idempotence;
+- timelapse/wrapping/wipe/exclude-object gate fixtures;
+- attempt concurrency/source-TOCTOU fixtures;
 - representative failure cases.
 
 No fixture => analysis-only.
 
-## 23. Compatibility default
+## 24. Compatibility default
 
 Unknown Orca source/API, profile, config, modal state, custom code, physical tool envelope, source orientation/material side, coordinate mapping, formatter behavior, binary token/newline semantics, filesystem atomic-replace behavior, or machine limit => injection disabled.
 
