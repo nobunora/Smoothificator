@@ -49,7 +49,7 @@ Read all non-superseded ADRs relevant to the task.
 As of this audit:
 - ADR-0001 through ADR-0009;
 - ADR-0010 is superseded by ADR-0015;
-- ADR-0011 through ADR-0038, subject to explicit supersession notes.
+- ADR-0011 through ADR-0041, subject to explicit supersession notes.
 
 Later ADRs override earlier clauses only where stated.
 
@@ -282,12 +282,24 @@ Retraction:
 
 Motion:
 - outer-wall speed;
+- resolved external-wall acceleration;
+- dynamic acceleration feature state needed by fixture;
 - XY travel speed;
 - Z travel speed;
 - active Z hop/lift;
 - printable height / active-extruder printable height.
 
 Execution feature gates:
+- units / XYZ / E-mode assumptions;
+- M200 volumetric-E state;
+- M220/M221 runtime override assumptions;
+- timelapse_type;
+- farthest_point_timelapse;
+- time_lapse_gcode identity;
+- wrapping detection;
+- wipe/prime tower presence;
+- exclude_object / object labeling diagnostics;
+- extrusion-rate smoothing / Pressure Equalizer state;
 - relative-E state;
 - arc fitting;
 - line numbering/checksum;
@@ -307,7 +319,7 @@ Exact raw-key mapping and override precedence are pinned in compatibility tests.
 During analysis:
 1. build a versioned ExecutionConfigFingerprint from resolved Orca semantics;
 2. validate Adaptive Sub-Edge Settings;
-3. build a versioned PluginSettingsFingerprint from every plugin-owned value that can affect geometry, optimization, candidate seam/gap, ToolClearanceProfile, margins, speed cap, or execution policy.
+3. build a versioned PluginSettingsFingerprint from every plugin-owned value that can affect geometry, optimization, candidate seam/gap, ToolClearanceProfile, margins, speed cap, max_subedge_acceleration_mm_s2, or execution policy.
 
 At psGCodePostProcess:
 - rebuild ExecutionConfigFingerprint with ctx.config_value();
@@ -402,7 +414,22 @@ SubEdgePlan:
 
 Exclude timestamp, runtime ObjectID, final machine translation, final E, and runtime status from plan hash.
 
-PlanExecutionStatus is separate mutable state.
+AnalysisGenerationId:
+- process-local lifecycle identifier;
+- excluded from deterministic plan hash.
+
+InjectionAttemptId:
+- unique per psGCodePostProcess invocation.
+
+InjectionAttemptRecord:
+- attempt id;
+- selected plan hash;
+- source working-file identity;
+- compatibility/fingerprint results;
+- monotonic state transition;
+- terminal outcome/reason.
+
+There is no single overwrite-prone mutable per-plan status as the authoritative runtime record.
 
 ## 14. Snapshot immutability
 
@@ -672,7 +699,7 @@ cdot q_{cmd}
 
 Any invalidity => whole injection Skipped.
 
-## 28. Speed limits
+## 28. Speed and acceleration limits
 
 For each segment:
 
@@ -690,6 +717,15 @@ Missing/non-positive safety bound => non-injectable.
 
 Do not silently raise Orca speed.
 
+Printable v1 does not emit acceleration commands.
+
+At the insertion anchor:
+- parsed active acceleration must be known, finite, and positive;
+- active acceleration <= max_subedge_acceleration_mm_s2;
+- max_subedge_acceleration_mm_s2 <= the exact fixture's resolved external-wall acceleration limit.
+
+Unknown/excessive acceleration => Skipped.
+
 ## 29. v1 advanced-feature gates
 
 Printable injection is disabled if:
@@ -703,6 +739,7 @@ Printable injection is disabled if:
 - calibration/tower mode is detected;
 - fuzzy skin is active for the target;
 - filament adaptive volumetric speed is enabled;
+- max_volumetric_extrusion_rate_slope > 0 (Pressure Equalizer / extrusion-rate smoothing enabled);
 - adaptive pressure advance is enabled;
 - machine/filament/process extrusion-role-change G-code is non-empty;
 - firmware retraction is enabled;
@@ -877,6 +914,16 @@ Structured compact diagnostics:
 - final reason/status.
 
 Do not log complete user models/G-code.
+
+## 37A. Estimate/progress limitation
+
+Because injection occurs after Orca's standard time/material/progress generation:
+- standard Orca preview/time/material statistics are pre-postprocess;
+- M73/progress/stat headers are not rewritten in v1;
+- plugin reports deterministic added path/material/time estimates separately;
+- physical benchmark truth comes from final modified G-code and/or printer measurement.
+
+Do not present Orca's original estimate as the final SubEdge-modified estimate.
 
 ## 38. Architecture and quality gates
 
