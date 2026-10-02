@@ -208,6 +208,7 @@ Cases:
 - M200 active reject;
 - M220 != 100 reject;
 - M221 != 100 reject;
+- physical-run instruction records live printer speed/flow override must remain 100%;
 - G92 E does not clear retraction debt;
 - G92 XYZ target-context reject;
 - feed restore equality;
@@ -273,7 +274,7 @@ Check:
 - quantized segment collapsed to zero XYZ length -> reject;
 - nonzero path with quantized E=0 when material intent is nonzero -> reject.
 
-## Gate O — E and speed derivation
+## Gate O — E / speed / acceleration derivation
 
 For quantized segment verify:
 - emitted 3D length;
@@ -283,8 +284,16 @@ For quantized segment verify:
 - max-volumetric-speed cap uses commanded mm3/mm;
 - outer-wall speed cap;
 - optional plugin cap;
-- fixture-required matched-wall feed cap;
-- missing/non-positive bound rejects.
+- final matched-wall feed is always an upper bound;
+- configured external-wall speed is an upper bound;
+- missing/non-positive speed/volumetric bound rejects;
+- extrusion-rate smoothing slope = 0 accepted;
+- positive extrusion-rate smoothing slope rejected;
+- known conservative inherited acceleration accepted;
+- high inherited acceleration rejected;
+- unknown/non-finite acceleration rejected;
+- max_subedge_acceleration settings fingerprint changes deterministically;
+- plugin block leaves acceleration state unchanged.
 
 ## Gate P — Retraction controller
 
@@ -421,6 +430,14 @@ Check:
 - current capability get_config available at postprocess;
 - unsupported runtime fails clearly.
 
+## Gate V2 — Estimate/progress labeling
+
+Check:
+- standard Orca preview/time/material remains explicitly labeled pre-postprocess;
+- plugin added path/material/time delta is deterministic;
+- M73/progress metadata is not silently claimed to be corrected;
+- benchmark/report code does not treat original Orca estimate as final modified-file truth.
+
 ## Gate W — Primary implementation review
 
 Review:
@@ -488,3 +505,13 @@ Every newly supported Orca version, printer/profile, G-code mode, object topolog
 - focused compatibility tests;
 - relevant full regression gates;
 - ADR when a safety/architecture contract changes.
+
+
+## Compatibility drift smoke check
+
+Before pinning a new Orca build:
+- compare the pinned source family against the previous audited baseline for SlicingPipeline bindings, Print/GCode export paths, formatter constants, profile semantics, and dynamic feature generation;
+- rerun the relevant source-parity fixtures;
+- never infer compatibility from version numbering alone.
+
+The 2026-10-02 audit found PluginHost/SlicingPipeline bindings stable while GCode.cpp/Print.cpp and profiles continued to evolve, validating this requirement.
