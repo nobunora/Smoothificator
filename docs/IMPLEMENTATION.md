@@ -49,7 +49,7 @@ Read all non-superseded ADRs relevant to the task.
 As of this audit:
 - ADR-0001 through ADR-0009;
 - ADR-0010 is superseded by ADR-0015;
-- ADR-0011 through ADR-0053, subject to explicit supersession notes.
+- ADR-0011 through ADR-0063, subject to explicit supersession notes.
 
 Later ADRs override earlier clauses only where stated.
 
@@ -440,28 +440,34 @@ There is no single overwrite-prone mutable per-plan status as the authoritative 
 
 ## 13A. Canonical serialization and hashing
 
-Phase 0.5 follows ADR-0049 exactly.
+Phase 0.5 follows ADR-0049 + ADR-0062 exactly.
 
-Canonical identity rules:
-- SHA-256, lowercase full 64-hex authoritative digest;
-- one versioned tagged UTF-8 canonical grammar;
-- mapping keys sorted lexicographically;
-- enums use stable documented string values;
-- finite binary64 floats encoded by exact hexadecimal form;
-- -0.0 normalized to +0.0;
+Owners:
+- application/serialization.py -> canonical semantic tree and exact canonical bytes;
+- application/hashing.py -> typed/domain-separated SHA-256 identities.
+
+Required canonical-byte rules:
+- full SHA-256 authoritative ids;
+- exact root identity type/schema/canonical-encoding version;
+- exact domain prefix/magic for each identity class;
+- mapping keys lexicographically sorted;
+- enums serialized by stable documented string;
+- finite binary64 scalar values encoded by exact hexadecimal token, with -0 normalized;
 - NaN/Inf rejected;
-- arrays use explicit semantic dtype/shape/logical C-order canonical digest;
-- runtime-only fields excluded by schema;
-- Python repr/pickle/default JSON float formatting are forbidden identity mechanisms.
+- arrays serialized by semantic dtype + rank + shape + logical C-order values;
+- i64/f64 array values use fixed big-endian canonical bytes;
+- native ndarray memory byte order/layout MUST NOT participate;
+- runtime-only fields are schema-excluded;
+- no Python repr/pickle/default JSON float formatting.
 
-application/serialization.py and application/hashing.py are the only owners.
+Typed identity comparison checks both expected identity class/schema and full digest; arbitrary 64-hex strings are never compared without context.
 
 All NumPy arrays crossing the adapter boundary:
 - are copied into plugin ownership;
 - are marked non-writeable;
 - have no Orca-backed base/reference.
 
-No live pybind object survives `execute(ctx)`.
+No live pybind object survives execute(ctx).
 
 ## 15. Analyzer workflow
 
