@@ -71,8 +71,8 @@ Implement/test:
 - geometric versus commanded volume separation;
 - Orca external-wall command-flow multipliers including print/filament/optional outer-wall ratios;
 - effective bead height above support;
-- SupportCoverageMetric + configured support thresholds;
 - versioned SupportCoverageMetric and threshold contract;
+- conservative adaptive support refinement/convergence from ADR-0058;
 - no-refinement baseline identity.
 
 Exit:
@@ -83,9 +83,9 @@ Exit:
 
 Implement:
 - finite/manifold mesh validity gates;
-- source orientation/material-side validation and mirrored-transform parity;
-- orientation/material-side validation including mirrored transforms;
-- mesh plane sections;
+- source orientation/material-side validation including mirrored transforms;
+- topology-aware mesh plane sections from ADR-0059;
+- final-Z quantization section stability;
 - exactly-one-simple-target-loop gate;
 - material boundary representation;
 - centerline placement inside material;
@@ -108,6 +108,7 @@ Implement:
 - structural + candidate nominal finite-bead envelope;
 - versioned deterministic ErrorEstimatorConfig;
 - sampling refinement/convergence for hard normal-error metrics;
+- candidate-influence-closed AffectedSurfaceDomain from ADR-0060;
 - candidate geometry/flow search;
 - cost model;
 - deterministic optimizer;
