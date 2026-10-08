@@ -94,6 +94,23 @@ A direct PrintObject.trafo() @ ModelVolume.matrix() transform is insufficient be
 
 No plan is injectable until centered-frame parity is verified against PrintObject/sliced path geometry.
 
+## 5A. Orca slice-boundary modifier gates
+
+Because the source mesh is the authoritative ideal target in v1, Orca options that intentionally morph slice boundaries are not silently treated as surface error.
+
+The first printable fixture requires:
+- xy_contour_compensation = 0;
+- xy_hole_compensation = 0;
+- slicing_mode = regular;
+- slice-closing/repair behavior that can morph the simple target contour disabled by the pinned compatibility descriptor;
+- make_overhang_printable disabled for target regions.
+
+Elephant-foot compensation may remain configured only when every candidate interaction interval is provably above all compensated layers. Candidates in/using compensated layers are non-injectable.
+
+Unknown/new slice-boundary modifier semantics => analysis-only.
+
+Relevant settings participate in ExecutionConfigFingerprint.
+
 ## 6. ZAA baseline semantics
 
 The analyzer reads final simplified paths at posSimplifyPath.
@@ -144,6 +161,20 @@ Different SubEdgePaths may:
 - use independently optimized different command Z values.
 
 Continuously varying-Z candidate paths are out of scope for v1.
+
+## 8A. Mesh-plane section robustness
+
+Arbitrary-Z source sections use one versioned MeshSectionPolicy.
+
+Candidate command Z is forbidden within configured avoidance bands around source vertex Z values and horizontal-facet Z values.
+
+Triangle-plane classification, endpoint deduplication, and section joining use explicit fingerprinted tolerances.
+
+Printable v1 requires exactly one deterministic simple closed relevant loop with degree-2 section graph vertices.
+
+Degenerate/coplanar/open/branched/self-intersecting section topology => non-injectable.
+
+The sectioner never silently nudges an already selected candidate Z.
 
 ## 9. Candidate seam and gap
 
@@ -465,6 +496,20 @@ Do not use Python built-in round as an Orca-parity implementation.
 After translation and XYZ quantization, execution-sensitive geometry is revalidated.
 
 Unknown formatter behavior for a new Orca version => no injection.
+
+## 23A. G-code feedrate units
+
+Profile/process speeds are canonicalized in mm/s.
+
+G-code F values are mm/min.
+
+Only the execution adapter converts:
+
+F_mm_min = speed_mm_s * 60
+
+Parsed G-code F values are converted back to mm/s before comparison with profile/plugin speed limits.
+
+Retraction/deretraction and XY/Z travel feedrates follow the same explicit unit contract.
 
 ## 24. Final E derivation
 
