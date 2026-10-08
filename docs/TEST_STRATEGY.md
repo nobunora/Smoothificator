@@ -64,6 +64,10 @@ Pinned Orca/source fixtures verify:
 - mirrored case if supported;
 - centered-frame parity;
 - ambiguous/open candidate section rejection;
+- one simple target loop accepted;
+- target hole/annulus rejected;
+- competing target islands rejected;
+- self-intersecting target rejected;
 - no live/zero-copy reference escape.
 
 ## Gate D — Orca ZAA parity
@@ -258,6 +262,8 @@ Track and verify:
 - logical E coordinate separately from physical retraction debt;
 - active tool;
 - feed;
+- M220 firmware feed override;
+- M221 firmware flow override;
 - retraction state;
 - supported acceleration/modal state;
 - layer/reserved markers;
@@ -281,7 +287,12 @@ Cases:
 - wipe-enabled source;
 - no-retract/ambiguous state reject;
 - unknown critical command reject;
-- calibration block reject.
+- calibration block reject;
+- G90+G21 accepted;
+- G91 anchor rejected;
+- G20 anchor rejected;
+- M220 != 100 rejected;
+- M221 != 100 rejected.
 
 ## Gate K2 — Final structural deposition parity
 
@@ -491,7 +502,16 @@ Check:
 - repeated export/upload working copies;
 - no duplicate injection.
 
-## Gate V — Package/runtime
+## Gate V — Time/cooling/metadata limitations
+
+Check:
+- deterministic plugin-added time/material estimate;
+- original metadata preserved byte-for-byte;
+- warning/status that original total-time/progress/material metadata is pre-injection;
+- fixture records cooling/fan/min-layer-time settings;
+- physical benchmark compares predicted versus measured added time.
+
+## Gate W — Package/runtime
 
 Check:
 - embedded Python version;
@@ -510,7 +530,7 @@ Check:
 - M73/progress metadata is not silently claimed to be corrected;
 - benchmark/report code does not treat original Orca estimate as final modified-file truth.
 
-## Gate W — Primary implementation review
+## Gate X — Primary implementation review
 
 Review:
 - final diff;
@@ -522,7 +542,7 @@ Review:
 
 Every finding gets a disposition.
 
-## Gate X — Independent blind review
+## Gate Y — Independent blind review
 
 Before first physical injection:
 - reviewer receives authoritative spec/source/diff, not primary findings;
@@ -532,7 +552,7 @@ Before first physical injection:
 
 ToolClearanceProfile evidence must be included.
 
-## Gate Y — First physical coupon
+## Gate Z — First physical coupon
 
 Only after A–X PASS for the exact fixture.
 
@@ -553,7 +573,7 @@ Inspect:
 
 Any unsafe/unexplained behavior returns to model/spec adjudication.
 
-## Gate Z — Comparative benchmark
+## Gate AA — Comparative benchmark
 
 Compare:
 - normal layer;
