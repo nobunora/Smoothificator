@@ -93,3 +93,8 @@ Candidate Z search excludes a finite set of narrow forbidden bands; no material 
 ## Rollback / disable condition
 
 Section topology unresolved => no injection for that region.
+
+
+## Partial supersession
+
+ADR-0059 supersedes the broad mesh_section_vertex_avoidance_mm / horizontal-facet avoidance-band mechanism. ADR-0053 remains authoritative for deterministic graph assembly, explicit tolerances, simple-loop validation, and no post-plan Z nudging.
