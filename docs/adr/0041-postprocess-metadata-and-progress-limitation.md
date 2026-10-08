@@ -1,7 +1,8 @@
 # ADR-0041: Treat Orca time/material/progress metadata as non-authoritative after SubEdge injection
 
-Status: Accepted
+Status: Superseded
 Date: 2026-10-02
+Superseded by: ADR-0057
 
 ## Context
 
@@ -87,3 +88,8 @@ None.
 A future version may rewrite progress metadata using a validated final-G-code estimator.
 
 Supersedes: any implication that Orca's standard time/material/progress statistics remain exact after injection.
+
+
+## Supersession note
+
+ADR-0057 retains the pre-injection estimate limitation and additionally owns cooling/fan/min-layer-time implications. Use ADR-0057 as the canonical v1 contract.
