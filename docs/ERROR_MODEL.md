@@ -66,8 +66,10 @@ q_geom = h * (w - h * (1 - pi/4))
 Constraints:
 - h > 0;
 - w > 0;
-- calibrated printable bounds apply;
-- invalid/non-positive cross-section is infeasible.
+- w >= h for the v1 non-bridge rounded-rectangle model;
+- h and w lie within validated Settings min/max candidate bounds;
+- q_geom is finite and positive;
+- invalid geometry is infeasible before commanded-flow/E derivation.
 
 Given h and geometric line volume q, effective width may be reconstructed as:
 
@@ -268,3 +270,21 @@ Report:
 - infeasibility reason.
 
 Physical roughness/bead/tool-clearance calibration is a later gate.
+
+
+## 16. Error-estimator convergence
+
+All hard surface-error acceptance uses the versioned ADR-0045 estimator contract.
+
+Settings define:
+- initial sample spacing;
+- refinement factor;
+- convergence threshold in mm;
+- maximum refinement levels;
+- closest-point/sign tolerance version.
+
+Metrics are recomputed on progressively refined deterministic samples until every hard metric used for accept/reject changes by no more than the convergence threshold.
+
+Failure to converge makes the candidate non-injectable.
+
+The reported E_max/E_rms/E_p95 values are converged numerical estimates under this contract, not claims of an analytic global extremum.
