@@ -338,20 +338,24 @@ Do not call Python built-in `round()` for Orca-compatible coordinate/E formattin
 
 ## 16A. Canonical identity encoding
 
-application/serialization.py and application/hashing.py own ADR-0049.
+application/serialization.py and application/hashing.py jointly own ADR-0049 + ADR-0062.
 
 No other layer may independently serialize/hash plan/fingerprint semantics.
 
 Canonical identities use:
 - SHA-256 full 64-hex authoritative digest;
-- explicit schema/version;
+- explicit identity type, schema version, and canonical-encoding version;
+- hash-domain separation for plan, execution-config, plugin-settings, source-geometry, and nested array digests;
+- one exact tagged UTF-8 tree grammar;
 - sorted string mapping keys;
-- exact finite binary64 hex tokens with -0 normalized;
-- NaN/Inf rejection;
-- canonical array shape/dtype/logical-order digests;
+- exact finite binary64 hexadecimal scalar tokens with -0 normalized and NaN/Inf rejected;
+- canonical array rank/shape framing;
+- canonical i64/f64 array values encoded in fixed big-endian byte order and logical C element order;
 - stable enum string values.
 
-Python repr, pickle, unordered map order, locale-dependent floats, and raw ndarray repr are forbidden identity inputs.
+Native-endian ndarray bytes, Python repr, pickle, unordered map order, locale-dependent float formatting, and untyped cross-domain digest comparison are forbidden identity mechanisms.
+
+serialization.py owns canonical bytes; hashing.py owns typed/domain-separated SHA-256 computation.
 
 ## 17. Configuration ownership
 
