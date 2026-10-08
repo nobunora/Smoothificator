@@ -68,3 +68,8 @@ Add analytic fixtures for:
 ## Rollback / disable condition
 
 Support metric fails to converge/resolve => candidate infeasible.
+
+
+## Refinement note
+
+ADR-0058 is the canonical hard-acceptance refinement contract. Fixed-resolution sampling alone is insufficient; conservative bounds and convergence are required.
