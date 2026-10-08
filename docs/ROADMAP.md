@@ -86,6 +86,7 @@ Implement:
 - source orientation/material-side validation and mirrored-transform parity;
 - orientation/material-side validation including mirrored transforms;
 - mesh plane sections;
+- exactly-one-simple-target-loop gate;
 - material boundary representation;
 - centerline placement inside material;
 - constant-Z SubEdgePath invariant;
@@ -178,7 +179,7 @@ Record:
 - ToolClearanceProfile source/measurement;
 - plugin settings.
 
-Verify all Gate J assumptions in TEST_STRATEGY.
+Verify all Gate J assumptions in TEST_STRATEGY, including G21/G90 and M220/M221 unity at supported anchors.
 
 No physical injector support until fixtures exist.
 
@@ -307,6 +308,14 @@ Before hardware:
 
 Exit:
 - REVIEW_PROCESS convergence criteria satisfied.
+
+## Phase 4H — metadata / thermal limitation validation
+
+Before physical interpretation:
+- verify original Orca progress/time/material metadata is treated as pre-injection;
+- record plugin-added estimated time/material;
+- document cooling/fan/min-layer-time settings;
+- do not rewrite thermal/progress metadata in v1.
 
 ## Phase 5 — first physical PoC
 
