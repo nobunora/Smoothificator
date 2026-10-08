@@ -60,11 +60,13 @@ No Orca/G-code/optimizer behavior yet.
 ## Phase 1A — bead / flow primitives
 
 Implement/test:
-- rounded-rectangle geometric bead formula;
+- rounded-rectangle geometric bead formula and explicit width>=height domain;
+- plugin-configured min/max candidate width/height bounds;
 - ZAA local geometry ratio;
 - geometric versus commanded volume separation;
 - Orca external-wall command-flow multipliers including print/filament/optional outer-wall ratios;
 - effective bead height above support;
+- versioned SupportCoverageMetric and threshold contract;
 - no-refinement baseline identity.
 
 Exit:
@@ -93,11 +95,12 @@ Exit:
 - varying-Z candidate path rejected;
 - unsupported/ambiguous geometry rejected.
 
-## Phase 1C — error / optimizer
+## Phase 1C — converged error / optimizer
 
 Implement:
 - structural + candidate nominal finite-bead envelope;
-- normal-error metrics;
+- versioned deterministic ErrorEstimatorConfig;
+- sampling refinement/convergence for hard normal-error metrics;
 - candidate geometry/flow search;
 - cost model;
 - deterministic optimizer;
@@ -116,7 +119,8 @@ Stock Orca read-only:
 - path relative-Z -> absolute Z;
 - local ZAA geometry normalization;
 - resolved semantic config;
-- source/profile gate detection.
+- source/profile gate detection;
+- mixed-filament virtual-slot/sublayer/gradient rejection for printable v1.
 
 Exit:
 - translated/rotated/scaled/shrink fixtures;
