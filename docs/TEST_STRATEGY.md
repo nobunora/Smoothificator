@@ -69,9 +69,18 @@ Verify:
 
 ## Gate E — Flow semantics
 
+Compatibility gate:
+- all mixed-filament virtual-slot flags false accepted;
+- mixed filament / mixed sublayer / gradient execution rejected;
+- mixed setting changes invalidate ExecutionConfigFingerprint.
+
 Geometric model:
 - rounded-rectangle formula;
-- invalid width/height;
+- width == height accepted;
+- width < height rejected;
+- configured min/max width rejected outside bounds;
+- configured min/max height rejected outside bounds;
+- invalid/NaN/Inf width/height/flow rejected;
 - geometric envelope independent from global calibration ratios.
 
 Commanded model:
@@ -112,7 +121,7 @@ Check:
 - invalid short-loop gap rejects candidate;
 - postprocessor cannot change seam/gap.
 
-## Gate H — Error and optimizer
+## Gate H — Error estimator and optimizer
 
 Analytic geometry:
 - fixed slopes 1, 5, 10, 15, 20, 25, 30 degrees;
@@ -121,6 +130,11 @@ Analytic geometry:
 - synthetic varying-support surface.
 
 Verify:
+- deterministic initial sample spacing;
+- refinement discovers a feature missed by coarse sampling;
+- convergence of every hard metric;
+- max-refinement non-convergence => infeasible;
+- estimator settings fingerprint changes;
 - E_max / E_rms / E_p95 / signed bias;
 - combined structural + candidate nominal envelope;
 - overbuild rejection;
@@ -291,9 +305,13 @@ For quantized segment verify:
 - positive extrusion-rate smoothing slope rejected;
 - known conservative inherited acceleration accepted;
 - high inherited acceleration rejected;
+- known conservative classic XY jerk accepted;
+- high inherited jerk rejected;
+- unknown/junction-deviation or otherwise unsupported cornering state rejected;
 - unknown/non-finite acceleration rejected;
 - max_subedge_acceleration settings fingerprint changes deterministically;
-- plugin block leaves acceleration state unchanged.
+- max_subedge_jerk settings fingerprint changes deterministically;
+- plugin block leaves acceleration and jerk/cornering state unchanged.
 
 ## Gate P — Retraction controller
 
