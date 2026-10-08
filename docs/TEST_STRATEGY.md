@@ -25,22 +25,25 @@ Check:
 Check:
 - frozen DTOs;
 - schema versioning;
-- canonical serializer;
+- exact canonical serializer bytes;
 - deterministic plan hash;
 - SHA-256 full authoritative identity;
-- canonical float +0/-0 equivalence;
-- NaN/Inf serialization rejection;
+- identity-domain separation for plan / execution-config / plugin-settings / source-geometry / arrays;
+- typed identity comparison rejects wrong identity class/schema;
 - mapping-order independence;
-- ndarray memory-layout independence with shape/dtype distinction;
+- exact scalar float +0/-0 equivalence;
+- NaN/Inf serialization rejection;
+- UTF-8 exact-code-point behavior;
+- canonical array rank/shape framing;
+- array source endianness independence;
+- ndarray C/F memory-layout independence;
+- i64/f64 fixed big-endian golden byte vectors;
+- array shape/dtype distinction;
 - timestamp/runtime ObjectID/machine translation/final E excluded from plan hash;
-- PlanExecutionStatus separate from plan;
 - deterministic ExecutionConfigFingerprint;
 - deterministic PluginSettingsFingerprint;
 - ToolClearanceProfile canonicalization/versioning;
-- canonical SHA-256 serializer/hash golden vectors;
-- mapping-order independence;
-- +0/-0 normalization and NaN/Inf rejection;
-- array shape/dtype/logical-order identity rules.
+- golden canonical byte/hash vectors reproduced independently from the production serializer.
 
 ## Gate C — Source mesh and centered-frame adapter
 
