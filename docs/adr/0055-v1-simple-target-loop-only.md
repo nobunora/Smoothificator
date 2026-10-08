@@ -1,7 +1,8 @@
 # ADR-0055: Restrict printable v1 to one simple target outer boundary per refined region
 
-Status: Accepted
+Status: Superseded
 Date: 2026-10-08
+Superseded by: ADR-0038
 
 ## Context
 
@@ -53,3 +54,8 @@ Any implication that one ModelPart automatically means one target loop.
 ## Renumbering note
 
 Renumbered from accidental duplicate ADR-0035 during the 2026-10-08 audit. Decision content is otherwise retained.
+
+
+## Supersession note
+
+ADR-0038 is the stronger canonical topology contract: it requires one connected closed shell and one simple closed target outer boundary. This ADR is retained only as historical detail from the duplicate-number cleanup.
