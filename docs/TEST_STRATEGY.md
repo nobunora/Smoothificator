@@ -27,6 +27,11 @@ Check:
 - schema versioning;
 - canonical serializer;
 - deterministic plan hash;
+- SHA-256 full authoritative identity;
+- canonical float +0/-0 equivalence;
+- NaN/Inf serialization rejection;
+- mapping-order independence;
+- ndarray memory-layout independence with shape/dtype distinction;
 - timestamp/runtime ObjectID/machine translation/final E excluded from plan hash;
 - PlanExecutionStatus separate from plan;
 - deterministic ExecutionConfigFingerprint;
@@ -109,6 +114,17 @@ Check:
 - outward-expanding unsupported rejection;
 - candidate crossing/nozzle-clearance rejection.
 
+## Gate F2 — NominalBeadSolidV1
+
+Check:
+- stadium cross-section area parity;
+- ZAA effective width reconstructed from local q_geom/h;
+- candidate top/bottom Z placement;
+- adjacent segment solid union;
+- flat open-path axial caps;
+- internal overlap surfaces excluded from exposed envelope;
+- deterministic geometry under equivalent path canonicalization.
+
 ## Gate G — Candidate seam/gap
 
 Check:
@@ -121,7 +137,7 @@ Check:
 - invalid short-loop gap rejects candidate;
 - postprocessor cannot change seam/gap.
 
-## Gate H — Error estimator and optimizer
+## Gate H — Bidirectional converged error estimator and optimizer
 
 Analytic geometry:
 - fixed slopes 1, 5, 10, 15, 20, 25, 30 degrees;
@@ -135,7 +151,16 @@ Verify:
 - convergence of every hard metric;
 - max-refinement non-convergence => infeasible;
 - estimator settings fingerprint changes;
-- E_max / E_rms / E_p95 / signed bias;
+- predicted->source max/RMS/p95;
+- source->predicted max/RMS/p95;
+- completely missing target patch rejected by source->predicted;
+- external overbuild rejected by predicted->source;
+- public bidirectional E_max/E_p95/E_rms aggregation;
+- thin-wall opposite-face correspondence trap rejected;
+- normal-incompatible closest point rejected;
+- no-correspondence sample rejected;
+- unequal directional sample counts do not implicitly reweight E_rms;
+- signed bias diagnostic;
 - combined structural + candidate nominal envelope;
 - overbuild rejection;
 - deterministic candidate selection;
