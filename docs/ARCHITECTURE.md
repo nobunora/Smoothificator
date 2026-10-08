@@ -110,6 +110,9 @@ Primary types include:
 - `StructuralPathSegment`;
 - `StructuralLoopReference`;
 - `SurfaceBand`;
+- `SupportCoverageMetrics`;
+- `ErrorEstimatorConfig` / `SurfaceCorrespondencePolicy`;
+- `MeshSectionPolicy`;
 - `SubEdgeSegment`;
 - `SubEdgePath`;
 - `InsertionAnchor`;
@@ -182,7 +185,7 @@ It owns:
 - structural effective commanded-flow normalization;
 - source ModelInstance/ModelVolume transform handling;
 - closed-manifold orientation/material-side validation;
-- resolved semantic config extraction;
+- resolved semantic config extraction including mixed-filament and slice-geometry-modifier gates;
 - ExecutionConfigFingerprint construction;
 - PluginSettingsFingerprint construction from validated plugin-owned Settings at the application boundary;
 - stable snapshot/reference fingerprints.
@@ -333,11 +336,28 @@ Emitter, matcher tolerances, and final execution validation use the same quantiz
 
 Do not call Python built-in `round()` for Orca-compatible coordinate/E formatting.
 
+## 16A. Canonical identity encoding
+
+application/serialization.py and application/hashing.py own ADR-0049.
+
+No other layer may independently serialize/hash plan/fingerprint semantics.
+
+Canonical identities use:
+- SHA-256 full 64-hex authoritative digest;
+- explicit schema/version;
+- sorted string mapping keys;
+- exact finite binary64 hex tokens with -0 normalized;
+- NaN/Inf rejection;
+- canonical array shape/dtype/logical-order digests;
+- stable enum string values.
+
+Python repr, pickle, unordered map order, locale-dependent floats, and raw ndarray repr are forbidden identity inputs.
+
 ## 17. Configuration ownership
 
 `orca_config.py` owns raw-key -> resolved-semantic-value mapping.
 
-The fingerprint hashes canonical semantic values used by the plugin, including:
+The fingerprint hashes canonical semantic values used by the plugin, including mixed-filament gates, source-target slice modifiers, motion/jerk semantics, and other versioned compatibility inputs.
 - flow modifiers;
 - active retraction values;
 - seam settings;
