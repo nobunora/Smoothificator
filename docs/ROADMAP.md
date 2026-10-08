@@ -4,6 +4,11 @@ Implementation is gated. Do not advance until the previous phase exit criteria p
 
 ## Phase 0 — specification and technical audit
 
+Current-Orca drift check:
+- re-audit the pinned source baseline whenever Orca main/release changes materially;
+- explicitly diff PluginHostSlicing/SlicingPipeline/GCode/Flow/Extruder/Print/PrintObject/PrintConfig semantics;
+- newly introduced execution paths default to analysis-only until modeled or gated.
+
 Complete before production code:
 - document precedence and AGENTS workflow;
 - unique ADR set through ADR-0041;
@@ -66,6 +71,7 @@ Implement/test:
 - geometric versus commanded volume separation;
 - Orca external-wall command-flow multipliers including print/filament/optional outer-wall ratios;
 - effective bead height above support;
+- SupportCoverageMetric + configured support thresholds;
 - versioned SupportCoverageMetric and threshold contract;
 - no-refinement baseline identity.
 
