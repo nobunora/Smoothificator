@@ -672,12 +672,15 @@ No regex-only mutation.
 Read the working file as a binary line stream. Preserve raw line bytes. Parse only the ASCII-compatible command/token subset required by the supported fixture. Do not decode with errors=replace and do not normalize newlines.
 
 Track at minimum:
+- G20/G21 units;
 - G90/G91;
 - M82/M83;
 - actual X/Y/Z;
 - relative E moves;
 - active tool;
 - feed;
+- M220 firmware feed override;
+- M221 firmware flow override;
 - retraction state;
 - supported acceleration/modal state;
 - layer/reserved tags;
@@ -685,7 +688,7 @@ Track at minimum:
 - supported Bambu custom layer-change markers;
 - idempotence markers.
 
-Unknown state-changing command in relevant regions => Skipped.
+Printable v1 additionally requires actual anchor state G21-equivalent millimeters, G90 absolute XYZ, M83 relative E, M220=100%, and M221=100%. Unknown/non-unity mode or override state => Skipped.
 
 Parser must scale to large files without loading the full G-code into memory. It operates on binary lines, preserves untouched raw bytes, parses only the supported ASCII-compatible command/token subset, and never uses errors=replace or universal-newline normalization.
 
@@ -1010,7 +1013,19 @@ Because injection occurs after Orca's standard time/material/progress generation
 
 Do not present Orca's original estimate as the final SubEdge-modified estimate.
 
-## 38. Architecture and quality gates
+## 38. Postprocess time/cooling/metadata behavior
+
+The injector does not rerun Orca CoolingBuffer/time-estimation/progress generation.
+
+It:
+- preserves original metadata bytes under ADR-0031;
+- treats original total time/progress/filament-use metadata as pre-injection estimates;
+- computes plugin-added path/travel/material/time estimates separately;
+- does not alter fan/temperature/cooling commands in v1.
+
+Fixture/physical tests must record thermal/cooling settings and compare estimated versus measured added time.
+
+## 39. Architecture and quality gates
 
 Before behavioral suites:
 - syntax/import/package;
@@ -1021,7 +1036,7 @@ Tests accompany behavior changes.
 
 No physical printing until all software/fixture gates and independent review requirements pass.
 
-## 39. Coding-agent hard rules
+## 40. Coding-agent hard rules
 
 - read `AGENTS.md` first;
 - no implementation without validated repository-review handoff;
@@ -1053,6 +1068,9 @@ No physical printing until all software/fixture gates and independent review req
 - no text-mode G-code rewrite or newline normalization;
 - no raw-source-normal material-side assumption;
 - no hidden settings changes;
+- no implicit G20/G91 support in printable v1;
+- no non-unity M220/M221 execution in printable v1;
+- no assumption that one ModelPart implies one target loop;
 - no unsupported-profile guessing;
 - no mixed-sublayer structural emission in printable v1;
 - no hidden bead geometry outside explicit width/height bounds;
