@@ -36,7 +36,11 @@ Check:
 - PlanExecutionStatus separate from plan;
 - deterministic ExecutionConfigFingerprint;
 - deterministic PluginSettingsFingerprint;
-- ToolClearanceProfile canonicalization/versioning.
+- ToolClearanceProfile canonicalization/versioning;
+- canonical SHA-256 serializer/hash golden vectors;
+- mapping-order independence;
+- +0/-0 normalization and NaN/Inf rejection;
+- array shape/dtype/logical-order identity rules.
 
 ## Gate C — Source mesh and centered-frame adapter
 
@@ -74,6 +78,11 @@ Verify:
 
 ## Gate E — Flow semantics
 
+Compatibility:
+- all mixed-filament virtual-slot flags false accepted;
+- mixed virtual filament / sublayer / gradient execution rejected;
+- mixed-setting change invalidates ExecutionConfigFingerprint.
+
 Compatibility gate:
 - all mixed-filament virtual-slot flags false accepted;
 - mixed filament / mixed sublayer / gradient execution rejected;
@@ -100,10 +109,26 @@ Separation:
 - it does not directly change nominal geometric bead envelope;
 - ZAA local height/volume behavior does change the nominal local envelope.
 
+## Gate E2 — Source-target modifier gates
+
+Check:
+- xy_contour_compensation nonzero -> reject;
+- xy_hole_compensation nonzero -> reject for first fixture;
+- unsupported slicing/closing mode -> reject;
+- make_overhang_printable active -> reject;
+- target interval inside elephant-foot compensated layers -> reject;
+- interval above all affected layers may proceed;
+- relevant modifier change invalidates ExecutionConfigFingerprint.
+
 ## Gate F — Surface-band and candidate topology
 
 Check:
 - mesh section is boundary, not centerline;
+- exact source-vertex Z candidate forbidden;
+- horizontal-facet Z candidate forbidden;
+- endpoint dedup/join deterministic;
+- open/branched/self-intersecting section rejected;
+- triangle-order permutation invariance;
 - inward/material-side centerline placement;
 - multiple same-Z paths;
 - multiple different-Z paths;
@@ -330,11 +355,15 @@ For quantized segment verify:
 - positive extrusion-rate smoothing slope rejected;
 - known conservative inherited acceleration accepted;
 - high inherited acceleration rejected;
+- known conservative classic jerk accepted;
+- high inherited jerk rejected;
+- unsupported/unknown cornering semantics rejected;
 - known conservative classic XY jerk accepted;
 - high inherited jerk rejected;
 - unknown/junction-deviation or otherwise unsupported cornering state rejected;
 - unknown/non-finite acceleration rejected;
 - max_subedge_acceleration settings fingerprint changes deterministically;
+- max_subedge_jerk settings fingerprint changes deterministically;
 - max_subedge_jerk settings fingerprint changes deterministically;
 - plugin block leaves acceleration and jerk/cornering state unchanged.
 
