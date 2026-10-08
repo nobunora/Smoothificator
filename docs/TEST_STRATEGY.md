@@ -148,6 +148,10 @@ Check:
 Check:
 - stadium cross-section area parity;
 - ZAA effective width reconstructed from local q_geom/h;
+- topology-aware plane-through-vertex and shared-edge handling;
+- exact coplanar facet event rejection;
+- dense curved mesh with closely spaced vertex Z retains usable candidate search;
+- final Z-quantization section stability pass/reject cases;
 - candidate top/bottom Z placement;
 - adjacent segment solid union;
 - flat open-path axial caps;
@@ -184,6 +188,9 @@ Verify:
 - source->predicted max/RMS/p95;
 - completely missing target patch rejected by source->predicted;
 - external overbuild rejected by predicted->source;
+- candidate bulge/end-cap influence crossing the original target-region boundary expands the scoring domain;
+- adjacent-surface collateral regression is detected;
+- ambiguous neighboring source correspondence rejects candidate;
 - public bidirectional E_max/E_p95/E_rms aggregation;
 - thin-wall opposite-face correspondence trap rejected;
 - normal-incompatible closest point rejected;
