@@ -205,6 +205,15 @@ q_geom = h * (w - h * (1 - pi/4))
 
 This is the nominal geometric line volume used for surface prediction.
 
+Nominal 3D bead geometry is uniquely defined by ADR-0048 NominalBeadSolidV1:
+- stadium/rounded-rectangle cross-section in the local path-normal/vertical plane;
+- candidate top Z = command Z and bottom Z = command Z - effective height;
+- segment sweeps unioned at polyline joints;
+- deterministic flat axial caps at open path ends;
+- internal overlap surfaces excluded from exposed-surface error scoring.
+
+For a ZAA structural segment, local effective height plus local q_geom define the nominal predictor cross-section. Effective local width is derived from those values; stale nominal path.width is diagnostic when it no longer satisfies the local area relation.
+
 Printable rounded-rectangle candidates must satisfy the explicit ADR-0043 domain:
 - h > 0;
 - w > 0;
@@ -292,13 +301,22 @@ Primary quality target where feasible:
 
 E_max <= configured_tolerance
 
-Required error metrics:
-- E_max;
-- E_rms;
-- E_p95;
-- signed mean/bias.
+Required error metrics are bidirectional per ADR-0047:
+- E_max_pred_to_src / E_max_src_to_pred;
+- E_rms_pred_to_src / E_rms_src_to_pred;
+- E_p95_pred_to_src / E_p95_src_to_pred;
+- signed bias diagnostics.
 
-These are deterministic numerically converged estimator results per ADR-0045. Sample spacing/refinement/convergence settings are versioned plugin Settings and participate in PluginSettingsFingerprint. A hard tolerance decision is invalid if the estimator does not converge within the configured refinement budget.
+Public summaries are deterministic:
+- E_max = max of the two directional maxima;
+- E_p95 = max of the two directional p95 values;
+- E_rms = RMS-combination of the two directional RMS values with equal directional weight.
+
+The configured hard surface tolerance applies independently to both directional maximum errors, so missing material cannot disappear merely because no predicted surface sample exists.
+
+Surface correspondence is local and normal-aware per ADR-0050. Search is restricted to the paired interaction region/neighborhood, must satisfy configured normal compatibility and maximum correspondence distance, and unresolved correspondence is a hard failure rather than being dropped.
+
+These are deterministic numerically converged estimator results per ADR-0045. Sample spacing/refinement/convergence/correspondence settings are versioned plugin Settings and participate in PluginSettingsFingerprint. A hard tolerance decision is invalid if the estimator does not converge within the configured refinement budget.
 
 Among feasible candidate sets minimize a documented cost including:
 - residual error;
@@ -323,6 +341,8 @@ Planning builds a versioned PluginSettingsFingerprint from all plugin settings t
 - bead width/height bounds;
 - support-coverage thresholds/tolerances;
 - error-estimator sampling/refinement/convergence policy;
+- local surface-correspondence distance/normal compatibility policy;
+- directional optimizer error weights;
 - execution policy.
 
 At psGCodePostProcess, current plugin settings are re-read through the capability config contract and fingerprinted again.
