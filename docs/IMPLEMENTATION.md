@@ -49,7 +49,7 @@ Read all non-superseded ADRs relevant to the task.
 As of this audit:
 - ADR-0001 through ADR-0009;
 - ADR-0010 is superseded by ADR-0015;
-- ADR-0011 through ADR-0041, subject to explicit supersession notes.
+- ADR-0011 through ADR-0046, subject to explicit supersession notes.
 
 Later ADRs override earlier clauses only where stated.
 
@@ -264,6 +264,7 @@ Geometry / slicing:
 
 Flow:
 - print_flow_ratio;
+- mixed-filament virtual-slot/sublayer/gradient state required by ADR-0042;
 - filament_flow_ratio;
 - set_other_flow_ratios;
 - outer_wall_flow_ratio;
@@ -282,6 +283,7 @@ Retraction:
 
 Motion:
 - outer-wall speed;
+- external-wall jerk / supported cornering semantics;
 - resolved external-wall acceleration;
 - dynamic acceleration feature state needed by fixture;
 - XY travel speed;
@@ -319,7 +321,7 @@ Exact raw-key mapping and override precedence are pinned in compatibility tests.
 During analysis:
 1. build a versioned ExecutionConfigFingerprint from resolved Orca semantics;
 2. validate Adaptive Sub-Edge Settings;
-3. build a versioned PluginSettingsFingerprint from every plugin-owned value that can affect geometry, optimization, candidate seam/gap, ToolClearanceProfile, margins, speed cap, max_subedge_acceleration_mm_s2, or execution policy.
+3. build a versioned PluginSettingsFingerprint from every plugin-owned value that can affect geometry, optimization, candidate seam/gap, ToolClearanceProfile, margins, speed cap, max_subedge_acceleration_mm_s2, max_subedge_jerk_mm_s, candidate bead width/height bounds, support-coverage metric thresholds/tolerances, error-estimator sampling/refinement/convergence, or execution policy.
 
 At psGCodePostProcess:
 - rebuild ExecutionConfigFingerprint with ctx.config_value();
@@ -491,7 +493,7 @@ role_factor = outer_wall_flow_ratio when set_other_flow_ratios is enabled, other
 
 Global flow ratios affect G-code/material commands and volumetric-speed limits, not the nominal geometric bead envelope.
 
-## 18. Local support / minimum height
+## 18. Local support / minimum height / coverage metric
 
 For each candidate segment:
 
@@ -502,6 +504,13 @@ Initial 0.4 mm-nozzle minimum = 0.08 mm.
 Do not enforce pairwise candidate-Z spacing of 0.08 mm.
 
 Local support, bead overlap, clearance, path crossing, and final quantization determine feasibility.
+
+Support acceptance uses only the versioned ADR-0044 SupportCoverageMetric owned by the engine. It reports at minimum:
+- supported_area_fraction;
+- minimum_contiguous_support_width_mm;
+- minimum/maximum effective height.
+
+Thresholds are validated Settings and participate in PluginSettingsFingerprint. Do not implement ad-hoc "sufficient overlap" logic in candidate_generator/support/collision modules.
 
 ## 19. Surface-band planning
 
@@ -530,7 +539,7 @@ Inputs:
 - speed/volumetric constraints.
 
 For each candidate set:
-- simulate chronological support in immutable execution order;
+- simulate chronological support in immutable execution order using the authoritative SupportCoverageMetric;
 - reject any future-material or cyclic support dependency;
 - validate candidate geometry/collision;
 - predict the separate completed FinalSurfaceEnvelope;
@@ -539,6 +548,21 @@ For each candidate set:
 - choose minimum-cost feasible set.
 
 No G-code dependency.
+
+## 20A. Error-estimator convergence
+
+Hard tolerance decisions use the versioned ADR-0045 ErrorEstimatorConfig:
+- initial_error_sample_spacing_mm;
+- error_refinement_factor;
+- error_metric_convergence_mm;
+- max_error_refinement_levels;
+- closest/sign tolerance version.
+
+The estimator refines deterministic samples until every hard metric used by acceptance converges within the configured threshold.
+
+Non-convergence => candidate infeasible / final revalidation Skipped.
+
+Optimizer and FinalStructuralDepositionContext revalidation use compatible estimator semantics; neither may silently choose its own sampling resolution.
 
 ## 21. PlanStore and attempt store
 
@@ -722,9 +746,12 @@ Printable v1 does not emit acceleration commands.
 At the insertion anchor:
 - parsed active acceleration must be known, finite, and positive;
 - active acceleration <= max_subedge_acceleration_mm_s2;
-- max_subedge_acceleration_mm_s2 <= the exact fixture's resolved external-wall acceleration limit.
+- max_subedge_acceleration_mm_s2 <= the exact fixture's resolved external-wall acceleration limit;
+- active cornering state is parser-known for the pinned fixture;
+- for classic jerk semantics, active XY jerk is finite/non-negative and <= max_subedge_jerk_mm_s;
+- max_subedge_jerk_mm_s <= the exact fixture's resolved external-wall jerk limit.
 
-Unknown/excessive acceleration => Skipped.
+Unknown/excessive acceleration or unsupported/excessive jerk/cornering semantics => Skipped.
 
 ## 29. v1 advanced-feature gates
 
@@ -739,6 +766,7 @@ Printable injection is disabled if:
 - calibration/tower mode is detected;
 - fuzzy skin is active for the target;
 - filament adaptive volumetric speed is enabled;
+- any mixed-filament virtual slot/sublayer/gradient execution is active;
 - max_volumetric_extrusion_rate_slope > 0 (Pressure Equalizer / extrusion-rate smoothing enabled);
 - adaptive pressure advance is enabled;
 - machine/filament/process extrusion-role-change G-code is non-empty;
@@ -969,5 +997,9 @@ No physical printing until all software/fixture gates and independent review req
 - no raw-source-normal material-side assumption;
 - no hidden settings changes;
 - no unsupported-profile guessing;
+- no mixed-sublayer structural emission in printable v1;
+- no hidden bead geometry outside explicit width/height bounds;
+- no ad-hoc support threshold or unconverged error metric;
+- no inherited jerk/cornering state outside the fixture contract;
 - deterministic output for identical validated inputs;
 - new safety/architecture semantics require ADR first.
