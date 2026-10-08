@@ -103,3 +103,8 @@ Add:
 ## Rollback / disable condition
 
 Ambiguous/unresolved surface correspondence for a hard-metric sample => non-injectable.
+
+
+## Domain-closure refinement
+
+ADR-0060 defines how large the local interaction domain must be: it must be closed under the finite candidate bead's geometric influence so collateral neighboring-surface error cannot be ignored.
