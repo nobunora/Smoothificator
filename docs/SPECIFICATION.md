@@ -549,11 +549,15 @@ Offline validation assumes printer-side live speed/flow overrides remain at 100%
 ## 25. Relative-E / retraction contract
 
 Printable v1 requires:
+- millimeter units;
+- absolute XYZ positioning;
 - relative E;
 - firmware retraction disabled;
 - unambiguous positive saved retraction at the insertion anchor;
 - ordinary restart-extra = 0;
-- known effective retract and deretract speeds.
+- known effective retract and deretract speeds;
+- firmware feedrate override = 100%;
+- firmware flow override = 100%.
 
 Candidate cycle:
 - safe travel while still in saved retracted state;
@@ -634,7 +638,7 @@ Candidate segment speed MUST NOT exceed:
 - resolved fixed filament max volumetric speed divided by candidate commanded mm3/mm;
 - optional lower plugin cap.
 
-The plugin never silently changes Orca settings.
+The plugin never silently changes Orca settings or firmware feed/flow overrides.
 
 ## 28A. Inherited acceleration gate
 
@@ -704,7 +708,18 @@ No exact Orca/profile fixture => analysis/preview only.
 
 A standard Bambu process with arc fitting still enabled is analysis-only until the user explicitly disables it and that resulting configuration is fixture-validated.
 
-## 31. G-code file mutation
+## 31. Postprocess timing / cooling / metadata limitation
+
+Because SubEdge paths are injected after Orca's normal G-code generation/cooling/time-estimation pipeline:
+- original total-time/progress/filament-use metadata may be stale;
+- original cooling/fan/slowdown decisions were made before added SubEdge time existed;
+- those original metadata values are not safety-critical plugin inputs;
+- the plugin reports its own added material/path/time estimates separately;
+- v1 does not rewrite fan/temperature/cooling/progress metadata.
+
+Physical fixtures must record cooling/fan/min-layer-time settings and compare predicted versus measured added time.
+
+## 32. G-code file mutation
 
 psGCodePostProcess uses binary, byte-preserving, streaming all-or-nothing processing per ADR-0031.
 
@@ -747,7 +762,7 @@ Plugin UI reports added path/material and estimated added time separately.
 
 Benchmarks use final modified G-code and/or actual printer measurements rather than original Orca estimates alone.
 
-## 32. Failure behavior
+## 33. Failure behavior
 
 Any uncertainty in:
 - source mesh validity/orientation/material side;
@@ -773,7 +788,7 @@ causes injection to be skipped.
 
 The project always prefers unchanged valid Orca G-code over guessed modification.
 
-## 33. Non-goals v1
+## 34. Non-goals v1
 
 - custom Orca/C++ dependency;
 - mutating live Orca perimeters;
@@ -798,7 +813,7 @@ The project always prefers unchanged valid Orca G-code over guessed modification
 - generic collision claims without hardware keep-out evidence;
 - claiming Orca standard preview contains postprocessed paths.
 
-## 34. Governance
+## 35. Governance
 
 Implementation follows:
 - AGENTS.md;
