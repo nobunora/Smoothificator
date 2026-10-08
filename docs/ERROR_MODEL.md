@@ -13,23 +13,42 @@ The Orca adapter owns:
 
 No engine code performs Orca transform reconstruction.
 
-## 2. Surface error
+## 2. Bidirectional surface error
 
 Let:
-- M = ideal source-model material boundary;
-- P = predicted nominal printed bead envelope.
+- M = intended source-model target surface band;
+- P = predicted exposed nominal printed-material envelope.
 
-For a sampled point q and corresponding/closest source point p with outward normal n:
+Hard geometry quality is bidirectional per ADR-0047.
 
-e_n = dot(q - p, n)
+Predicted -> source detects overbuild/misplaced material.
 
-Required metrics:
-- E_max = maximum absolute error;
-- E_rms;
-- E_p95;
-- signed mean/bias.
+Source -> predicted detects missing material, uncovered terraces, and seam/gap underfill.
 
-Underfill and overbuild both count as error.
+Required directional metrics:
+- E_max_pred_to_src
+- E_max_src_to_pred
+- E_rms_pred_to_src
+- E_rms_src_to_pred
+- E_p95_pred_to_src
+- E_p95_src_to_pred
+
+Public summaries:
+- E_max = max(E_max_pred_to_src, E_max_src_to_pred)
+- E_p95 = max(E_p95_pred_to_src, E_p95_src_to_pred)
+- E_rms = sqrt((E_rms_pred_to_src^2 + E_rms_src_to_pred^2) / 2)
+
+The configured hard tolerance applies independently to both directional maximum errors.
+
+Correspondence is local and normal-aware per ADR-0050:
+- restrict search to the paired interaction source patch/neighborhood;
+- require compatible surface normals;
+- use configured maximum correspondence distance;
+- unresolved/no correspondence is an error, never silently dropped.
+
+Signed bias is diagnostic and does not replace either directional hard constraint.
+
+Both directions use the converged estimator contract in ADR-0045.
 
 ## 3. Structural baseline
 
@@ -57,7 +76,7 @@ The local nominal finite-bead model uses h_local and q_geom_zaa.
 
 Global print/material calibration flow ratios are execution controls and are not multiplied into the ideal geometric envelope.
 
-## 4. Candidate geometric bead model
+## 4. Nominal bead-solid and candidate geometric model
 
 For a supported non-bridge candidate with effective bead height h and nominal width w:
 
@@ -71,9 +90,19 @@ Constraints:
 - q_geom is finite and positive;
 - invalid geometry is infeasible before commanded-flow/E derivation.
 
-Given h and geometric line volume q, effective width may be reconstructed as:
+Given h and geometric line volume q, effective width is reconstructed as:
 
 w = q / h + h * (1 - pi/4)
+
+All nominal surface/support/collision geometry uses ADR-0048 NominalBeadSolidV1:
+- local cross-section is a horizontal-major-axis stadium/rounded rectangle;
+- candidate top Z is command_z_mm and bottom Z is command_z_mm - h_eff;
+- each segment sweeps its local cross-section along the segment;
+- adjacent segment solids are unioned at vertices;
+- open path ends use deterministic flat axial caps;
+- internal overlap surfaces are excluded from the exposed surface.
+
+For ZAA structural segments, local h and q_geom are authoritative for the nominal predictor; effective local width is derived from the inverse area relation rather than simultaneously forcing stale nominal path.width.
 
 ## 5. Geometric versus commanded volume
 
