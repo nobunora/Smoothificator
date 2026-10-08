@@ -526,12 +526,17 @@ Do not enforce pairwise candidate-Z spacing of 0.08 mm.
 
 Local support, bead overlap, clearance, path crossing, and final quantization determine feasibility.
 
-Support acceptance uses only the versioned ADR-0044 SupportCoverageMetric owned by the engine. It reports at minimum:
-- supported_area_fraction;
-- minimum_contiguous_support_width_mm;
-- minimum/maximum effective height.
+Support acceptance uses only the versioned ADR-0044 SupportCoverageMetric owned by the engine and the conservative convergence policy from ADR-0058.
 
-Thresholds are validated Settings and participate in PluginSettingsFingerprint. Do not implement ad-hoc "sufficient overlap" logic in candidate_generator/support/collision modules.
+Hard acceptance uses conservative bounds:
+- supported_area_fraction_lower_bound;
+- minimum_contiguous_support_width_lower_bound_mm;
+- minimum_effective_height_lower_bound_mm;
+- maximum_effective_height_upper_bound_mm.
+
+Unresolved footprint cells are deterministically refined. Unresolved cells at the maximum refinement level count as unsupported. Area/contiguous-width/effective-height metrics must converge under the versioned support refinement settings before a candidate can be injectable.
+
+Thresholds and refinement/convergence settings are validated Settings and participate in PluginSettingsFingerprint. Do not implement ad-hoc "sufficient overlap" logic in candidate_generator/support/collision modules.
 
 ## 19. Surface-band planning
 
@@ -548,24 +553,25 @@ Printable v1 requires nested/self-supported target bands.
 
 ## 19A. Mesh section policy
 
-mesh_section.py owns ADR-0053 MeshSectionPolicy.
+mesh_section.py owns ADR-0053 MeshSectionPolicy as refined by ADR-0059.
 
-Before candidate generation:
-- build deterministic forbidden Z bands around source vertex Z and horizontal-facet Z using mesh_section_vertex_avoidance_mm;
-- candidate search excludes those bands.
+Do not build broad positive-width forbidden bands around every ordinary source vertex Z.
 
-For an allowed Z:
-- use one explicit above/below classification tolerance;
-- intersect only straddling triangle edges;
-- deduplicate endpoints deterministically;
+For each section Z:
+- classify vertices with one explicit section_predicate_epsilon_mm;
+- merge intersections using canonical source edge/vertex topology identity before geometric snapping;
+- handle vertex-on-plane and coplanar-edge events using manifold incident topology;
+- reject unresolved coplanar facet patches only at the explicit numeric event tolerance;
 - join with mesh_section_join_tolerance_mm;
 - require one simple closed degree-2 relevant component;
 - validate orientation/material side;
-- reject coplanar/open/branched/hole/self-intersecting ambiguity.
+- reject unresolved open/branched/hole/self-intersecting ambiguity.
 
-The sectioner MUST NOT perturb the selected command Z.
+Before plan finalization, prove section topology/material-side/geometry stability across the possible final Orca Z-quantization uncertainty interval. Dense mesh vertex Z values alone must not erase the candidate search space.
 
-All policy tolerances participate in PluginSettingsFingerprint.
+The sectioner MUST NOT perturb selected command Z after optimization.
+
+All predicate/join/quantization-stability tolerances participate in PluginSettingsFingerprint.
 
 ## 20. Optimizer
 
@@ -597,7 +603,7 @@ Hard tolerance decisions use ADR-0045 + ADR-0047 + ADR-0050.
 
 The estimator computes both predicted->source and source->predicted directional metrics. Missing target material is therefore a hard error, not an absent sample.
 
-Surface correspondence is restricted to the paired interaction region and configured normal/distance compatibility. No global nearest-surface shortcut.
+Surface correspondence is restricted to the paired interaction region and configured normal/distance compatibility, while ADR-0060 expands that local domain to a conservative AffectedSurfaceDomain containing every exposed source/predicted surface that the candidate bead solid can change. No candidate-created or occluded exposed material may fall outside scoring. No global nearest-surface shortcut.
 
 The versioned ErrorEstimatorConfig includes:
 - initial_error_sample_spacing_mm;
@@ -617,7 +623,7 @@ Hard tolerance applies independently to both directional maxima.
 
 Public summaries use ADR-0047 aggregation, not concatenated sample-count weighting.
 
-Non-convergence or unresolved/ambiguous correspondence => candidate infeasible / final revalidation Skipped.
+Non-convergence, an unclosed affected domain, or unresolved/ambiguous correspondence => candidate infeasible / final revalidation Skipped.
 
 Optimizer and FinalStructuralDepositionContext revalidation use identical estimator/correspondence semantics; neither may silently choose its own sampling resolution or nearest-surface policy.
 
