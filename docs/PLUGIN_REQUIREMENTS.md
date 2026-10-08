@@ -170,7 +170,8 @@ Physical validation assumes live printer speed/flow override remains 100%. Chang
 ## 12. Printable process/runtime gates
 
 Initial v1 requires:
-- one tool / one filament execution context;
+- one tool / one physical filament execution context;
+- no mixed-filament virtual slot/sublayer/gradient execution;
 - relative E;
 - firmware retract off;
 - restart extra = 0;
@@ -253,7 +254,7 @@ Unknown formatter contract => no injection.
 
 Quantized zero-length segments or nonzero-material segments quantizing to unusable E are rejected.
 
-## 17. Speed / volumetric / acceleration limits
+## 17. Speed / volumetric / acceleration / jerk limits
 
 Candidate speed is bounded by:
 - resolved outer-wall speed;
@@ -261,14 +262,17 @@ Candidate speed is bounded by:
 - minimum relevant actual matched final-wall feed;
 - optional lower plugin speed cap.
 
-Printable v1 does not emit acceleration commands.
+Printable v1 does not emit acceleration or jerk/cornering commands.
 
 At anchor:
 - active acceleration must be parser-known, finite, positive;
 - active acceleration <= plugin max_subedge_acceleration_mm_s2;
-- plugin cap <= exact fixture external-wall acceleration limit.
+- plugin acceleration cap <= exact fixture external-wall acceleration limit;
+- active fixture-supported cornering/jerk state must be known;
+- for classic jerk semantics, active XY jerk <= plugin max_subedge_jerk_mm_s;
+- plugin jerk cap <= exact fixture external-wall jerk limit.
 
-Unknown/excessive acceleration => Skipped.
+Unknown/excessive acceleration or unsupported/excessive cornering state => Skipped.
 
 ## 18. Retraction/state behavior
 
