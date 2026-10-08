@@ -49,7 +49,7 @@ Read all non-superseded ADRs relevant to the task.
 As of this audit:
 - ADR-0001 through ADR-0009;
 - ADR-0010 is superseded by ADR-0015;
-- ADR-0011 through ADR-0050, subject to explicit supersession notes.
+- ADR-0011 through ADR-0053, subject to explicit supersession notes.
 
 Later ADRs override earlier clauses only where stated.
 
@@ -257,6 +257,11 @@ Required semantic groups include:
 
 Geometry / slicing:
 - nozzle diameter;
+- xy_contour_compensation / xy_hole_compensation;
+- slicing_mode;
+- slice_closing_radius or pinned equivalent morphology setting;
+- make_overhang_printable semantics;
+- elephant-foot compensation value/layer count;
 - ZAA state/config used by snapshot diagnostics;
 - seam gap and seam/scarf mode;
 - spiral, ironing, support/raft, fuzzy-skin gates;
@@ -540,6 +545,27 @@ Planner supports:
 - segment-local support/flow.
 
 Printable v1 requires nested/self-supported target bands.
+
+## 19A. Mesh section policy
+
+mesh_section.py owns ADR-0053 MeshSectionPolicy.
+
+Before candidate generation:
+- build deterministic forbidden Z bands around source vertex Z and horizontal-facet Z using mesh_section_vertex_avoidance_mm;
+- candidate search excludes those bands.
+
+For an allowed Z:
+- use one explicit above/below classification tolerance;
+- intersect only straddling triangle edges;
+- deduplicate endpoints deterministically;
+- join with mesh_section_join_tolerance_mm;
+- require one simple closed degree-2 relevant component;
+- validate orientation/material side;
+- reject coplanar/open/branched/hole/self-intersecting ambiguity.
+
+The sectioner MUST NOT perturb the selected command Z.
+
+All policy tolerances participate in PluginSettingsFingerprint.
 
 ## 20. Optimizer
 
@@ -1030,6 +1056,9 @@ No physical printing until all software/fixture gates and independent review req
 - no unsupported-profile guessing;
 - no mixed-sublayer structural emission in printable v1;
 - no hidden bead geometry outside explicit width/height bounds;
+- no geometry-target comparison while unsupported Orca slice-boundary modifiers are active;
+- no hidden mesh-section epsilon or silent candidate-Z nudging;
+- no mm/s value emitted directly as G-code F;
 - no ad-hoc support threshold or unconverged error metric;
 - no one-sided error metric that can hide missing material;
 - no whole-model unconstrained nearest-surface correspondence;
