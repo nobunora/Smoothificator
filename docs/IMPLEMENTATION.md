@@ -49,7 +49,7 @@ Read all non-superseded ADRs relevant to the task.
 As of this audit:
 - ADR-0001 through ADR-0009;
 - ADR-0010 is superseded by ADR-0015;
-- ADR-0011 through ADR-0046, subject to explicit supersession notes.
+- ADR-0011 through ADR-0050, subject to explicit supersession notes.
 
 Later ADRs override earlier clauses only where stated.
 
@@ -433,7 +433,23 @@ InjectionAttemptRecord:
 
 There is no single overwrite-prone mutable per-plan status as the authoritative runtime record.
 
-## 14. Snapshot immutability
+## 13A. Canonical serialization and hashing
+
+Phase 0.5 follows ADR-0049 exactly.
+
+Canonical identity rules:
+- SHA-256, lowercase full 64-hex authoritative digest;
+- one versioned tagged UTF-8 canonical grammar;
+- mapping keys sorted lexicographically;
+- enums use stable documented string values;
+- finite binary64 floats encoded by exact hexadecimal form;
+- -0.0 normalized to +0.0;
+- NaN/Inf rejected;
+- arrays use explicit semantic dtype/shape/logical C-order canonical digest;
+- runtime-only fields excluded by schema;
+- Python repr/pickle/default JSON float formatting are forbidden identity mechanisms.
+
+application/serialization.py and application/hashing.py are the only owners.
 
 All NumPy arrays crossing the adapter boundary:
 - are copied into plugin ownership;
@@ -549,20 +565,35 @@ For each candidate set:
 
 No G-code dependency.
 
-## 20A. Error-estimator convergence
+## 20A. Bidirectional converged error estimator
 
-Hard tolerance decisions use the versioned ADR-0045 ErrorEstimatorConfig:
+Hard tolerance decisions use ADR-0045 + ADR-0047 + ADR-0050.
+
+The estimator computes both predicted->source and source->predicted directional metrics. Missing target material is therefore a hard error, not an absent sample.
+
+Surface correspondence is restricted to the paired interaction region and configured normal/distance compatibility. No global nearest-surface shortcut.
+
+The versioned ErrorEstimatorConfig includes:
 - initial_error_sample_spacing_mm;
 - error_refinement_factor;
 - error_metric_convergence_mm;
 - max_error_refinement_levels;
-- closest/sign tolerance version.
+- closest/sign tolerance version;
+- max_surface_correspondence_distance_mm;
+- min_surface_normal_dot;
+- interaction-neighborhood tolerance/version;
+- normal-ray/fallback policy version;
+- explicit directional optimizer weights.
 
 The estimator refines deterministic samples until every hard metric used by acceptance converges within the configured threshold.
 
-Non-convergence => candidate infeasible / final revalidation Skipped.
+Hard tolerance applies independently to both directional maxima.
 
-Optimizer and FinalStructuralDepositionContext revalidation use compatible estimator semantics; neither may silently choose its own sampling resolution.
+Public summaries use ADR-0047 aggregation, not concatenated sample-count weighting.
+
+Non-convergence or unresolved/ambiguous correspondence => candidate infeasible / final revalidation Skipped.
+
+Optimizer and FinalStructuralDepositionContext revalidation use identical estimator/correspondence semantics; neither may silently choose its own sampling resolution or nearest-surface policy.
 
 ## 21. PlanStore and attempt store
 
@@ -1000,6 +1031,10 @@ No physical printing until all software/fixture gates and independent review req
 - no mixed-sublayer structural emission in printable v1;
 - no hidden bead geometry outside explicit width/height bounds;
 - no ad-hoc support threshold or unconverged error metric;
+- no one-sided error metric that can hide missing material;
+- no whole-model unconstrained nearest-surface correspondence;
+- no alternate bead-solid implementation outside NominalBeadSolidV1;
+- no non-canonical object/float/array hashing;
 - no inherited jerk/cornering state outside the fixture contract;
 - deterministic output for identical validated inputs;
 - new safety/architecture semantics require ADR first.
