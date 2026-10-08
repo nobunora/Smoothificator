@@ -40,11 +40,13 @@ Public summaries:
 
 The configured hard tolerance applies independently to both directional maximum errors.
 
-Correspondence is local and normal-aware per ADR-0050:
-- restrict search to the paired interaction source patch/neighborhood;
+Correspondence is local and normal-aware per ADR-0050 and closed under candidate geometric influence per ADR-0060:
+- start from the paired interaction source patch/neighborhood;
+- expand to every neighboring source/predicted exposed surface that can be changed by the finite candidate bead influence volume;
 - require compatible surface normals;
 - use configured maximum correspondence distance;
-- unresolved/no correspondence is an error, never silently dropped.
+- unresolved/no/ambiguous correspondence is an error, never silently dropped;
+- candidate-created overbuild or occlusion outside the original residual patch must still be scored.
 
 Signed bias is diagnostic and does not replace either directional hard constraint.
 
