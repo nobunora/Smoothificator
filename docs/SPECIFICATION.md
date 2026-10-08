@@ -382,6 +382,21 @@ Mismatch or missing/invalid settings => Skipped.
 
 PlanStore invalidation is helpful but does not replace this final equality check.
 
+## 17A. Canonical identity bytes
+
+Plan/fingerprint identity follows ADR-0049 as byte-level refined by ADR-0062.
+
+Authoritative identities:
+- use full SHA-256;
+- are cryptographically domain-separated by identity class;
+- include explicit identity/schema/canonical-encoding versions;
+- use one exact tagged canonical tree grammar;
+- serialize finite binary64 values exactly with -0 normalized and NaN/Inf rejected;
+- serialize canonical arrays in logical C element order with explicit shape/dtype and fixed big-endian i64/f64 value encoding;
+- never hash native-endian ndarray raw memory or Python object repr.
+
+The same semantic plan/config/settings/source geometry must therefore produce the same authoritative identity across supported platforms.
+
 ## 18. Orca execution configuration identity
 
 Planning also builds a versioned ExecutionConfigFingerprint from resolved Orca semantics.
