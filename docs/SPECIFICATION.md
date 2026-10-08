@@ -205,6 +205,15 @@ q_geom = h * (w - h * (1 - pi/4))
 
 This is the nominal geometric line volume used for surface prediction.
 
+Printable rounded-rectangle candidates must satisfy the explicit ADR-0043 domain:
+- h > 0;
+- w > 0;
+- w >= h;
+- h and w lie inside validated plugin Settings min/max bounds;
+- q_geom is finite and positive.
+
+The min/max printable bead bounds are fixture/calibration data, not universal nozzle-diameter assumptions.
+
 ## 13. Geometric versus commanded volume
 
 v1 distinguishes:
@@ -254,6 +263,8 @@ Same-Z candidate paths MUST NOT rely on each other as required vertical support 
 
 Candidate support dependencies must be acyclic.
 
+"Sufficient support" is determined only by the versioned ADR-0044 SupportCoverageMetric. At minimum it reports supported footprint area fraction, minimum contiguous support width, and local effective-height range, and compares them with validated plugin Settings. An implementation may not invent its own overlap/contact heuristic.
+
 v1 does NOT rewrite the original structural outer wall.
 
 A candidate that improves final error but is unsupported in chronological state, or creates unacceptable final overbuild, is infeasible.
@@ -287,6 +298,8 @@ Required error metrics:
 - E_p95;
 - signed mean/bias.
 
+These are deterministic numerically converged estimator results per ADR-0045. Sample spacing/refinement/convergence settings are versioned plugin Settings and participate in PluginSettingsFingerprint. A hard tolerance decision is invalid if the estimator does not converge within the configured refinement budget.
+
 Among feasible candidate sets minimize a documented cost including:
 - residual error;
 - candidate path length;
@@ -306,6 +319,10 @@ Planning builds a versioned PluginSettingsFingerprint from all plugin settings t
 - ToolClearanceProfile;
 - safety margins;
 - candidate speed cap;
+- candidate acceleration/jerk caps;
+- bead width/height bounds;
+- support-coverage thresholds/tolerances;
+- error-estimator sampling/refinement/convergence policy;
 - execution policy.
 
 At psGCodePostProcess, current plugin settings are re-read through the capability config contract and fingerprinted again.
@@ -518,7 +535,8 @@ Use resolved XY and Z travel-speed semantics from the supported profile.
 
 Printable v1 requires:
 - normal non-calibration print;
-- one tool / one filament execution context;
+- one tool / one physical filament execution context;
+- no mixed-filament virtual slot / mixed-sublayer / mixed-gradient execution;
 - one connected-shell/simple-target topology;
 - smooth timelapse disabled;
 - farthest_point_timelapse disabled;
@@ -549,7 +567,6 @@ Candidate segment speed MUST NOT exceed:
 - resolved outer-wall speed;
 - minimum relevant actual matched final-G-code external-wall feed;
 - resolved fixed filament max volumetric speed divided by candidate commanded mm3/mm;
-- optional lower plugin cap;
 - optional lower plugin cap.
 
 The plugin never silently changes Orca settings.
@@ -561,7 +578,10 @@ Printable v1 does not emit new acceleration/jerk/pressure-advance setup.
 At each injection anchor:
 - active acceleration must be parser-known, finite, and positive;
 - it must not exceed plugin setting max_subedge_acceleration_mm_s2;
-- that cap must not exceed the exact fixture's resolved external-wall acceleration limit.
+- that cap must not exceed the exact fixture's resolved external-wall acceleration limit;
+- the active fixture-supported cornering/jerk state must be parser-known;
+- when the fixture uses classic jerk semantics, active XY jerk must be finite/non-negative and <= max_subedge_jerk_mm_s, and that plugin cap must be <= the fixture's resolved external-wall jerk limit;
+- unsupported cornering semantics such as unmodelled junction-deviation behavior cause Skipped.
 
 The plugin does not change acceleration in v1.
 
@@ -672,7 +692,7 @@ Any uncertainty in:
 - structural-loop match;
 - machine translation;
 - formatter parity;
-- actual modal/retraction state, including G21/G90/M83/M200/M220/M221/G92 semantics;
+- actual modal/retraction/cornering state, including G21/G90/M83/M200/M220/M221/G92 semantics;
 - flow/speed/acceleration limits;
 - extrusion-rate smoothing state;
 - support/collision;
