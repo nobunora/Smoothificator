@@ -164,15 +164,15 @@ Continuously varying-Z candidate paths are out of scope for v1.
 
 ## 8A. Mesh-plane section robustness
 
-Arbitrary-Z source sections use one versioned MeshSectionPolicy.
+Arbitrary-Z source sections use the versioned MeshSectionPolicy from ADR-0053 as refined by ADR-0059.
 
-Candidate command Z is forbidden within configured avoidance bands around source vertex Z values and horizontal-facet Z values.
+Ordinary source vertex-Z events are handled by deterministic topology-aware predicates and canonical source-edge/source-vertex identities rather than broad positive-width avoidance bands.
 
-Triangle-plane classification, endpoint deduplication, and section joining use explicit fingerprinted tolerances.
+Exact/near-exact coplanar facet events may still fail closed under explicit numeric predicate tolerances.
 
-Printable v1 requires exactly one deterministic simple closed relevant loop with degree-2 section graph vertices.
+Printable v1 requires exactly one deterministic simple closed relevant loop with degree-2 section graph vertices, validated material side, no hole, no branch, and no self-intersection.
 
-Degenerate/coplanar/open/branched/self-intersecting section topology => non-injectable.
+Candidate generation also proves section stability across the possible final Orca Z-quantization interval. Crossing a mesh vertex is not itself a failure when topology/material side remain stable and boundary displacement stays inside the configured section-quantization geometry tolerance.
 
 The sectioner never silently nudges an already selected candidate Z.
 
@@ -303,7 +303,7 @@ Same-Z candidate paths MUST NOT rely on each other as required vertical support 
 
 Candidate support dependencies must be acyclic.
 
-"Sufficient support" is determined only by the versioned ADR-0044 SupportCoverageMetric. At minimum it reports supported footprint area fraction, minimum contiguous support width, and local effective-height range, and compares them with validated plugin Settings. An implementation may not invent its own overlap/contact heuristic.
+"Sufficient support" is determined only by the versioned ADR-0044 SupportCoverageMetric under ADR-0058 conservative convergence rules. At minimum it reports conservative supported-footprint area fraction, minimum contiguous support width, and local effective-height bounds and compares them with validated plugin Settings. Unresolved support cells at the maximum refinement level count as unsupported, and hard acceptance requires convergence. An implementation may not invent its own overlap/contact heuristic.
 
 v1 does NOT rewrite the original structural outer wall.
 
@@ -345,7 +345,7 @@ Public summaries are deterministic:
 
 The configured hard surface tolerance applies independently to both directional maximum errors, so missing material cannot disappear merely because no predicted surface sample exists.
 
-Surface correspondence is local and normal-aware per ADR-0050. Search is restricted to the paired interaction region/neighborhood, must satisfy configured normal compatibility and maximum correspondence distance, and unresolved correspondence is a hard failure rather than being dropped.
+Surface correspondence is local and normal-aware per ADR-0050, but the local domain is closed under candidate influence by ADR-0060. Search is restricted to the paired interaction region plus every source/predicted surface that can be geometrically changed by the finite candidate bead influence volume. Normal compatibility and maximum correspondence distance are required, unresolved/ambiguous correspondence is a hard failure, and candidate-created overbuild may not escape the scored domain.
 
 These are deterministic numerically converged estimator results per ADR-0045. Sample spacing/refinement/convergence/correspondence settings are versioned plugin Settings and participate in PluginSettingsFingerprint. A hard tolerance decision is invalid if the estimator does not converge within the configured refinement budget.
 
