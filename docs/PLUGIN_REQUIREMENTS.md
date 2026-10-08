@@ -87,6 +87,7 @@ ExecutionConfigFingerprint includes resolved semantics for geometry/seam behavio
 
 At minimum it covers:
 - nozzle diameter, seam settings, scarf/fuzzy/spiral/ironing/support/raft state;
+- xy contour/hole compensation, slicing/closing mode, make-overhang-printable, elephant-foot compensation/layer scope;
 - print_flow_ratio, filament_flow_ratio, set_other_flow_ratios, outer_wall_flow_ratio, filament diameter;
 - fixed filament max volumetric speed and adaptive-volumetric-speed state;
 - extrusion-rate smoothing / Pressure Equalizer state;
@@ -106,6 +107,12 @@ PluginSettingsFingerprint includes:
 - ToolClearanceProfile id/version/margins;
 - candidate speed cap;
 - max_subedge_acceleration_mm_s2;
+- max_subedge_jerk_mm_s;
+- candidate min/max width and height bounds;
+- support-coverage thresholds/query tolerance version;
+- error sampling/refinement/convergence values;
+- surface-correspondence distance/normal policy;
+- mesh-section vertex-avoidance/join/classification tolerances;
 - safety/validation tolerances;
 - other plugin-owned execution policy.
 
@@ -148,6 +155,37 @@ Requires:
 - no unresolved candidate crossing/clearance;
 - fuzzy skin off for target;
 - unambiguous simple target section.
+
+## 10A. Candidate numerical geometry/error contract
+
+Printable rounded-rectangle candidate segments require:
+- width >= effective height > 0;
+- width/height inside validated plugin Settings bounds;
+- finite positive geometric line volume.
+
+Support acceptance uses the versioned SupportCoverageMetric; no free-form overlap heuristic.
+
+Surface quality uses converged bidirectional error:
+- predicted->source;
+- source->predicted.
+
+Correspondence is restricted to the paired local interaction region with configured distance/normal compatibility.
+
+Hard tolerance is invalid if either direction fails convergence or correspondence.
+
+Mesh-plane sections use the versioned MeshSectionPolicy; candidate Z values inside vertex/horizontal-facet degeneracy bands are forbidden rather than silently nudged.
+
+## 10B. Source-target modifier gates
+
+Because v1 uses the transformed source mesh as the ideal target:
+- xy_contour_compensation = 0;
+- xy_hole_compensation = 0 for the first fixture;
+- slicing_mode = regular;
+- pinned slice-closing/morphology behavior disabled;
+- make_overhang_printable disabled for target regions;
+- candidate intervals must be above all elephant-foot compensated layers.
+
+Unknown target-boundary modifier => analysis-only.
 
 ## 11. Modal execution envelope
 
@@ -273,6 +311,19 @@ At anchor:
 - plugin jerk cap <= exact fixture external-wall jerk limit.
 
 Unknown/excessive acceleration or unsupported/excessive cornering state => Skipped.
+
+## 17A. Feedrate unit contract
+
+Profile/plugin speeds are mm/s.
+
+G-code F is mm/min.
+
+Only the execution adapter converts:
+F_mm_min = speed_mm_s * 60.
+
+Parsed F is divided by 60 before comparison with mm/s speed caps.
+
+The same rule applies to extrusion, XY/Z travel, and retract/deretract feedrates.
 
 ## 18. Retraction/state behavior
 
