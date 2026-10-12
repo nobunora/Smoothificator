@@ -41,7 +41,7 @@ class SubEdgeSegment:
 
     def __post_init__(self) -> None:
         vals = (self.command_z_mm, self.local_support_z_mm, self.effective_bead_height_mm, self.width_mm, self.geometric_mm3_per_mm, self.commanded_mm3_per_mm, self.requested_speed_mm_s)
-        if not isinstance(self.start_xy, PrintPoint2) or not isinstance(self.end_xy, PrintPoint2) or any(not finite_binary64(x) for x in vals) or any(x <= 0 for x in vals[2:]):
+        if type(self.start_xy) is not PrintPoint2 or type(self.end_xy) is not PrintPoint2 or any(not finite_binary64(x) for x in vals) or any(x <= 0 for x in vals[2:]):
             raise ContractError(ReasonCode.INVALID_GEOMETRY, "invalid candidate segment")
         if self.start_xy == self.end_xy or self.width_mm < self.effective_bead_height_mm:
             raise ContractError(ReasonCode.INVALID_GEOMETRY, "degenerate/non-printable candidate segment")
@@ -121,7 +121,7 @@ class PlanSemanticContent:
     reason: str
 
     def __post_init__(self) -> None:
-        if not self.plugin_version or not self.compatibility_descriptor_id or any(type(x) is not tuple for x in (self.structural_reference_ids, self.candidate_paths, self.anchors)):
+        if type(self.plugin_version) is not str or not self.plugin_version or type(self.compatibility_descriptor_id) is not str or not self.compatibility_descriptor_id or any(type(x) is not tuple for x in (self.structural_reference_ids, self.candidate_paths, self.anchors)):
             raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "invalid immutable plan content")
         if any(type(x) is not str or not x for x in self.structural_reference_ids):
             raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "invalid structural identity")

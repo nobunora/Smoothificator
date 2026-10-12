@@ -40,10 +40,12 @@ class StructuralPathSegment:
     role: str
 
     def __post_init__(self) -> None:
+        if type(self.start) is not PrintPoint3 or type(self.end) is not PrintPoint3:
+            raise ContractError(ReasonCode.INVALID_GEOMETRY, "structural endpoints must be immutable PrintPoint3")
         _finite_mm(self.width_mm, self.local_height_mm, self.local_geometric_mm3_per_mm, self.command_flow_modifier)
         if min(self.width_mm, self.local_height_mm, self.local_geometric_mm3_per_mm, self.command_flow_modifier) <= 0:
             raise ContractError(ReasonCode.INVALID_GEOMETRY, "invalid structural bead dimensions")
-        if type(self.layer_index) is not int or self.layer_index < 0 or not self.role:
+        if type(self.layer_index) is not int or self.layer_index < 0 or type(self.role) is not str or not self.role:
             raise ContractError(ReasonCode.INVALID_GEOMETRY, "invalid structural layer/role")
 
 
