@@ -42,9 +42,6 @@ class SubEdgeSegment:
             raise ContractError(ReasonCode.INVALID_GEOMETRY, "invalid candidate segment")
         if self.start_xy == self.end_xy or self.width_mm < self.effective_bead_height_mm:
             raise ContractError(ReasonCode.INVALID_GEOMETRY, "degenerate/non-printable candidate segment")
-        if self.command_z_mm - self.local_support_z_mm != self.effective_bead_height_mm:
-            # No silent geometry correction. Future epsilon policy belongs to engine.
-            raise ContractError(ReasonCode.INVALID_GEOMETRY, "inconsistent local effective height")
 
 
 @dataclass(frozen=True, slots=True)
