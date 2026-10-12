@@ -3,14 +3,14 @@ import hashlib
 import math
 import struct
 import unittest
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 
 from adaptive_subedge.application.serialization import (
     canonical_bytes, canonical_array_token, validate_array_token, identity_root, semantic_tree,
 )
 from adaptive_subedge.application.hashing import (
     domain_digest, typed_identity, create_plan, verify_plan, fingerprint_plugin_settings,
-    fingerprint_resolved_execution,
+    fingerprint_resolved_execution, typed_identities_equal, domain_digest_chunks,
 )
 from adaptive_subedge.domain.plan import PlanSemanticContent, SubEdgePlan
 from adaptive_subedge.domain.metrics import ErrorMetrics
@@ -78,6 +78,55 @@ class CanonicalTests(unittest.TestCase):
             canonical_array_token("f64", (1,), (10**400,))
         with self.assertRaises(ContractError):
             validate_array_token({**token, "digest_hex": "0" * 63})
+
+    def test_2d_array_exact_bytes_and_c_logical_order(self):
+        shape = (2, 3)
+        values = (1, 2, 3, 4, 5, 6)
+        header = b"ASE_ARRAY_V1\0i64" + struct.pack(">IQQ", 2, 2, 3)
+        raw = header + struct.pack(">6q", *values)
+        expected = hashlib.sha256(b"AdaptiveSubEdgeCanonicalV1\0array\0" + raw).hexdigest()
+        self.assertEqual(canonical_array_token("i64", shape, values)["digest_hex"], expected)
+        # Conceptual Fortran-order storage of the same matrix; an owning
+        # adapter must restore C-logical values before calling the encoder.
+        fortran_memory = (1, 4, 2, 5, 3, 6)
+        c_logical = tuple(fortran_memory[row + 2 * col] for row in range(2) for col in range(3))
+        self.assertEqual(c_logical, values)
+        self.assertEqual(canonical_array_token("i64", shape, c_logical)["digest_hex"], expected)
+        self.assertNotEqual(canonical_array_token("i64", (3, 2), values)["digest_hex"], expected)
+
+    def test_streamed_digest_matches_reference_and_rejects_nonbytes(self):
+        data = tuple(range(2048))
+        header = b"ASE_ARRAY_V1\0i64" + struct.pack(">IQQ", 2, 64, 32)
+        expected = hashlib.sha256(b"AdaptiveSubEdgeCanonicalV1\0array\0" +
+                                  header + struct.pack(">2048q", *data)).hexdigest()
+        self.assertEqual(canonical_array_token("i64", (64, 32), data)["digest_hex"], expected)
+        self.assertEqual(domain_digest_chunks("array", (b"abc", b"def")),
+                         domain_digest("array", b"abcdef"))
+        with self.assertRaises(ContractError):
+            domain_digest_chunks("array", (b"ok", bytearray(b"mutable")))
+
+    def test_subnormal_float_array_and_unknown_token_schema(self):
+        subnormal = float.fromhex("0x0.0000000000001p-1022")
+        header = b"ASE_ARRAY_V1\0f64" + struct.pack(">IQ", 1, 1)
+        expected = hashlib.sha256(b"AdaptiveSubEdgeCanonicalV1\0array\0" +
+                                  header + struct.pack(">d", subnormal)).hexdigest()
+        token = canonical_array_token("f64", (1,), (subnormal,))
+        self.assertEqual(token["digest_hex"], expected)
+        with self.assertRaises(ContractError):
+            validate_array_token({**token, "array_schema_version": "ASE_ARRAY_V2"})
+
+    def test_typed_identity_comparison_rejects_wrong_schema(self):
+        a = typed_identity("source-geometry", {"mesh": 1})
+        equal = typed_identity("source-geometry", {"mesh": 1})
+        changed = typed_identity("source-geometry", {"mesh": 2})
+        self.assertTrue(typed_identities_equal("source-geometry", a, equal))
+        self.assertFalse(typed_identities_equal("source-geometry", a, changed))
+        with self.assertRaises(ContractError):
+            typed_identities_equal("source-geometry", a, typed_identity("execution-config", {"mesh": 1}))
+        with self.assertRaises(ContractError):
+            typed_identities_equal("source-geometry", a, replace(equal, schema_version="2"))
+        with self.assertRaises(ContractError):
+            typed_identities_equal("source-geometry", a.digest_hex, equal)
 
     def test_fingerprints_no_map_order_and_settings_change(self):
         a = fingerprint_resolved_execution({"z": 1, "a": 0.5})
