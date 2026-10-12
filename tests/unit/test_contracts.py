@@ -50,6 +50,35 @@ class ContractTests(unittest.TestCase):
                                 (), ErrorMetrics(.01, .01, .01, 0.0), 0.0, 0.0, 0.0,
                                 False, "analysis-only")
 
+    def test_rejects_mutable_nested_immutables(self):
+        from adaptive_subedge.domain.geometry import StructuralLoopReference, PrintPoint3
+        from adaptive_subedge.domain.plan import InsertionAnchor, FinalSurfaceEnvelope, ChronologicalSupportEnvelope
+        with self.assertRaises(ContractError):
+            FinalSurfaceEnvelope(["live-list"], ())
+        with self.assertRaises(ContractError):
+            ChronologicalSupportEnvelope((), [], "candidate")
+        with self.assertRaises(ContractError):
+            InsertionAnchor("anchor", (["not-hashable"],), 2, "layer")
+        with self.assertRaises(ContractError):
+            StructuralLoopReference("l", (PrintPoint3(0, 0, 0), "wrong", PrintPoint3(1, 0, 0)), 0, "shape")
+        with self.assertRaises(ContractError):
+            SubEdgePath("p", "interval", .2, 0, 0,
+                (SubEdgeSegment(PrintPoint2(0, 0), PrintPoint2(1, 0), .2, .1, .1, .4, .03, .029, 30),),
+                (["bad-id"],))
+
+    def test_huge_ints_fail_with_typed_contract_error(self):
+        from adaptive_subedge.domain.metrics import ErrorMetrics
+        giant = 10 ** 400
+        checks = (
+            lambda: PrintPoint2(giant, 0),
+            lambda: ErrorMetrics(giant, .01, .01, 0),
+            lambda: PluginSettings("1", giant, .08, .01, research_policy()),
+            lambda: CandidateSegmentRegularityPolicy("r", None, giant, .001, 1., .01, .01),
+        )
+        for factory in checks:
+            with self.subTest(factory=factory), self.assertRaises(ContractError):
+                factory()
+
     def test_candidate_constant_z_and_local_flow(self):
         a = PrintPoint2(0, 0)
         b = PrintPoint2(1, 0)

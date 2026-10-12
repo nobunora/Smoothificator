@@ -12,20 +12,20 @@ from adaptive_subedge.domain.status import AttemptState
 from adaptive_subedge.domain.errors import ContractError, ReasonCode
 
 
-def plan(seed):
+def plan(seed, *, injectable=False):
     policy = CandidateSegmentRegularityPolicy("r", None, .01, .001, 1, .01, .01)
     settings = PluginSettings("1", .05, .08, .01, policy)
     return create_plan(PlanSemanticContent("0.5", "research",
         typed_identity("source-geometry", {"seed": seed}),
         fingerprint_resolved_execution({"x": 1}),
         fingerprint_plugin_settings(settings),
-        (), (), (), ErrorMetrics(.01, .01, .01, 0.0), 0, 0, 0, False, "not injectable"))
+        (), (), (), ErrorMetrics(.01, .01, .01, 0.0), 0, 0, 0, injectable, "fixture-only"))
 
 
 class StoreTests(unittest.TestCase):
     def test_bounded_dedup_and_old_generation(self):
         store = PlanStore(2)
-        one, two, three = plan(1), plan(2), plan(3)
+        one, two, three = (plan(i, injectable=True) for i in (1, 2, 3))
         first = store.publish(one)
         store.publish(two)
         old_snapshot = store.snapshot()
@@ -38,6 +38,18 @@ class StoreTests(unittest.TestCase):
         store.reset()
         self.assertEqual(store.eligible(old_snapshot), ())
         self.assertEqual(store.snapshot().candidates, ())
+
+    def test_preview_only_plans_never_eligible(self):
+        store = PlanStore(3)
+        research = plan(8)
+        executable_fixture = plan(9, injectable=True)
+        store.publish(research)
+        store.publish(executable_fixture)
+        preview = store.snapshot()
+        self.assertEqual(len(preview.candidates), 2)
+        self.assertEqual([p.plan_hash for p in store.eligible(preview)], [executable_fixture.plan_hash])
+        store.reset()
+        self.assertEqual(store.eligible(preview), ())
 
     def test_parallel_publication_bounded(self):
         store = PlanStore(4)

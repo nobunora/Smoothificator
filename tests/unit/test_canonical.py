@@ -75,6 +75,8 @@ class CanonicalTests(unittest.TestCase):
         with self.assertRaises(ContractError):
             canonical_array_token("i64", (1,), (2**63,))
         with self.assertRaises(ContractError):
+            canonical_array_token("f64", (1,), (10**400,))
+        with self.assertRaises(ContractError):
             validate_array_token({**token, "digest_hex": "0" * 63})
 
     def test_fingerprints_no_map_order_and_settings_change(self):
