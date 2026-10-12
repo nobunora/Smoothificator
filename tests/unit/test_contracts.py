@@ -31,6 +31,32 @@ class ContractTests(unittest.TestCase):
         with self.assertRaises(ContractError):
             CandidateSegmentRegularityPolicy("r", None, -.01, .001, 1.0, .01, .01)
 
+    def test_settings_identity_types_are_strict_and_immutable(self):
+        policy = research_policy()
+        invalid_policies = (
+            lambda: CandidateSegmentRegularityPolicy(1, None, .02, .001, 1, .01, .01),
+            lambda: CandidateSegmentRegularityPolicy("r", {"mutable": True}, .02, .001, 1, .01, .01),
+            lambda: CandidateSegmentRegularityPolicy("r", "  ", .02, .001, 1, .01, .01),
+            lambda: CandidateSegmentRegularityPolicy("  ", None, .02, .001, 1, .01, .01),
+        )
+        for make in invalid_policies:
+            with self.subTest(make=make), self.assertRaises(ContractError):
+                make()
+        with self.assertRaises(ContractError):
+            PluginSettings("1", .05, .08, .01, policy, tool_clearance_profile={"mutable": True})
+        with self.assertRaises(ContractError):
+            PluginSettings(1, .05, .08, .01, policy)
+        for value in ([1], {"mutable": True}, "  "):
+            with self.subTest(value=value), self.assertRaises(ContractError):
+                ToolClearanceProfile("profile", "1", value, 12., .1, .1,
+                                     (ToolRadialKeepOut(0, .4),))
+        with self.assertRaises(ContractError):
+            ToolClearanceProfile("profile", "1", "evidence", 12., .1, .1,
+                                 ({"mutable": True},))
+        good = ToolClearanceProfile("profile", "1", "fixture:measured", 12., .1, .1,
+                                    (ToolRadialKeepOut(0, .4),))
+        self.assertIs(PluginSettings("1", .05, .08, .01, policy, good).tool_clearance_profile, good)
+
     def test_tool_profile_is_only_explicit_value_model(self):
         profile = ToolClearanceProfile("tool-a", "1", "measurement://fixture-a",
             12.0, 0.1, 0.2, (ToolRadialKeepOut(0, 0.4), ToolRadialKeepOut(12, 1.4)))

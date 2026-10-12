@@ -30,12 +30,12 @@ class ToolClearanceProfile:
     radial_keep_out: tuple[ToolRadialKeepOut, ...]
 
     def __post_init__(self) -> None:
-        if not all((self.profile_id, self.version, self.fixture_evidence_ref)):
-            raise ContractError(ReasonCode.INVALID_SETTING, "profile identity/evidence required")
+        if any(type(v) is not str or not v.strip() for v in (self.profile_id, self.version, self.fixture_evidence_ref)):
+            raise ContractError(ReasonCode.INVALID_SETTING, "nonempty string profile identity/evidence required")
         _nonnegative_finite(self.axial_height_mm, "axial height", positive=True)
         _nonnegative_finite(self.radial_safety_margin_mm, "radial safety margin")
         _nonnegative_finite(self.vertical_safety_margin_mm, "vertical safety margin")
-        if type(self.radial_keep_out) is not tuple or not self.radial_keep_out or not all(isinstance(v, ToolRadialKeepOut) for v in self.radial_keep_out):
+        if type(self.radial_keep_out) is not tuple or not self.radial_keep_out or not all(type(v) is ToolRadialKeepOut for v in self.radial_keep_out):
             raise ContractError(ReasonCode.INVALID_SETTING, "immutable keep-out curve required")
         levels = tuple(x.height_above_tip_mm for x in self.radial_keep_out)
         if levels[0] != 0 or levels[-1] > self.axial_height_mm or any(a >= b for a, b in zip(levels, levels[1:])):
@@ -53,7 +53,9 @@ class CandidateSegmentRegularityPolicy:
     max_adjacent_effective_height_step_mm: float
 
     def __post_init__(self) -> None:
-        if not self.version or self.fixture_evidence_ref == "":
+        if (type(self.version) is not str or not self.version.strip()
+                or (self.fixture_evidence_ref is not None
+                    and (type(self.fixture_evidence_ref) is not str or not self.fixture_evidence_ref.strip()))):
             raise ContractError(ReasonCode.INVALID_SETTING, "invalid regularity policy version/evidence")
         for field in ("min_candidate_segment_length_mm", "min_candidate_segment_time_s", "max_adjacent_commanded_volumetric_rate_step_mm3_s", "max_adjacent_width_step_mm", "max_adjacent_effective_height_step_mm"):
             _nonnegative_finite(getattr(self, field), field, positive=field.startswith("min_"))
@@ -70,8 +72,10 @@ class PluginSettings:
     physical_injection_requested: bool = False
 
     def __post_init__(self) -> None:
-        if self.schema_version != "1" or not isinstance(self.regularity_policy, CandidateSegmentRegularityPolicy):
+        if type(self.schema_version) is not str or self.schema_version != "1" or type(self.regularity_policy) is not CandidateSegmentRegularityPolicy:
             raise ContractError(ReasonCode.INVALID_SETTING, "unrecognized settings schema/policy")
+        if self.tool_clearance_profile is not None and type(self.tool_clearance_profile) is not ToolClearanceProfile:
+            raise ContractError(ReasonCode.INVALID_SETTING, "invalid hardware profile DTO")
         _nonnegative_finite(self.surface_error_tolerance_mm, "surface tolerance", positive=True)
         _nonnegative_finite(self.minimum_effective_bead_height_mm, "effective bead height", positive=True)
         _nonnegative_finite(self.candidate_seam_gap_mm, "seam gap")
