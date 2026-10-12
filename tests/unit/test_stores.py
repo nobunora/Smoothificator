@@ -9,7 +9,7 @@ from adaptive_subedge.application.hashing import create_plan, typed_identity, fi
 from adaptive_subedge.domain.plan import PlanSemanticContent
 from adaptive_subedge.domain.metrics import ErrorMetrics
 from adaptive_subedge.domain.settings import PluginSettings, CandidateSegmentRegularityPolicy
-from adaptive_subedge.domain.status import AttemptState
+from adaptive_subedge.domain.status import AttemptState, InjectionAttemptRecord
 from adaptive_subedge.domain.errors import ContractError, ReasonCode
 
 
@@ -82,6 +82,33 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(len({attempt_id for attempt_id, _ in results}), 60)
         self.assertTrue(all(state is AttemptState.SKIPPED for _, state in results))
         self.assertEqual(len(status.snapshot()), 60)
+
+    def test_rejects_malformed_attempt_identity_and_reason(self):
+        with self.assertRaises(ContractError):
+            InjectionAttemptRecord("id", "short", "source", AttemptState.STARTED)
+        with self.assertRaises(ContractError):
+            InjectionAttemptRecord("id", None, {"mutable": 1}, AttemptState.STARTED)
+        with self.assertRaises(ContractError):
+            InjectionAttemptRecord("id", None, "source", AttemptState.FAILED)
+        with self.assertRaises(ContractError):
+            InjectionAttemptRecord("id", None, "source", AttemptState.VALIDATED, ReasonCode.STALE_PLAN)
+        valid_hash = "a" * 64
+        self.assertEqual(InjectionAttemptRecord("id", valid_hash, "source", AttemptState.STARTED).selected_plan_hash,
+                         valid_hash)
+
+    def test_competing_same_attempt_transition_is_serialized(self):
+        status = InjectionAttemptStore()
+        attempt = status.begin(None, "source")
+        def advance(_):
+            try:
+                status.transition(attempt.attempt_id, AttemptState.VALIDATED)
+                return "advanced"
+            except ContractError:
+                return "rejected"
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            outcomes = list(pool.map(advance, range(2)))
+        self.assertEqual(sorted(outcomes), ["advanced", "rejected"])
+        self.assertEqual(status.snapshot()[0].state, AttemptState.VALIDATED)
 
     def test_parallel_publication_bounded(self):
         store = PlanStore(4)
