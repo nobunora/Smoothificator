@@ -129,6 +129,24 @@ class PlanSemanticContent:
             raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "unknown nested plan DTO")
         if len({p.path_id for p in self.candidate_paths}) != len(self.candidate_paths):
             raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "duplicate candidate path id")
+        # Static chronological metadata checks only: the engine will prove
+        # the actual geometric contact/support before declaring injectability.
+        if not _valid_ids(self.structural_reference_ids):
+            raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "duplicate/invalid structural reference")
+        if len({p.execution_order for p in self.candidate_paths}) != len(self.candidate_paths):
+            raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "duplicate candidate execution order")
+        by_id = {p.path_id: p for p in self.candidate_paths}
+        for candidate in self.candidate_paths:
+            for dependency_id in candidate.support_dependency_path_ids:
+                dependency = by_id.get(dependency_id)
+                if (dependency is None
+                        or dependency.execution_order >= candidate.execution_order
+                        or dependency.command_z_mm >= candidate.command_z_mm):
+                    raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "future/unknown/same-Z required candidate support")
+        if len({anchor.anchor_id for anchor in self.anchors}) != len(self.anchors):
+            raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "duplicate insertion anchor")
+        if any(not set(anchor.structural_loop_ids).issubset(self.structural_reference_ids) for anchor in self.anchors):
+            raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "anchor refers to undeclared structural loop")
         if not all(isinstance(i, IdentityReference) for i in (self.source_geometry, self.execution_config, self.plugin_settings)):
             raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "missing typed plan identity")
         if not isinstance(self.error_metrics, ErrorMetrics) or type(self.injectable) is not bool or not isinstance(self.reason, str):
