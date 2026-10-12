@@ -65,3 +65,18 @@ All confirmed findings have source evidence in `domain/geometry.py` / `domain/pl
 - F-16 (Medium/type boundary): `application/hashing.py` provides typed identity construction, but lacks an explicit validator/comparator for two `IdentityReference` values under an expected identity class and version. ADR-0062 prohibits comparing arbitrary 64-hex values without typed context. Add a single application-owned typed comparison API; do not relax cross-domain checks.
 - Independent fixture coverage is incomplete for 2D arrays, canonical type-version rejection, subnormal binary64, and logical C-order normalization after a conceptual F-order traversal. No actual NumPy adapter or installed Orca NumPy compatibility is claimed; no new dependency is authorized here.
 - These are implementation hardening changes under ADR-0049/0062/0064, **not** alterations to normative canonical byte framing, domain tags or schema.
+
+## Task 8/9 — Streamed canonical arrays, typed digest comparison, and CI
+
+- Implemented one hash owner `domain_digest_chunks`, streaming the existing binary `ASE_ARRAY_V1` header, dimensions and element values into SHA-256 without materializing a second full array byte copy. Retained exact magic/tag/framing/endianness semantics.
+- Added `typed_identities_equal(expected_type, left, right)` to require exact typed versioned IdentityReference objects and reject raw/untyped cross-schema comparisons; the comparison itself is constant-time via `hmac.compare_digest`.
+- Source commit `3da322aa039c4a73a4f569796c6748b031581452`, tests commit `c22338826d824f77866f6ba9bf6b1b2898f9ad3e`.
+- Independent `hashlib`/`struct` vectors prove multi-dimensional i64 canonical framing, conceptual F-memory-to-C-logical ordering, fixed endianness and subnormal f64 values. Also test incremental chunk SHA parity and wrong identity type/schema rejection. These do **not** prove actual NumPy array integration.
+- GitHub Actions run `38321880644`: Python 3.12 compileall PASS, **37 unit tests PASS** (0 errors/failures). No new runtime packages or canonical identity schema changes.
+
+## Task 10 — Attempt-state and concurrent-store audit
+
+- F-17 (Medium, confirmed): `domain/status.py::InjectionAttemptRecord` accepts malformed `selected_plan_hash` strings and non-string/mutable `source_working_file_identity`; it can also be directly constructed with inconsistent terminal reason metadata. The authoritative in-process status store uses this value type, so reject malformed records at the DTO boundary.
+- F-18 (Medium, coverage): `InjectionAttemptStore.transition` is protected by a lock but lacks a focused competing-transition test for two simultaneous calls on the same attempt. Test that precisely one transition succeeds and the other fails closed with the stable reason.
+- Open risk (requires further evidence): `InjectionAttemptStore` record lifetime/capacity has no explicit bounded retention requirement in the current ADR and schema; do not invent a policy in this tranche. Final postprocess state, file digests and Orca fixture integration are later-phase responsibilities.
+- These issues are limited to the existing accepted immutable status/monotonicity contract; adding attempt file-system or G-code behavior is out of scope.
