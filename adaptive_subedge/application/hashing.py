@@ -1,6 +1,7 @@
 """ADR-0062 typed and domain-separated SHA-256 identity owner."""
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 import hashlib
+import hmac
 
 from adaptive_subedge.domain.errors import ContractError, ReasonCode
 from adaptive_subedge.domain.plan import IdentityReference, PlanSemanticContent, SubEdgePlan
@@ -12,10 +13,33 @@ _DOMAIN = {"subedge-plan": "plan", "execution-config": "execution-config",
            "plugin-settings": "plugin-settings", "source-geometry": "source-geometry"}
 
 
-def domain_digest(domain_tag: str, payload: bytes) -> str:
-    if domain_tag not in frozenset((*_DOMAIN.values(), "array")) or type(payload) is not bytes:
+def domain_digest_chunks(domain_tag: str, chunks: Iterable[bytes]) -> str:
+    """One authoritative digest owner; incremental input keeps arrays bounded."""
+    if type(domain_tag) is not str or domain_tag not in frozenset((*_DOMAIN.values(), "array")):
         raise ContractError(ReasonCode.UNKNOWN_IDENTITY_SCHEMA, "unknown hash domain")
-    return hashlib.sha256(_MAGIC + b"\0" + domain_tag.encode("ascii") + b"\0" + payload).hexdigest()
+    sha = hashlib.sha256(_MAGIC + b"\0" + domain_tag.encode("ascii") + b"\0")
+    for chunk in chunks:
+        if type(chunk) is not bytes:
+            raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "canonical hash chunks must be bytes")
+        sha.update(chunk)
+    return sha.hexdigest()
+
+
+def domain_digest(domain_tag: str, payload: bytes) -> str:
+    if type(payload) is not bytes:
+        raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "canonical payload must be bytes")
+    return domain_digest_chunks(domain_tag, (payload,))
+
+
+def typed_identities_equal(expected_type: str, left: IdentityReference, right: IdentityReference) -> bool:
+    """Reject untyped/cross-schema comparisons rather than comparing raw hex."""
+    if expected_type not in _DOMAIN:
+        raise ContractError(ReasonCode.UNKNOWN_IDENTITY_SCHEMA, "unknown identity comparison class")
+    for ref in (left, right):
+        if (type(ref) is not IdentityReference or ref.identity_type != expected_type
+                or ref.schema_version != "1" or ref.canonical_encoding_version != "1"):
+            raise ContractError(ReasonCode.UNKNOWN_IDENTITY_SCHEMA, "mismatched typed identity class/schema")
+    return hmac.compare_digest(left.digest_hex, right.digest_hex)
 
 
 def typed_identity(identity_type: str, semantic_payload: object) -> IdentityReference:

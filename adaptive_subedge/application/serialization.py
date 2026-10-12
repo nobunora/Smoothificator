@@ -110,22 +110,28 @@ def canonical_array_token(dtype: str, shape: tuple[int, ...], values_c_order: tu
         raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "invalid array schema/shape")
     if type(values_c_order) is not tuple or len(values_c_order) != prod(shape):
         raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "shape/value mismatch")
-    data = bytearray(b"ASE_ARRAY_V1\0" + dtype.encode("ascii") + pack(">I", len(shape)) + b"".join(pack(">Q", x) for x in shape))
-    for v in values_c_order:
-        if dtype == "i64":
-            if type(v) is not int or not -(1 << 63) <= v < (1 << 63):
-                raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "invalid signed i64")
-            data.extend(pack(">q", v))
-        else:
-            if not finite_binary64(v):
-                raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "invalid finite f64")
-            try:
-                data.extend(pack(">d", 0.0 if v == 0 else v))
-            except (OverflowError, ValueError) as exc:
-                raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "out-of-range f64") from exc
-    # Delayed import avoids an import cycle; hashing remains the only digest owner.
-    from adaptive_subedge.application.hashing import domain_digest
-    return {"array_schema_version": "ASE_ARRAY_V1", "dtype": dtype, "shape": list(shape), "digest_hex": domain_digest("array", bytes(data))}
+    def framed_chunks():
+        # Equivalent to ADR-0062 binary array framing; no full array byte copy.
+        yield b"ASE_ARRAY_V1\0" + dtype.encode("ascii") + pack(">I", len(shape))
+        for dimension in shape:
+            yield pack(">Q", dimension)
+        for value in values_c_order:
+            if dtype == "i64":
+                if type(value) is not int or not -(1 << 63) <= value < (1 << 63):
+                    raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "invalid signed i64")
+                yield pack(">q", value)
+            else:
+                if not finite_binary64(value):
+                    raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "invalid finite f64")
+                try:
+                    yield pack(">d", 0.0 if value == 0 else value)
+                except (OverflowError, ValueError) as exc:
+                    raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "out-of-range f64") from exc
+
+    # Hash framing stays in the one application owner; avoid a full buffer copy.
+    from adaptive_subedge.application.hashing import domain_digest_chunks
+    return {"array_schema_version": "ASE_ARRAY_V1", "dtype": dtype, "shape": list(shape),
+            "digest_hex": domain_digest_chunks("array", framed_chunks())}
 
 
 def validate_array_token(token: object) -> None:
