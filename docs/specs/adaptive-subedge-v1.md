@@ -8,13 +8,13 @@
 - Plugin/runtime requirements: `docs/PLUGIN_REQUIREMENTS.md`
 - Error/physical model: `docs/ERROR_MODEL.md`
 - Test strategy: `docs/TEST_STRATEGY.md`
-- Full audit: `docs/FULL_CONSISTENCY_AUDIT_2026-10-02.md`
-- Audited revision manifest: `docs/AUDIT_REVISION_2026-10-02.md`
-- Audited revision manifest blob SHA: `5e3ab3d79d0c6bba831f377c334bc6df8d4441c7`
-- ADRs: `docs/adr/0001-*.md` through `docs/adr/0041-*.md`
+- Full audit baseline: `docs/FULL_CONSISTENCY_AUDIT_2026-10-08.md` (Orca compatibility evidence; not a new physical qualification)
+- Audited revision manifest: `docs/AUDIT_REVISION_2026-10-13.md` (Phase 0.5 normative delta)
+- Audited revision manifest blob SHA: `ed32f47cc541443a52bc6abed289cc86b31d816b`
+- ADRs: `docs/adr/0001-*.md` through `docs/adr/0065-*.md` (with historical/superseded statuses preserved)
 - ADR-0010 is Superseded by ADR-0015.
 
-The audited blob manifest, rather than a possibly stale branch-head value, is the canonical revision reference for this handoff.
+The audited blob manifest, rather than a possibly stale branch-head value, is the canonical revision reference for this handoff. The 2026-10-13 identity/session delta supplements the historical 2026-10-08 technical audit; it is not a fresh Orca runtime or physical-printer certification.
 
 Before repository review, every blob listed in the manifest MUST still match.
 

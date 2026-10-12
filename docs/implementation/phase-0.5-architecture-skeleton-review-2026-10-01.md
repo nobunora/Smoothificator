@@ -1,3 +1,5 @@
+> Historical Phase 0.5 review: its `validated` disposition was tied to the 2026-10-01 manifest and is superseded for new work by `docs/implementation/phase-0.5-architecture-skeleton-review-2026-10-13.md`. Do not reuse this authorization for current normative documents.
+
 # Phase 0.5 — Architecture Skeleton Repository Revalidation — 2026-10-01
 
 ## Specification
