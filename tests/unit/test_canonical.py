@@ -41,6 +41,9 @@ class CanonicalTests(unittest.TestCase):
         self.assertEqual(canonical_bytes(True), b"b1")
         self.assertEqual(canonical_bytes("日本"), b"s6:" + "日本".encode("utf-8"))
         self.assertNotEqual(canonical_bytes(1), canonical_bytes("1"))
+        from adaptive_subedge.domain.geometry import PrintPoint2
+        self.assertEqual(canonical_bytes(semantic_tree(PrintPoint2(1, 2))),
+                         canonical_bytes(semantic_tree(PrintPoint2(1.0, 2.0))))
 
     def test_rejects_invalid_values(self):
         for v in (math.nan, math.inf, -math.inf, {2, 1}, object()):

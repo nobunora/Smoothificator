@@ -2,6 +2,7 @@
 from dataclasses import is_dataclass
 from collections.abc import Mapping
 from math import isfinite, prod
+from typing import get_type_hints
 from struct import pack
 
 from adaptive_subedge.domain.errors import ContractError, ReasonCode
@@ -48,7 +49,19 @@ def semantic_tree(value: object) -> object:
         return {k: semantic_tree(v) for k, v in value.items()}
     registered = _FIELDS.get(type(value))
     if registered is not None and is_dataclass(value):
-        return {name: semantic_tree(getattr(value, name)) for name in registered}
+        # Annotated float DTO fields have IEEE-754 binary64 semantics regardless
+        # of whether a caller wrote an integer literal (1) or float literal (1.0).
+        hints = get_type_hints(type(value))
+        normalized = {}
+        for name in registered:
+            item = getattr(value, name)
+            if hints.get(name) is float and type(item) is int:
+                try:
+                    item = float(item)
+                except OverflowError as exc:
+                    raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "float field outside binary64") from exc
+            normalized[name] = semantic_tree(item)
+        return normalized
     raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "unregistered identity object")
 
 

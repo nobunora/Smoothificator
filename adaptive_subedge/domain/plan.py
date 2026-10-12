@@ -110,6 +110,12 @@ class PlanSemanticContent:
     def __post_init__(self) -> None:
         if not self.plugin_version or not self.compatibility_descriptor_id or any(type(x) is not tuple for x in (self.structural_reference_ids, self.candidate_paths, self.anchors)):
             raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "invalid immutable plan content")
+        if any(type(x) is not str or not x for x in self.structural_reference_ids):
+            raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "invalid structural identity")
+        if any(type(x) is not SubEdgePath for x in self.candidate_paths) or any(type(x) is not InsertionAnchor for x in self.anchors):
+            raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "unknown nested plan DTO")
+        if len({p.path_id for p in self.candidate_paths}) != len(self.candidate_paths):
+            raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "duplicate candidate path id")
         if not all(isinstance(i, IdentityReference) for i in (self.source_geometry, self.execution_config, self.plugin_settings)):
             raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "missing typed plan identity")
         if not isinstance(self.error_metrics, ErrorMetrics) or type(self.injectable) is not bool or not isinstance(self.reason, str):

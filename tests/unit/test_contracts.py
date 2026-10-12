@@ -38,6 +38,18 @@ class ContractTests(unittest.TestCase):
         with self.assertRaises(ContractError):
             ToolClearanceProfile("tool-a", "1", "evidence", 12.0, .1, .2, (ToolRadialKeepOut(1, .4),))
 
+    def test_nested_plan_payload_validation(self):
+        from adaptive_subedge.domain.plan import PlanSemanticContent
+        from adaptive_subedge.domain.metrics import ErrorMetrics
+        from adaptive_subedge.application.hashing import typed_identity
+        sr = typed_identity("source-geometry", {"mesh": 1})
+        ex = typed_identity("execution-config", {"flow": 1.0})
+        pl = typed_identity("plugin-settings", {"policy": "research"})
+        with self.assertRaises(ContractError):
+            PlanSemanticContent("0.5", "research", sr, ex, pl, (), ("not-a-path",),
+                                (), ErrorMetrics(.01, .01, .01, 0.0), 0.0, 0.0, 0.0,
+                                False, "analysis-only")
+
     def test_candidate_constant_z_and_local_flow(self):
         a = PrintPoint2(0, 0)
         b = PrintPoint2(1, 0)
