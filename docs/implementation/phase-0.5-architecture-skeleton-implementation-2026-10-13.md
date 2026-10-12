@@ -47,3 +47,16 @@ PENDING implementation and validation evidence. Initial task record authorizes n
 ## Next gate
 
 Document exact source changes, tests/commands/results, remaining review findings and the smallest subsequent implementation milestone.
+
+## Follow-up hardening tranche — 2026-10-13
+
+Primary focused review: `docs/implementation/phase-0.5-followup-review-2026-10-13.md` (not an independent blind review).
+
+- R-01 (High, confirmed -> resolved): `PlanStore.eligible` no longer includes `injectable=False` preview-only plans. `snapshot()` remains inclusive and immutable for diagnostics.
+- R-02 (Medium, confirmed -> resolved): nested immutable tuple and element types are validated for loop/anchor/envelope/dependency DTOs; invalid nested objects fail with a stable `ContractError`.
+- R-03 (Medium, confirmed -> resolved): huge integers that cannot be represented as finite IEEE binary64 fail with the domain-owned `finite_binary64` predicate instead of leaking `OverflowError`.
+- Source fix `f596405a34c119712e00c472c701e9103775f282`; regression tests `bc1c80a586e2b0e7ca7948b456f9d438b153349e`.
+- GitHub Actions push/PR runs 38320173714 and 38320178003: Python 3.12 compileall PASS, **20 unittest cases PASS**, 0 failures/errors. The pre-test source-only commit had failing CI because its original tests still asserted the invalid eligibility behavior; the complete fix plus regression-test commit passes.
+- GitHub compare against prior reviewed head confirmed no changes to legacy scripts, printer/G-code execution modules, or Orca adapters.
+- Tooling remains NOT CONFIGURED for Ruff/mypy and NOT VERIFIED for actual Orca embedded runtime, ndarray memory-layout adapters and packaging. `Spec ready gate` was skipped by its label filter, not counted as a pass.
+- Independent implementation review remains outstanding. Phase 0.5 is still partial, and physical injection remains disabled.
