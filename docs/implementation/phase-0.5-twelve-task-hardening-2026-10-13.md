@@ -35,3 +35,19 @@ Status: IN PROGRESS. This is a primary implementation-and-verification pass, **n
 ## Evidence updates
 
 Tasks 2–12 must be reported using exact commits, CI run IDs, test counts, blocked checks and disposition; never claim unexecuted checks passed.
+
+## Task 2/3 — Settings evidence validation and regression check
+
+- Confirmed that `ToolClearanceProfile` allowed mutable/non-string fixture evidence, `CandidateSegmentRegularityPolicy` allowed non-string policy version/evidence, and `PluginSettings` accepted an invalid optional hardware profile object. All are inconsistent with immutable typed Settings/fixture identity semantics.
+- Corrected `adaptive_subedge/domain/settings.py` with exact nonempty-string identity validation and exact frozen hardware DTO type checking. No physical defaults, printer modes, or new dependencies introduced.
+- Added `test_settings_identity_types_are_strict_and_immutable` with malformed nested values and valid explicit-profile control.
+- Commit `6da3fe76bdead3f6e62f75029e8042f5c9b28b41`; GitHub Actions run `38321569623`: Python 3.12 syntax/compileall PASS and **30 tests PASS**, 0 failures/errors.
+
+## Task 4 — Additional domain DTO audit (read-only findings)
+
+- F-11 (Medium): `StructuralPathSegment` does not enforce typed `PrintPoint3` start/end and allows truthy non-string role values, potentially putting a mutable object inside a frozen DTO. Violates immutable cross-boundary vocabulary; repair by exact field-type checking, not geometry redesign.
+- F-12 (Medium): `PlanSemanticContent.plugin_version` and `compatibility_descriptor_id` currently accept truthy non-string values such as lists. These enter hash identity and compatibility naming; reject without redefining the identity schema.
+- F-13 (Low/Medium): `SubEdgeSegment` accepts subclasses of `PrintPoint2` despite canonical serializer accepting only registered exact DTO types. This mismatch can create a dataclass accepted by domain but rejected in hash serialization. Prefer exact type validation.
+- F-14 (not yet fixed): full canonical v1 DTO coverage, `SurfaceBand` and advanced ErrorEstimator/structural metadata remain incomplete by the pre-existing Phase 0.5 partial scope. No invented field schema or policy is authorized in this tranche.
+
+All confirmed findings have source evidence in `domain/geometry.py` / `domain/plan.py` and current serializer exact-type register. No unrelated refactors permitted.
