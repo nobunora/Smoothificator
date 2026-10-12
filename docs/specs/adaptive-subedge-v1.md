@@ -34,13 +34,14 @@ Initial approved implementation scope:
 - typed errors/stable reason codes;
 - validated plugin Settings;
 - `ToolClearanceProfile` DTO/settings contract;
+- versioned `CandidateSegmentRegularityPolicy` Settings DTO and fixture-only physical thresholds (ADR-0063);
 - explicit final-surface versus chronological-support DTO/contracts;
 - candidate execution-order/support-dependency metadata contracts;
 - `ExecutionConfigFingerprint`;
 - `PluginSettingsFingerprint`;
 - deterministic canonical serialization and plan hashing;
 - bounded thread-safe PlanStore plus attempt-scoped InjectionAttemptStore;
-- process-local AnalysisGenerationId / InjectionAttemptId lifecycle contracts;
+- process-local PluginSessionEpoch / AnalysisGenerationId / InjectionAttemptId lifecycle contracts (ADR-0065);
 - architecture/import-boundary tests.
 
 Later work remains gated by `docs/ROADMAP.md` and requires its own implementation records.
@@ -81,6 +82,10 @@ Required invariants:
 - source orientation/material side is an explicit validated contract rather than raw-normal trust;
 - later G-code processing is binary/byte-preserving by contract;
 - serializer/hash is deterministic and excludes runtime-only state;
+- ADR-0064 plan hash/ID are derived from a hash-free canonical content projection; nested array digest tokens are typed and exact;
+- a newer analysis generation is not the same as a new PluginSessionEpoch; retained old-generation plans remain selectable on unique validated match;
+- ADR-0061 same-working-file commit lock is an interface contract for later injection, not a Phase 0.5 file mutation feature;
+- ADR-0063 segment regularity is planned by the engine and rechecked (never repaired) by the later injector;
 - expected failures use typed reason codes;
 - architecture rules are mechanically testable;
 - no implementation component silently creates a second source of product policy.
@@ -105,10 +110,10 @@ Phase 0.5 is complete only when:
 - package structure matches `docs/ARCHITECTURE.md`;
 - all public cross-boundary DTOs are explicit and immutable where specified;
 - units/coordinate semantics are encoded in names/types/documentation;
-- canonical serialization is deterministic;
+- canonical serialization is deterministic, domain-separated and follows ADR-0064 identity projection/nested-array tokens;
 - identical semantic inputs produce identical fingerprints/hash;
 - timestamps, runtime ObjectIDs, machine translation, final E, and execution status do not affect plan hash;
-- PlanStore atomic publication/concurrency/bounds/current-session semantics are testable;
+- PlanStore atomic publication/concurrency/bounds/current-session/old-generation deduplication and eviction semantics are testable;
 - InjectionAttemptRecord uniqueness/monotonic state/independence is testable;
 - forbidden imports fail architecture tests;
 - duplicate ADR identifier check is testable or covered by a deterministic repository check;
@@ -127,7 +132,9 @@ Phase 0.5 repository-native validation should include, once its minimal tooling 
 - Settings validation tests;
 - ExecutionConfigFingerprint determinism tests;
 - PluginSettingsFingerprint determinism tests;
-- canonical plan serialization/hash tests;
+- canonical plan serialization/hash tests, including ADR-0064 independent byte vectors, root/token grammar and derived hash exclusion;
+- CandidateSegmentRegularityPolicy validation and deterministic fingerprint tests (schema only; no optimizer);
+- ADR-0065 epoch/reset/eviction and equal-hash deduplication tests;
 - PlanStore publish/bounds/concurrency tests;
 - InjectionAttemptStore uniqueness/monotonic-state tests;
 - package/build check if packaging metadata is introduced.

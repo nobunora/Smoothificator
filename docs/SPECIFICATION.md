@@ -228,6 +228,12 @@ It does NOT store authoritative final machine XYZ or final emitted E.
 
 A path-wide constant flow MUST NOT hide local support-height variation.
 
+### Candidate segment regularity (ADR-0063)
+
+Plugin Settings MUST include the versioned `CandidateSegmentRegularityPolicy` with explicit fixture-reviewed minimum segment length/time and maximum adjacent commanded volumetric-rate, width and effective-height steps. These parameters participate in PluginSettingsFingerprint. Research-only values do not authorize physical injection.
+
+Before plan publication the engine validates each segment and adjacent pair; it may deterministically regularize and rescore geometry or reject the candidate. Postprocess may only revalidate the final quantized segment length, emitted E, time and adjacent transitions and MUST NOT replan, merge or smooth them. Unknown physical-fixture limits or failure after quantization => Skipped.
+
 ## 12. Geometric bead model
 
 For a supported non-bridge candidate with effective bead height h and nominal width w:
@@ -370,6 +376,7 @@ Planning builds a versioned PluginSettingsFingerprint from all plugin settings t
 - candidate speed cap;
 - candidate acceleration/jerk caps;
 - bead width/height bounds;
+- ADR-0063 CandidateSegmentRegularityPolicy limits and fixture identity;
 - support-coverage thresholds/tolerances;
 - error-estimator sampling/refinement/convergence policy;
 - local surface-correspondence distance/normal compatibility policy;
@@ -397,6 +404,8 @@ Authoritative identities:
 
 The same semantic plan/config/settings/source geometry must therefore produce the same authoritative identity across supported platforms.
 
+ADR-0064 requires the plan's canonical identity projection to exclude its derived `plan_hash/plan_id` (as well as runtime-only fields), use a typed versioned root, and represent nested array digests by an exact four-field string-keyed token containing lowercase `digest_hex`. A supplied plan hash must equal the recomputed ADR-0062 domain-separated digest; `plan_id` equals that full digest. Hashing the derived ID into its own preimage is forbidden.
+
 ## 18. Orca execution configuration identity
 
 Planning also builds a versioned ExecutionConfigFingerprint from resolved Orca semantics.
@@ -417,6 +426,10 @@ The fingerprint includes every supported semantic that can affect:
 - printable feature gates.
 
 Fingerprint equality does not replace actual final-G-code parsing.
+
+## 18A. PlanStore session/generation eligibility
+
+Per ADR-0065, a current-session plan is a fully published and retained plan from the active process-local PluginSessionEpoch, not necessarily the latest AnalysisGenerationId. A new analysis generation does not itself invalidate a previously snapshotted immutable plan. Plan selection deduplicates equal semantic plan hashes and requires exactly one distinct final-G-code match plus both fingerprints. Bounded eviction before selection, session reset, cache-only missing publication or uncertain association => Skipped. InjectionAttemptStore separately owns all authoritative runtime outcomes.
 
 ## 19. Preview contract
 
@@ -643,7 +656,7 @@ Printable v1 requires:
 - no other slicing-pipeline capability besides this plugin;
 - traditional timelapse only when the exact fixture proves all generated timelapse motion/state is parser-visible and supported;
 - verbose G-code/comments enabled for initial physical fixtures;
-- fresh current-session plan.
+- fresh current-session PlanStore publication within the active PluginSessionEpoch (ADR-0065), which need not be the latest analysis generation.
 
 Static pressure advance may remain enabled and is inherited unchanged.
 
@@ -758,7 +771,9 @@ Pass 3:
 - binary-stream sanity-check temp;
 - verify markers, order, state restoration, integrity.
 
-Immediately before commit, re-read current plugin settings and require PluginSettingsFingerprint equality again; also require source working-file identity/metadata to remain unchanged. Only then atomically replace ctx.gcode_path.
+Immediately before commit, acquire the ADR-0061 per-working-file commit lock. Inside the lock, re-read current plugin settings; revalidate source path/file identity and required digest, re-check current idempotence markers, atomically replace only the validated working copy and record COMMITTED before releasing the lock. A stale source/temp is not committed. Different working paths may commit concurrently. Cross-process ownership requires an exact supported-platform fixture; unsupported aliasing/symlink semantics => Skipped.
+
+ADR-0063 also requires final quantized segment regularity checks during Pass 1; the injector never adjusts immutable plan intent.
 
 Expected unsupported/validation failure => PluginResult.Skipped and original output unchanged.
 

@@ -113,6 +113,7 @@ Primary types include:
 - `SupportCoverageMetrics`;
 - `ErrorEstimatorConfig` / `SurfaceCorrespondencePolicy`;
 - `MeshSectionPolicy`;
+- `CandidateSegmentRegularityPolicy` (versioned, validated fixture limits in Settings);
 - `SubEdgeSegment`;
 - `SubEdgePath`;
 - `InsertionAnchor`;
@@ -147,6 +148,7 @@ The engine owns pure physical/geometric decision logic:
 - collision/clearance;
 - error metrics;
 - candidate search/optimization;
+- ADR-0063 pre-plan candidate segment regularization and full rescoring;
 - cost scoring.
 
 The engine receives already-normalized structural baseline data.
@@ -165,7 +167,7 @@ Application owns workflow and durable-in-process plugin state:
 - `analyze_snapshot(snapshot, settings) -> SubEdgePlan`;
 - plan validation;
 - canonical serialization/hash;
-- PlanStore;
+- PlanStore with ADR-0065 PluginSessionEpoch, generation and retained-plan eligibility;
 - attempt-scoped InjectionAttemptStore / derived plan-runtime summary;
 - cancellation orchestration.
 
@@ -221,6 +223,8 @@ It owns:
 - candidate command derivation from immutable plan;
 - safe-ceiling travel;
 - byte-preserving binary-line temp emission/sanity validation/atomic replacement;
+- ADR-0061 per-working-file final-revalidation/commit lock, owned with atomic-file execution in `gcode/atomic_writer.py`;
+- ADR-0063 post-quantization segment-regularity rejection without geometry repair;
 - PluginResult mapping at the capability boundary.
 
 It MUST NOT:
@@ -357,6 +361,8 @@ Native-endian ndarray bytes, Python repr, pickle, unordered map order, locale-de
 
 serialization.py owns canonical bytes; hashing.py owns typed/domain-separated SHA-256 computation.
 
+ADR-0064 fixes the plan identity projection: the derived plan hash/ID is excluded from its own preimage; `plan_id` equals full `plan_hash`. Nested array digests use the specified version/dtype/shape/lowercase-hex token in the tagged tree. No domain DTO computes its own identity.
+
 ## 17. Configuration ownership
 
 `orca_config.py` owns raw-key -> resolved-semantic-value mapping.
@@ -406,7 +412,7 @@ Thread-safe, bounded, process-local.
 
 Plans are fully constructed and atomically published.
 
-A process-local AnalysisGenerationId tracks lifecycle/diagnostic generation but is not part of deterministic plan hash.
+A process-local PluginSessionEpoch identifies the active PlanStore lifetime. AnalysisGenerationId tracks individual completed publications inside it. Neither participates in deterministic plan identity. Older retained generations in the same epoch remain eligible under ADR-0065 and must not be rejected solely for not being newest. A snapshot remains stable after concurrent publication/eviction.
 
 Long postprocess work uses an immutable plan-selection snapshot rather than holding the store lock.
 
@@ -416,7 +422,7 @@ Never shared with optimizer/UI.
 
 ### Temp output
 Owned by one injector attempt.
-Parser/emitter uses binary line streams. Untouched original bytes and line endings are copied exactly. Original working file is untouched until full validation/sanity succeeds. Pass 1/Pass 2 source digests and a pre-commit source-identity check protect against TOCTOU modification.
+Parser/emitter uses binary line streams. Untouched original bytes and line endings are copied exactly. Original working file is untouched until full validation/sanity succeeds. Pass 1/Pass 2 source digests and a pre-commit source-identity check protect against TOCTOU modification. ADR-0061 additionally serializes same-working-file source revalidation, marker check, atomic replace and COMMITTED status under a path-identity lock. Process-local locks do not imply unverified cross-process exclusion.
 
 ## 19. Component contract checklist
 
@@ -496,7 +502,9 @@ PlanStore defines:
 - bounded capacity;
 - stale/current-session semantics;
 - candidate enumeration;
-- status update ownership.
+- eligible current-epoch publication/generation enumeration and snapshot ownership.
+
+InjectionAttemptStore alone owns authoritative attempt-state updates; PlanStore may provide derived read-only status projections, not mutable per-plan execution state.
 
 G-code injection defines:
 - one idempotency plan hash;

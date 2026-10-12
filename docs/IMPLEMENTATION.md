@@ -46,10 +46,10 @@ Original Orca structural extrusion remains untouched.
 
 Read all non-superseded ADRs relevant to the task.
 
-As of this audit:
+As of this audit (the current accepted set must be rechecked against the stamped manifest):
 - ADR-0001 through ADR-0009;
 - ADR-0010 is superseded by ADR-0015;
-- ADR-0011 through ADR-0063, subject to explicit supersession notes.
+- ADR-0011 through ADR-0065, subject to explicit supersession notes.
 
 Later ADRs override earlier clauses only where stated.
 
@@ -338,6 +338,8 @@ Missing/invalid/mismatched required semantics => PluginResult.Skipped.
 
 Raw map order MUST NOT affect either canonical fingerprint.
 
+ADR-0063's five minimum/adjacent segment-regularity settings and physical-fixture evidence identity MUST be validated and included in PluginSettingsFingerprint. Research-only thresholds cannot silently become physical defaults.
+
 PlanStore invalidation is useful but does not replace the final equality checks.
 
 ## 13. Immutable domain DTOs
@@ -390,6 +392,14 @@ SubEdgeSegment:
 
 SubEdgeSegment does NOT contain authoritative final machine XYZ or final emitted E.
 
+CandidateSegmentRegularityPolicy (ADR-0063), owned by validated plugin Settings:
+- min_candidate_segment_length_mm;
+- min_candidate_segment_time_s;
+- max_adjacent_commanded_volumetric_rate_step_mm3_s;
+- max_adjacent_width_step_mm;
+- max_adjacent_effective_height_step_mm;
+- fixture-evidence identity/version, with no unverified universal physical default.
+
 SubEdgePath:
 - path id;
 - interval/error-region id;
@@ -419,7 +429,12 @@ SubEdgePlan:
 - geometric/commanded volume and time estimates;
 - injectability/reason.
 
-Exclude timestamp, runtime ObjectID, final machine translation, final E, and runtime status from plan hash.
+Plan identity is computed from a separately schema-declared immutable semantic-content projection. Exclude derived `plan_hash/plan_id`, timestamp, runtime ObjectID, PluginSessionEpoch/AnalysisGenerationId, final machine translation, final E, and runtime status from that projection. `plan_id == plan_hash` is checked after computing the domain-separated hash (ADR-0064).
+
+PluginSessionEpoch:
+- process-local lifetime of the active PlanStore;
+- reset creates a new epoch; old-epoch plans cannot be selected;
+- excluded from deterministic plan hash.
 
 AnalysisGenerationId:
 - process-local lifecycle identifier;
@@ -440,7 +455,7 @@ There is no single overwrite-prone mutable per-plan status as the authoritative 
 
 ## 13A. Canonical serialization and hashing
 
-Phase 0.5 follows ADR-0049 + ADR-0062 exactly.
+Phase 0.5 follows ADR-0049 + ADR-0062 + ADR-0064 exactly.
 
 Owners:
 - application/serialization.py -> canonical semantic tree and exact canonical bytes;
@@ -457,7 +472,10 @@ Required canonical-byte rules:
 - arrays serialized by semantic dtype + rank + shape + logical C-order values;
 - i64/f64 array values use fixed big-endian canonical bytes;
 - native ndarray memory byte order/layout MUST NOT participate;
-- runtime-only fields are schema-excluded;
+- runtime-only fields and derived plan id/hash are schema-excluded;
+- exact canonical identity root keys: identity_type, schema_version, canonical_encoding_version, payload;
+- array digest in a parent tree is an exact four-field mapping: array_schema_version, dtype, shape, digest_hex (full lowercase hex); no raw byte scalar;
+- plan hash computed from its content projection using ADR-0062's plan-domain prefix, not the old unprefixed ADR-0049 shorthand;
 - no Python repr/pickle/default JSON float formatting.
 
 Typed identity comparison checks both expected identity class/schema and full digest; arbitrary 64-hex strings are never compared without context.
@@ -492,7 +510,7 @@ At posSimplifyPath:
 17. resolve local support/effective height;
 18. compute geometric segment volume;
 19. compute commanded segment volume separately;
-20. enforce support/candidate collision/geometry/speed feasibility;
+20. enforce support/candidate collision/geometry/speed feasibility, including ADR-0063 minimum length/time and adjacent flow/width/height regularity. Only engine-owned deterministic regularization is allowed before plan finalization; rescore support, collision and bidirectional error after any change;
 21. optimize candidate set deterministically;
 22. create StructuralLoopReferences and insertion intent;
 23. create immutable plan;
@@ -635,30 +653,20 @@ Optimizer and FinalStructuralDepositionContext revalidation use identical estima
 
 ## 21. PlanStore and attempt store
 
-PlanStore is process-local, thread-safe, bounded.
+PlanStore is process-local, thread-safe, bounded, and is the single owner of ADR-0065 PluginSessionEpoch/AnalysisGenerationId and plan publication/eligibility indexes. The active epoch is not the latest generation. Plans are fully constructed before atomic publication; no partial plan is visible.
 
-Plans are fully constructed before atomic publication. No partial plan is visible.
+Postprocess snapshots retained eligible immutable plans under lock and releases the lock before long parsing. Another generation may be published, or a plan evicted, without mutating an already selected snapshot. Reset/epoch change prevents selection of prior-epoch plans; a cache-loaded object with no current-epoch publication has no injectable plan.
 
-Postprocess takes an immutable candidate-plan snapshot under lock and releases the lock before long parsing.
-
-InjectionAttemptStore is the single owner of attempt-scoped runtime evidence and monotonic attempt-state transitions.
-
-On each fresh applicable analysis generation:
-- store immutable plan;
-- mark current session/generation;
-- invalidate or age stale incompatible candidates deterministically.
+InjectionAttemptStore separately owns attempt-scoped runtime evidence and monotonic attempt-state transitions. No mutable authoritative per-plan status lives in PlanStore.
 
 At export:
-1. allocate InjectionAttemptId and snapshot candidate plans;
-2. require current PluginSettingsFingerprint equality;
-3. require current ExecutionConfigFingerprint equality;
-3. filter to current-session injectable plans;
-4. use final G-code structural matcher;
-5. exactly one plan must survive.
+1. allocate a unique InjectionAttemptId and snapshot eligible retained plans in the current PluginSessionEpoch;
+2. check current PluginSettingsFingerprint against each candidate;
+3. check export ExecutionConfigFingerprint against each candidate;
+4. deduplicate candidates by full typed semantic plan hash, retaining a stable order;
+5. use final G-code structural matching; require exactly one *distinct* matching semantic plan identity.
 
-Zero or multiple matches => Skipped.
-
-Never rerun optimizer from G-code.
+Zero or ambiguous distinct matches => Skipped. Newer generations alone do not invalidate an older matching snapshot (ADR-0037/0065). An evicted-before-snapshot plan cannot be resurrected. Never rerun the optimizer from G-code.
 
 ## 22. Preview
 
@@ -948,6 +956,7 @@ Pass 1 — validation:
 - reconstruct final structural deposition and revalidate support/hard geometry;
 - derive one execution-frame translation;
 - quantize and derive all candidate execution commands;
+- revalidate final emitted segment lengths, times, positive quantized E and adjacent flow/width/height transitions per ADR-0063; failure rejects rather than replans;
 - validate speed/Zsafe/retraction;
 - validate the complete quantized plugin-motion schedule plus unchanged downstream original motions using tool_clearance.py, the chronological printed-material state, and the versioned ToolClearanceProfile.
 
@@ -969,7 +978,7 @@ Pass 3 — sanity:
 - verify untouched original byte sequences remain identical outside insertion ranges;
 - flush/fsync as supported before atomic replace.
 
-Immediately before replace, re-read current plugin settings and require PluginSettingsFingerprint equality again; require source working-file identity/metadata unchanged. Only then atomically replace ctx.gcode_path and commit the attempt record.
+Immediately before replace, acquire ADR-0061's per-working-file commit lock (the gcode atomic-writer execution owner). Within the same critical section: re-read current plugin settings and fingerprint; validate working-path/file identity and required source digest; re-check idempotence marker/current state; atomically replace ctx.gcode_path only on exact match; publish COMMITTED attempt evidence; release lock. Stale temps are discarded. Different paths may proceed independently. Unsupported symlink/special-file or cross-process ownership assumptions => Skipped/no modification.
 
 Any earlier failure leaves original unchanged.
 

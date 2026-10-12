@@ -27,6 +27,11 @@ Check:
 - schema versioning;
 - exact canonical serializer bytes;
 - deterministic plan hash;
+- ADR-0064 two-stage semantic-content -> hash/plan_id construction without self-reference;
+- supplied/embedded plan hash mismatch rejected;
+- derived plan_id equals full plan hash;
+- exact typed plan root keys/schema/version;
+- nested array token exact four fields and lowercase digest_hex;
 - SHA-256 full authoritative identity;
 - identity-domain separation for plan / execution-config / plugin-settings / source-geometry / arrays;
 - typed identity comparison rejects wrong identity class/schema;
@@ -39,7 +44,7 @@ Check:
 - ndarray C/F memory-layout independence;
 - i64/f64 fixed big-endian golden byte vectors;
 - array shape/dtype distinction;
-- timestamp/runtime ObjectID/machine translation/final E excluded from plan hash;
+- timestamp/runtime ObjectID/machine translation/final E/epoch/generation/status/derived ID excluded from plan hash;
 - deterministic ExecutionConfigFingerprint;
 - deterministic PluginSettingsFingerprint;
 - ToolClearanceProfile canonicalization/versioning;
@@ -388,6 +393,17 @@ For quantized segment verify:
 - max_subedge_jerk settings fingerprint changes deterministically;
 - plugin block leaves acceleration and jerk/cornering state unchanged.
 
+## Gate O2 — Candidate segment regularity (ADR-0063)
+
+Verify:
+- validated research versus physical-fixture policy and every limit participates in PluginSettingsFingerprint;
+- missing physical-fixture policy rejects physical injection without fabricated limits;
+- plan-time segment minimum length/time and finite positive speed/q_geom/q_cmd;
+- adjacent volumetric-rate, width and effective-height steps all within calibrated bounds;
+- short first/last and gap-adjacent segments rejected;
+- only engine-side deterministic merge/transition before immutable plan, followed by full error/support/collision rescoring;
+- post-quantization zero length, zero E, short time, and increased adjacent flow step => Skipped, never geometry/flow repair in injector.
+
 ## Gate P — Retraction controller
 
 Verify:
@@ -465,6 +481,10 @@ Static PA may remain and must be preserved unchanged.
 
 Verify:
 - no partially constructed plan is visible;
+- PluginSessionEpoch reset excludes old-epoch plans, while a newer AnalysisGenerationId does not exclude older retained current-epoch plans;
+- repeated generations of the same full semantic hash deduplicate for matching;
+- eviction before snapshot removes eligibility; eviction after snapshot cannot mutate a selected immutable plan;
+- cache-loaded/no-current-epoch analysis cannot reuse a persisted or earlier-process plan;
 - plan publication is atomic;
 - each postprocess invocation gets a unique InjectionAttemptId;
 - simultaneous attempts on separate working files keep independent records;
@@ -473,7 +493,11 @@ Verify:
 - plugin settings change before commit -> abort/Skipped;
 - source working file changed between Pass 1 and Pass 2 -> abort;
 - source metadata/identity changed immediately before replace -> abort;
-- Pass-1 and Pass-2 source digests match for successful attempt.
+- Pass-1 and Pass-2 source digests match for successful attempt;
+- ADR-0061 same-path parallel attempts serialize final digest/marker check and atomic replacement; no two stale-source commits;
+- identical completed marker on second attempt returns validated already-injected no-op; different source/marker => Skipped;
+- different working files remain independently commit-capable;
+- symlink/alias and cross-process ownership are explicitly fixture-supported or injection disabled.
 
 
 ## Gate T — PluginResult policy
@@ -508,7 +532,7 @@ Check:
 - marker/hash/count;
 - state restoration;
 - chronological tool-clearance decision preserved;
-- atomic replace only after sanity;
+- atomic replace only after sanity and ADR-0061 per-working-file locked final revalidation;
 - repeated export/upload working copies;
 - no duplicate injection.
 
