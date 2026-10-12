@@ -105,6 +105,34 @@ class ContractTests(unittest.TestCase):
             with self.subTest(factory=factory), self.assertRaises(ContractError):
                 factory()
 
+    def test_structural_segment_rejects_mutable_fields(self):
+        from adaptive_subedge.domain.geometry import PrintPoint3, StructuralPathSegment
+        start, end = PrintPoint3(0, 0, 0), PrintPoint3(1, 0, 0)
+        with self.assertRaises(ContractError):
+            StructuralPathSegment([0, 0, 0], end, .4, .2, .03, 1., 0, "outer")
+        with self.assertRaises(ContractError):
+            StructuralPathSegment(start, end, .4, .2, .03, 1., 0, {"mutable": True})
+        valid = StructuralPathSegment(start, end, .4, .2, .03, 1., 0, "outer")
+        self.assertIs(valid.start, start)
+
+    def test_plan_identity_labels_reject_mutable_values(self):
+        from dataclasses import replace
+        from tests.unit.test_canonical import plan_content
+        plan = plan_content()
+        for wrong in ([1], {"mutable": True}, True):
+            with self.subTest(wrong=wrong), self.assertRaises(ContractError):
+                replace(plan, compatibility_descriptor_id=wrong)
+            with self.subTest(version=wrong), self.assertRaises(ContractError):
+                replace(plan, plugin_version=wrong)
+
+    def test_candidate_point_type_must_match_registered_serializer(self):
+        from adaptive_subedge.domain.geometry import PrintPoint2
+        class ExtendedPoint(PrintPoint2):
+            pass
+        a, b = ExtendedPoint(0, 0), PrintPoint2(1, 0)
+        with self.assertRaises(ContractError):
+            SubEdgeSegment(a, b, .2, .1, .1, .4, .03, .029, 30)
+
     def test_candidate_constant_z_and_local_flow(self):
         a = PrintPoint2(0, 0)
         b = PrintPoint2(1, 0)
