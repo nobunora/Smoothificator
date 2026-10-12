@@ -80,3 +80,40 @@ All confirmed findings have source evidence in `domain/geometry.py` / `domain/pl
 - F-18 (Medium, coverage): `InjectionAttemptStore.transition` is protected by a lock but lacks a focused competing-transition test for two simultaneous calls on the same attempt. Test that precisely one transition succeeds and the other fails closed with the stable reason.
 - Open risk (requires further evidence): `InjectionAttemptStore` record lifetime/capacity has no explicit bounded retention requirement in the current ADR and schema; do not invent a policy in this tranche. Final postprocess state, file digests and Orca fixture integration are later-phase responsibilities.
 - These issues are limited to the existing accepted immutable status/monotonicity contract; adding attempt file-system or G-code behavior is out of scope.
+
+## Task 11 — Attempt DTO/parallel transition hardening
+
+- Corrected `domain/status.py::InjectionAttemptRecord`: reject non-string or mutable attempt/file identity values, malformed optional plan SHA-256 references, missing typed failure reason for terminal SKIPPED/FAILED/FATAL, and nonterminal states incorrectly carrying a reason.
+- `tests/unit/test_stores.py` now rejects malformed record examples and races two workers attempting the same STARTED->VALIDATED transition. Exactly one succeeds; the other fails closed via ContractError.
+- Commit `84cac4f2806a37d2a44546dd566c74824fc6f963`. No file-system commit lock/G-code production behavior added.
+
+## Task 12 — Source verification, CI and final disposition
+
+- GitHub Actions run [38322003198](https://github.com/nobunora/Smoothificator/actions/runs/38322003198) for source commit `84cac4f2806a37d2a44546dd566c74824fc6f963`, Python 3.12: `python -m compileall -q adaptive_subedge orca_plugin tests` **PASS**, `python -m unittest discover -s tests -p 'test_*.py' -v` **PASS, 39/39 tests**, 0 failures/errors (0.052s in job log).
+- Starting contract baseline had 29 tests; this tranche added **10 tests** (Settings 1, DTO 3, canonical SHA 4, attempt status 2).
+- Compared `2c375e28188faaa81d85062bde86c854e544dba1...84cac4f2806a37d2a44546dd566c74824fc6f963`: 10 changed file paths (six Phase 0.5 application/domain Python, three test Python, this record). Legacy `Smoothificator.py` / `Smoothificator_Adaptive.py` unchanged.
+- GitHub PR #2 remains **Draft / open / unmerged**; no changes to Orca adapters, G-code parser, injector, printer state, or geometry optimizer.
+- Primary bounded issue dispositions: Settings evidence/type, DTO immutability, array double-allocation, typed identity comparison, and malformed attempt state **confirmed -> resolved within this review scope**.
+- `Spec ready gate` may be skipped when the implementation-only PR lacks the spec-ready label. Skipped is not counted as PASS.
+- Tooling NOT CONFIGURED: full static type/lint tools, package/wheel build. Compatibility NOT VERIFIED: installed Orca embedded Python/NumPy, actual ndarray C/F and byte order at Orca adapter boundary, printer/firmware/platform capabilities.
+- Phase 0.5 remains **PARTIAL**. Its full Settings schema, SurfaceBand/ErrorEstimator-related immutable value types, ports, complete import-boundary coverage, and independent implementation review remain open. Do not infer release readiness from 39 passing narrow unit tests.
+- No independent blind review was performed in this iteration. Physical injection remains **not authorized**.
+
+## Final twelve-task accounting
+
+| Task | Result |
+| --- | --- |
+| 1 baseline and 81 Git blob checks | PASS |
+| 2 Settings/fixture identity audit | findings confirmed |
+| 3 Settings validation and CI | PASS; 30 tests |
+| 4 domain DTO type audit | findings confirmed |
+| 5 typed DTO repairs | completed |
+| 6 DTO regression CI | PASS; 33 tests |
+| 7 canonical bytes/hash audit | findings confirmed |
+| 8 streamed array hashing and typed comparisons | completed |
+| 9 independent golden vector CI | PASS; 37 tests |
+| 10 attempt-state store audit | findings confirmed |
+| 11 typed attempt state and concurrency test | completed |
+| 12 final CI, review and documentation | PASS; 39 tests |
+
+This review stops after twelve completed bounded tasks. Next scope: independent implementation review and the remaining versioned Phase 0.5 DTO/Settings specification coverage; adjudicate any new schema/safety change in ADR before coding.
