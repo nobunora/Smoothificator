@@ -1,11 +1,11 @@
 """Validated plugin-owned Settings. Physical injection is not enabled in Phase 0.5."""
 from dataclasses import dataclass
-from math import isfinite
+from .numeric import finite_binary64
 from .errors import ContractError, ReasonCode
 
 
 def _nonnegative_finite(value: float, field: str, *, positive: bool = False) -> None:
-    if type(value) not in (float, int) or not isfinite(value) or value < 0 or (positive and value == 0):
+    if not finite_binary64(value) or value < 0 or (positive and value == 0):
         raise ContractError(ReasonCode.INVALID_SETTING, f"invalid {field}")
 
 

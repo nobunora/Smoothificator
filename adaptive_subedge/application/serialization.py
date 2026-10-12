@@ -2,6 +2,7 @@
 from dataclasses import is_dataclass
 from collections.abc import Mapping
 from math import isfinite, prod
+from adaptive_subedge.domain.numeric import finite_binary64
 from typing import get_type_hints
 from struct import pack
 
@@ -116,7 +117,7 @@ def canonical_array_token(dtype: str, shape: tuple[int, ...], values_c_order: tu
                 raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "invalid signed i64")
             data.extend(pack(">q", v))
         else:
-            if type(v) not in (float, int) or not isfinite(v):
+            if not finite_binary64(v):
                 raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "invalid finite f64")
             try:
                 data.extend(pack(">d", 0.0 if v == 0 else v))

@@ -66,4 +66,4 @@ class PlanStore:
         with self._lock:
             if snapshot.plugin_session_epoch != self._epoch:
                 return ()
-            return tuple(x.plan for x in snapshot.candidates if x.plugin_session_epoch == self._epoch)
+            return tuple(x.plan for x in snapshot.candidates if x.plugin_session_epoch == self._epoch and x.plan.content.injectable is True)

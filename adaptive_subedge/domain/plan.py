@@ -1,13 +1,16 @@
 """Frozen planned geometry and explicit identity data; no final G-code coordinates/E."""
 from dataclasses import dataclass
-from math import isfinite
+from .numeric import finite_binary64
 from .errors import ContractError, ReasonCode
 from .geometry import PrintPoint2
 from .metrics import ErrorMetrics
 
 
-def _finite(value: float) -> bool:
-    return type(value) in (int, float) and isfinite(value)
+def _valid_ids(values: object, *, required: bool = False) -> bool:
+    return (type(values) is tuple
+            and (not required or bool(values))
+            and all(type(v) is str and bool(v) for v in values)
+            and len(set(values)) == len(values))
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,7 +41,7 @@ class SubEdgeSegment:
 
     def __post_init__(self) -> None:
         vals = (self.command_z_mm, self.local_support_z_mm, self.effective_bead_height_mm, self.width_mm, self.geometric_mm3_per_mm, self.commanded_mm3_per_mm, self.requested_speed_mm_s)
-        if not isinstance(self.start_xy, PrintPoint2) or not isinstance(self.end_xy, PrintPoint2) or any(not _finite(x) for x in vals) or any(x <= 0 for x in vals[2:]):
+        if not isinstance(self.start_xy, PrintPoint2) or not isinstance(self.end_xy, PrintPoint2) or any(not finite_binary64(x) for x in vals) or any(x <= 0 for x in vals[2:]):
             raise ContractError(ReasonCode.INVALID_GEOMETRY, "invalid candidate segment")
         if self.start_xy == self.end_xy or self.width_mm < self.effective_bead_height_mm:
             raise ContractError(ReasonCode.INVALID_GEOMETRY, "degenerate/non-printable candidate segment")
@@ -55,11 +58,11 @@ class SubEdgePath:
     support_dependency_path_ids: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
-        if not self.path_id or not self.interval_id or not _finite(self.command_z_mm) or not _finite(self.planned_seam_gap_mm) or self.planned_seam_gap_mm < 0 or type(self.execution_order) is not int or self.execution_order < 0:
+        if type(self.path_id) is not str or not self.path_id or type(self.interval_id) is not str or not self.interval_id or not finite_binary64(self.command_z_mm) or not finite_binary64(self.planned_seam_gap_mm) or self.planned_seam_gap_mm < 0 or type(self.execution_order) is not int or self.execution_order < 0:
             raise ContractError(ReasonCode.INVALID_GEOMETRY, "invalid candidate path metadata")
         if type(self.segments) is not tuple or not self.segments or any(type(s) is not SubEdgeSegment or s.command_z_mm != self.command_z_mm for s in self.segments):
             raise ContractError(ReasonCode.INVALID_GEOMETRY, "path must consist of same-Z immutable segments")
-        if type(self.support_dependency_path_ids) is not tuple or self.path_id in self.support_dependency_path_ids or len(set(self.support_dependency_path_ids)) != len(self.support_dependency_path_ids):
+        if not _valid_ids(self.support_dependency_path_ids) or self.path_id in self.support_dependency_path_ids:
             raise ContractError(ReasonCode.INVALID_GEOMETRY, "invalid dependency metadata")
         if any(left.end_xy != right.start_xy for left, right in zip(self.segments, self.segments[1:])):
             raise ContractError(ReasonCode.INVALID_GEOMETRY, "candidate path segment discontinuity")
@@ -73,7 +76,7 @@ class InsertionAnchor:
     boundary_signature: str
 
     def __post_init__(self) -> None:
-        if not self.anchor_id or type(self.structural_loop_ids) is not tuple or not self.structural_loop_ids or not self.boundary_signature or type(self.layer_index) is not int or self.layer_index < 1:
+        if type(self.anchor_id) is not str or not self.anchor_id or not _valid_ids(self.structural_loop_ids, required=True) or type(self.boundary_signature) is not str or not self.boundary_signature or type(self.layer_index) is not int or self.layer_index < 1:
             raise ContractError(ReasonCode.INVALID_GEOMETRY, "invalid insertion anchor")
 
 
@@ -82,12 +85,22 @@ class FinalSurfaceEnvelope:
     structural_loop_ids: tuple[str, ...]
     candidate_path_ids: tuple[str, ...]
 
+    def __post_init__(self) -> None:
+        if not _valid_ids(self.structural_loop_ids) or not _valid_ids(self.candidate_path_ids):
+            raise ContractError(ReasonCode.INVALID_GEOMETRY, "invalid immutable final surface references")
+
 
 @dataclass(frozen=True, slots=True)
 class ChronologicalSupportEnvelope:
     printed_prior_structural_loop_ids: tuple[str, ...]
     printed_prior_candidate_path_ids: tuple[str, ...]
     candidate_path_id: str
+
+    def __post_init__(self) -> None:
+        if (not _valid_ids(self.printed_prior_structural_loop_ids)
+                or not _valid_ids(self.printed_prior_candidate_path_ids)
+                or type(self.candidate_path_id) is not str or not self.candidate_path_id):
+            raise ContractError(ReasonCode.INVALID_GEOMETRY, "invalid chronological support references")
 
 
 @dataclass(frozen=True, slots=True)
@@ -121,7 +134,7 @@ class PlanSemanticContent:
         if not isinstance(self.error_metrics, ErrorMetrics) or type(self.injectable) is not bool or not isinstance(self.reason, str):
             raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "invalid plan outcome/metrics")
         for v in (self.geometric_volume_mm3, self.commanded_volume_mm3, self.estimated_added_time_s):
-            if not _finite(v) or v < 0:
+            if not finite_binary64(v) or v < 0:
                 raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "invalid plan volume/time")
 
 

@@ -1,11 +1,11 @@
 """Centered PrintObject slice-space value types; all coordinates are mm."""
 from dataclasses import dataclass
-from math import isfinite
+from .numeric import finite_binary64
 from .errors import ContractError, ReasonCode
 
 
 def _finite_mm(*values: float) -> None:
-    if any(type(v) not in (int, float) or not isfinite(v) for v in values):
+    if any(not finite_binary64(v) for v in values):
         raise ContractError(ReasonCode.INVALID_GEOMETRY, "non-finite/invalid millimeter coordinate")
 
 
@@ -56,7 +56,9 @@ class StructuralLoopReference:
 
     def __post_init__(self) -> None:
         _finite_mm(self.seam_gap_allowance_mm)
-        if not self.loop_id or len(self.points) < 3 or self.seam_gap_allowance_mm < 0 or not self.canonical_shape_hash:
-            raise ContractError(ReasonCode.INVALID_GEOMETRY, "incomplete structural loop reference")
-        if type(self.points) is not tuple:
-            raise ContractError(ReasonCode.INVALID_GEOMETRY, "structural points must be immutable")
+        if (type(self.loop_id) is not str or not self.loop_id
+                or type(self.canonical_shape_hash) is not str or not self.canonical_shape_hash
+                or type(self.points) is not tuple or len(self.points) < 3
+                or any(type(p) is not PrintPoint3 for p in self.points)
+                or self.seam_gap_allowance_mm < 0):
+            raise ContractError(ReasonCode.INVALID_GEOMETRY, "invalid immutable structural loop reference")
