@@ -9,7 +9,7 @@ Purpose: preserve the exact source-of-truth content after adding ADR-0064/0065 a
 - Repository: `nobunora/Smoothificator`
 - Branch: `adaptive-subedge-design`
 - Normative baseline commit before final review corrections: `017aaf7fb2e31f9ae42a829451cae3cd24cccd0b`
-- Audited normative tree: `057a568da22136c39f7fbdb84a8ce0d307b02831`
+- Audited normative tree: `9658d9250a7dfe40d3db323fff8f542cea891dd4`
 - Previous external Orca review remains `docs/FULL_CONSISTENCY_AUDIT_2026-10-08.md`, source baseline `7d44b60ae4042b4de8c3844eb9dd2671c2d2d873`. This manifest does **not** assert fresh current-Orca API or physical-fixture verification.
 - The 2026-10-01/02 manifest/review records are historical and must not authorize current implementation.
 - The handoff `docs/specs/adaptive-subedge-v1.md` is intentionally excluded: it must cite **this manifest's own blob SHA**, so including it would create a hash reference cycle. Review it separately against the manifest after restamping.
@@ -27,7 +27,7 @@ Purpose: preserve the exact source-of-truth content after adding ADR-0064/0065 a
 - `docs/PLUGIN_REQUIREMENTS.md` — `0892a59dec04ca87dd9cb4ddab7df39ca7118bcd`
 - `docs/ERROR_MODEL.md` — `6a892dfd333974007982ede5f91a5a5e24b7e338`
 - `docs/ZAA_INTEGRATION.md` — `67eccf4d49644806c9d0f076d7f7c15eb74b1ded`
-- `docs/TEST_STRATEGY.md` — `0865e835b14b176ff00c033ecba166803608820e`
+- `docs/TEST_STRATEGY.md` — `3eef3c9a94f2c09a869dbeb5f2e1eecabffce488`
 - `docs/QUALITY_GATES.md` — `ea88a8cc85d167b11868217cda7e7ce3194927fd`
 - `docs/REVIEW_PROCESS.md` — `00b1658a1f25956f6fedf3b4583cce352499d680`
 - `docs/ROADMAP.md` — `1241c6052a8babdc3d562d5e7d9596bf7c0c5ed3`
@@ -99,7 +99,7 @@ Purpose: preserve the exact source-of-truth content after adding ADR-0064/0065 a
 - `docs/adr/0061-working-file-commit-lock.md` — `879ae9cca66e15210c4087b0bbc1f5a6859f2cc6`
 - `docs/adr/0062-canonical-bytes-and-hash-domain-separation.md` — `38aba5f3b2c84dd1de1462d03314eb60c0b0e851`
 - `docs/adr/0063-candidate-segment-regularity.md` — `9594b50023b3a765f0d31dc11fb360e4e7cc8b89`
-- `docs/adr/0064-canonical-plan-identity-construction.md` — `9665774857a71ff0a36f30e3354d156dbe202de2`
+- `docs/adr/0064-canonical-plan-identity-construction.md` — `589322d5ddb22f9a5c997078942f09d4ea6b808e`
 - `docs/adr/0065-planstore-session-and-generation-selection.md` — `a4bf46263c17269a96e1d96a65b147da0e4ac212`
 
 ADR-0010 remains Superseded by ADR-0015. ADR-0064 refines ADR-0049/0062 for self-reference and nested-array token identity. ADR-0065 clarifies ADR-0037 for session/generation eligibility. ADR-0061 controls the later same-file commit critical section, and ADR-0063 controls candidate segment regularity. All must be followed within scope.

@@ -15,7 +15,7 @@ ADR-0062 defines a 32-byte canonical array digest in the parent tree but the can
 
 - `SubEdgePlan` has an immutable, versioned semantic **identity content** projection separate from derived `plan_hash` / `plan_id` fields.
 - The plan identity root uses the ADR-0062 canonical tagged-tree grammar and has exactly these string keys: `identity_type`, `schema_version`, `canonical_encoding_version`, `payload`.
-- For the plan root, `identity_type` is `subedge-plan`; `schema_version` and `canonical_encoding_version` are explicit versioned string values, never implicit implementation defaults.
+- For the initial plan root, `identity_type` is exactly `subedge-plan`, `schema_version` exactly `1`, and `canonical_encoding_version` exactly `1` (all three are UTF-8 strings). A later revision changing semantics or grammar must explicitly version its schema/encoding; versions are never implicit implementation defaults.
 - The `payload` contains only explicitly declared semantic plan fields in a stable schema. It MUST include referenced source-geometry/config/plugin-settings typed identities, immutable candidate paths/segments, seam/gap, support/order, anchors, injectability/reasons and metrics as required by their schema.
 - The `payload` MUST exclude `plan_hash`, `plan_id`, `AnalysisGenerationId`, `InjectionAttemptId`, time stamps, mutable status, final machine mapping, final emitted E and nondeterministic runtime objects.
 - Compute `plan_hash = SHA256(magic || 0x00 || "plan" || 0x00 || canonical_plan_identity_root_bytes)` exactly as ADR-0062 requires. ADR-0049's earlier unprefixed shorthand is superseded **only for the hash preimage**.

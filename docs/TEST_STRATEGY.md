@@ -30,7 +30,7 @@ Check:
 - ADR-0064 two-stage semantic-content -> hash/plan_id construction without self-reference;
 - supplied/embedded plan hash mismatch rejected;
 - derived plan_id equals full plan hash;
-- exact typed plan root keys/schema/version;
+- exact typed plan root keys and initial strings identity_type=subedge-plan, schema_version=1, canonical_encoding_version=1;
 - nested array token exact four fields and lowercase digest_hex;
 - SHA-256 full authoritative identity;
 - identity-domain separation for plan / execution-config / plugin-settings / source-geometry / arrays;
