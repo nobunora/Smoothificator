@@ -1,8 +1,9 @@
 """ADR-0037/0065 current-session lifetime, dedup and monotonic attempts."""
 import unittest
+from dataclasses import replace
 from concurrent.futures import ThreadPoolExecutor
 
-from adaptive_subedge.application.plan_store import PlanStore
+from adaptive_subedge.application.plan_store import PlanStore, PlanSnapshot
 from adaptive_subedge.application.execution_status import InjectionAttemptStore
 from adaptive_subedge.application.hashing import create_plan, typed_identity, fingerprint_resolved_execution, fingerprint_plugin_settings
 from adaptive_subedge.domain.plan import PlanSemanticContent
@@ -50,6 +51,37 @@ class StoreTests(unittest.TestCase):
         self.assertEqual([p.plan_hash for p in store.eligible(preview)], [executable_fixture.plan_hash])
         store.reset()
         self.assertEqual(store.eligible(preview), ())
+
+    def test_only_store_issued_snapshot_is_executable(self):
+        store = PlanStore(2)
+        good = plan(100, injectable=True)
+        store.publish(good)
+        issued = store.snapshot()
+        self.assertEqual(store.eligible(issued), (good,))
+        # A copied or constructed snapshot has the same epoch and contents,
+        # but was never atomically issued by this PlanStore.
+        fabricated = PlanSnapshot(issued.plugin_session_epoch, issued.candidates)
+        copied = replace(issued)
+        self.assertEqual(store.eligible(fabricated), ())
+        self.assertEqual(store.eligible(copied), ())
+        # Retained issuance is valid even after the plan is evicted.
+        store.publish(plan(101, injectable=True))
+        store.publish(plan(102, injectable=True))
+        self.assertEqual(store.eligible(issued), (good,))
+        store.reset()
+        self.assertEqual(store.eligible(issued), ())
+
+    def test_attempts_parallel_unique_and_monotonic(self):
+        status = InjectionAttemptStore()
+        def attempt(i):
+            started = status.begin(None, "export-" + str(i))
+            finished = status.transition(started.attempt_id, AttemptState.SKIPPED, ReasonCode.STALE_PLAN)
+            return (started.attempt_id, finished.state)
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            results = list(pool.map(attempt, range(60)))
+        self.assertEqual(len({attempt_id for attempt_id, _ in results}), 60)
+        self.assertTrue(all(state is AttemptState.SKIPPED for _, state in results))
+        self.assertEqual(len(status.snapshot()), 60)
 
     def test_parallel_publication_bounded(self):
         store = PlanStore(4)

@@ -3,6 +3,7 @@ from collections import OrderedDict
 from dataclasses import dataclass
 from threading import RLock
 from uuid import uuid4
+from weakref import WeakSet
 
 from adaptive_subedge.domain.errors import ContractError, ReasonCode
 from adaptive_subedge.domain.plan import SubEdgePlan
@@ -16,7 +17,7 @@ class PublishedPlan:
     analysis_generation_id: int
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, eq=False, weakref_slot=True)
 class PlanSnapshot:
     plugin_session_epoch: str
     candidates: tuple[PublishedPlan, ...]
@@ -33,6 +34,9 @@ class PlanStore:
         self._epoch = uuid4().hex
         self._next_generation = 0
         self._plans: OrderedDict[str, PublishedPlan] = OrderedDict()
+        # Identity-based, weak provenance: retained snapshots survive eviction;
+        # fabricated/copied snapshots never become executable selections.
+        self._issued_snapshots: WeakSet[PlanSnapshot] = WeakSet()
 
     @property
     def plugin_session_epoch(self) -> str:
@@ -52,11 +56,14 @@ class PlanStore:
 
     def snapshot(self) -> PlanSnapshot:
         with self._lock:
-            return PlanSnapshot(self._epoch, tuple(self._plans.values()))
+            snapshot = PlanSnapshot(self._epoch, tuple(self._plans.values()))
+            self._issued_snapshots.add(snapshot)
+            return snapshot
 
     def reset(self) -> str:
         with self._lock:
             self._plans.clear()
+            self._issued_snapshots.clear()
             self._epoch = uuid4().hex
             self._next_generation = 0
             return self._epoch
@@ -64,6 +71,8 @@ class PlanStore:
     def eligible(self, snapshot: PlanSnapshot) -> tuple[SubEdgePlan, ...]:
         """An immutable snapshot survives eviction, but not explicit session reset."""
         with self._lock:
-            if snapshot.plugin_session_epoch != self._epoch:
+            if (type(snapshot) is not PlanSnapshot
+                    or snapshot not in self._issued_snapshots
+                    or snapshot.plugin_session_epoch != self._epoch):
                 return ()
             return tuple(x.plan for x in snapshot.candidates if x.plugin_session_epoch == self._epoch and x.plan.content.injectable is True)
