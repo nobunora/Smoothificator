@@ -51,3 +51,17 @@ Tasks 2–12 must be reported using exact commits, CI run IDs, test counts, bloc
 - F-14 (not yet fixed): full canonical v1 DTO coverage, `SurfaceBand` and advanced ErrorEstimator/structural metadata remain incomplete by the pre-existing Phase 0.5 partial scope. No invented field schema or policy is authorized in this tranche.
 
 All confirmed findings have source evidence in `domain/geometry.py` / `domain/plan.py` and current serializer exact-type register. No unrelated refactors permitted.
+
+## Task 5/6 — DTO type-fidelity repair and CI
+
+- Resolved F-11/F-12/F-13: StructuralPathSegment now accepts exact PrintPoint3 endpoints and nonempty string role; PlanSemanticContent requires string plugin/compatibility labels; SubEdgeSegment uses exact PrintPoint2 types accepted by the authoritative serializer.
+- Source commit `ec6a46c14e7e5b09a04ec587160139c73cf685fc`; new tests commit `06a50e56efed2498a2746a140d3c067402636e95`.
+- GitHub Actions run `38321710425`: Python 3.12 compileall PASS, **33/33 unittest PASS**. No modifications to old printer scripts, Orca adapters, or G-code injector.
+- Open F-14 remains a future Phase 0.5 contract completeness issue; it has not been silently closed.
+
+## Task 7 — Canonical array/hash boundary audit
+
+- F-15 (Medium/resource risk): `application/serialization.py::canonical_array_token` assembles the *entire* canonical array payload in a growing `bytearray`, then converts it again to `bytes` before hashing. ADR-0062 permits streaming; copying large geometry allocations is avoidable. Hash framing and payload ordering MUST remain byte-for-byte unchanged.
+- F-16 (Medium/type boundary): `application/hashing.py` provides typed identity construction, but lacks an explicit validator/comparator for two `IdentityReference` values under an expected identity class and version. ADR-0062 prohibits comparing arbitrary 64-hex values without typed context. Add a single application-owned typed comparison API; do not relax cross-domain checks.
+- Independent fixture coverage is incomplete for 2D arrays, canonical type-version rejection, subnormal binary64, and logical C-order normalization after a conceptual F-order traversal. No actual NumPy adapter or installed Orca NumPy compatibility is claimed; no new dependency is authorized here.
+- These are implementation hardening changes under ADR-0049/0062/0064, **not** alterations to normative canonical byte framing, domain tags or schema.
