@@ -8,7 +8,7 @@ OrcaSlicer main 789f848694b955d293ca6b277d1c8046aa6f7436 (2026-09-29).
 Supplementary drift audit:
 OrcaSlicer main 1a5f91d727f43d455b40ab475a00d622b34648e0 (2026-10-02).
 
-The Python SlicingPipeline binding files audited for the core plugin seam remain compatible across those checks, while Orca G-code generation and profile content continue to evolve. Production injection support is therefore always pinned to an exact Orca + machine/process/filament fixture family.
+The 2026-10-08 Orca drift audit additionally uses commit 7d44b60ae4042b4de8c3844eb9dd2671c2d2d873. The Python SlicingPipeline binding files audited for the core plugin seam remained available in those audits, while Orca G-code generation and profile content continue to evolve. Production injection support is therefore always pinned to an exact Orca + machine/process/filament fixture family.
 
 Unknown API/source/profile behavior => analysis-only.
 
@@ -367,11 +367,14 @@ Every postprocess invocation has a unique InjectionAttemptId and separate attemp
 Plans are atomically published immutable objects.
 
 Postprocess:
-- snapshots candidate plans under lock;
+- snapshots only current PluginSessionEpoch retained candidate plans under lock; a newer analysis generation does not alone invalidate an already selected immutable snapshot (ADR-0065);
 - records SourceFileIdentity/digest in validation pass;
 - rechecks digest during copy;
 - rechecks source metadata/identity before replace;
-- rechecks PluginSettingsFingerprint immediately before commit.
+- rechecks PluginSettingsFingerprint immediately before commit;
+- revalidates final source digest/path identity and idempotence marker **inside** ADR-0061's per-working-file commit critical section, performing atomic replace and COMMITTED status under the same lock;
+- requires documented exclusive working-file ownership in the supported platform fixture; unverified symlink/reparse/alias or cross-process mutation semantics fail closed;
+- revalidates ADR-0063 final quantized segment length/time/positive E and adjacent volumetric/shape transitions and never repairs plan geometry at postprocess.
 
 Concurrent/repeated export/upload attempts keep separate evidence.
 

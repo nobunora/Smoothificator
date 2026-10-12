@@ -514,7 +514,7 @@ At posSimplifyPath:
 21. optimize candidate set deterministically;
 22. create StructuralLoopReferences and insertion intent;
 23. create immutable plan;
-24. store plan + PLANNED status in PlanStore.
+24. atomically publish the immutable plan in PlanStore under the active PluginSessionEpoch. PLANNED may be a derived read-only UI state of plan publication; no mutable authoritative per-plan execution status is stored in PlanStore. InjectionAttemptStore begins authoritative attempt records only for an actual postprocess invocation.
 
 Expensive loops poll cancellation at bounded intervals.
 

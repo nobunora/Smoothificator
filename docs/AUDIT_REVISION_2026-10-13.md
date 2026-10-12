@@ -8,8 +8,8 @@ Purpose: preserve the exact source-of-truth content after adding ADR-0064/0065 a
 
 - Repository: `nobunora/Smoothificator`
 - Branch: `adaptive-subedge-design`
-- Normative baseline commit before this manifest: `0d641384f59be9c69dafacdc723f7a137e6bb9c5`
-- Audited normative tree: `f6df4cd0394fe8a736494a7760d0b937e7cd49ec`
+- Normative baseline commit before final review corrections: `017aaf7fb2e31f9ae42a829451cae3cd24cccd0b`
+- Audited normative tree: `057a568da22136c39f7fbdb84a8ce0d307b02831`
 - Previous external Orca review remains `docs/FULL_CONSISTENCY_AUDIT_2026-10-08.md`, source baseline `7d44b60ae4042b4de8c3844eb9dd2671c2d2d873`. This manifest does **not** assert fresh current-Orca API or physical-fixture verification.
 - The 2026-10-01/02 manifest/review records are historical and must not authorize current implementation.
 - The handoff `docs/specs/adaptive-subedge-v1.md` is intentionally excluded: it must cite **this manifest's own blob SHA**, so including it would create a hash reference cycle. Review it separately against the manifest after restamping.
@@ -23,14 +23,14 @@ Purpose: preserve the exact source-of-truth content after adding ADR-0064/0065 a
 - `.codex/repository-review.md` — `c2574b93299e25752b696c5f71e438ff4988d6ed`
 - `docs/SPECIFICATION.md` — `aa50c940b0ea6f442eb47cfd32c94a28a4bf310f`
 - `docs/ARCHITECTURE.md` — `f2b66f659eafc0cc26636da1e5996991936e3d4b`
-- `docs/IMPLEMENTATION.md` — `1eb5b482087923a0a110faf5884bc2ad7d10e9df`
-- `docs/PLUGIN_REQUIREMENTS.md` — `8811ebe1f95cdfc46114bab44cb6da48f7aca5c5`
+- `docs/IMPLEMENTATION.md` — `3f0fe6153167ee64e36665b13c62ca31baa1bed5`
+- `docs/PLUGIN_REQUIREMENTS.md` — `0892a59dec04ca87dd9cb4ddab7df39ca7118bcd`
 - `docs/ERROR_MODEL.md` — `6a892dfd333974007982ede5f91a5a5e24b7e338`
 - `docs/ZAA_INTEGRATION.md` — `67eccf4d49644806c9d0f076d7f7c15eb74b1ded`
 - `docs/TEST_STRATEGY.md` — `0865e835b14b176ff00c033ecba166803608820e`
 - `docs/QUALITY_GATES.md` — `ea88a8cc85d167b11868217cda7e7ce3194927fd`
 - `docs/REVIEW_PROCESS.md` — `00b1658a1f25956f6fedf3b4583cce352499d680`
-- `docs/ROADMAP.md` — `2ecbc8d99d17e0cdac7f95b4a830719206a716ab`
+- `docs/ROADMAP.md` — `1241c6052a8babdc3d562d5e7d9596bf7c0c5ed3`
 - `docs/FULL_CONSISTENCY_AUDIT_2026-10-08.md` — `ef8403036a91f0954fef455ec0e5fa5703405583`
 - `docs/FOLLOWUP_AUDIT_2026-10-08.md` — `5eaed1bc49d2c74237028ca4382b4c3462eec70b`
 

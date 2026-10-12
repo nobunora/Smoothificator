@@ -11,7 +11,7 @@ Current-Orca drift check:
 
 Complete before production code:
 - document precedence and AGENTS workflow;
-- unique ADR set through ADR-0041;
+- unique current accepted ADR set through ADR-0065, with ADR-0010 explicitly Superseded by ADR-0015;
 - source-verified Orca hook/ZAA/config/G-code semantics;
 - centered source-frame contract;
 - geometric versus commanded flow separation;
@@ -57,7 +57,10 @@ Implement only:
 - ToolClearanceProfile schema;
 - canonical serializer/hash;
 - PlanStore + InjectionAttemptStore;
-- AnalysisGenerationId / InjectionAttemptId contracts;
+- PluginSessionEpoch / AnalysisGenerationId / InjectionAttemptId contracts (ADR-0065);
+- canonical identity projection / nested-array token rules (ADR-0064);
+- CandidateSegmentRegularityPolicy Settings schema/fingerprint (ADR-0063), without physical defaults;
+- ADR-0061 later injector commit-lock interface only (no G-code mutation in Phase 0.5);
 - architecture/import-boundary tests.
 
 No Orca/G-code/optimizer behavior yet.
@@ -145,7 +148,7 @@ Implement:
 - AnalysisGenerationId / InjectionAttemptRecord infrastructure;
 - structural loop references;
 - candidate open paths/seams;
-- current-session plan state.
+- retained current-PluginSessionEpoch candidate state, not latest-generation-only selection (ADR-0065).
 
 Exit:
 - real Orca coupon plan generated;
