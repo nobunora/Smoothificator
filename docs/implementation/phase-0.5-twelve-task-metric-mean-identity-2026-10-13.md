@@ -50,3 +50,9 @@ Record exact CI run/commit/log and whether tooling is NOT CONFIGURED rather than
 Reviewed `domain/plan.py::PlanSemanticContent`, `SubEdgeSegment`, prior identity and dependency tests, and Accepted ADR-0064. The existing tests already cover support/order, anchor, metric RMS/mean and PluginSettings v1 changes. Missing focused field-sensitivity cases include: `injectable`/reason/plugin version/compatibility descriptor, semantic volume/time totals, per-segment requested speed/commanded flow/width, and source/execution typed reference digests.
 
 These are **test coverage gaps**, not a confirmed omission from the serializer registry. The source `_FIELDS[PlanSemanticContent]` and `_FIELDS[SubEdgeSegment]` list these fields. Add regression fixtures using only valid immutable DTO values and `dataclasses.replace`; no schema addition or geometry policy change.
+
+## Tasks 7–9: ADR-0064 semantic field sensitivity
+
+- Task 7: primary audit of existing PlanSemanticContent/SubEdgeSegment registration and earlier tests. Found **missing regression coverage**, not missing serializer fields, for plugin metadata/injectability/reason, volume/time summaries, candidate segment flow/width/speed/seam, and typed source/execution/settings references.
+- Task 8: created `tests/unit/test_plan_semantic_field_sensitivity.py` with four tests using valid frozen DTOs and `dataclasses.replace`, commit `57f341bdd4ce84163ad2af165fa394a186fe92fd`. Every independently modified declared semantic field family changes the Plan SHA-256 while baseline identity is stable.
+- Task 9: GitHub Actions Python 3.12 [38377471111](https://github.com/nobunora/Smoothificator/actions/runs/38377471111) on `57f341bdd4ce84163ad2af165fa394a186fe92fd`: compileall **PASS**, unittest **112/112 PASS**, 0 errors/failures (0.080s in log).
