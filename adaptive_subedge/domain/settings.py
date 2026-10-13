@@ -129,6 +129,29 @@ class ErrorEstimatorConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class MeshSectionPolicy:
+    """ADR-0059 versioned topology/quantization settings, not a slicer algorithm."""
+    version: str
+    section_predicate_epsilon_mm: float
+    coplanar_section_epsilon_mm: float
+    mesh_section_join_tolerance_mm: float
+    section_quantization_geometry_tolerance_mm: float
+    section_stability_sampling_convergence_version: str
+
+    def __post_init__(self) -> None:
+        if (type(self.version) is not str or not self.version.strip()
+                or type(self.section_stability_sampling_convergence_version) is not str
+                or not self.section_stability_sampling_convergence_version.strip()):
+            raise ContractError(ReasonCode.INVALID_SETTING, "invalid mesh-section policy versions")
+        for field in (
+            "section_predicate_epsilon_mm", "coplanar_section_epsilon_mm",
+            "mesh_section_join_tolerance_mm",
+            "section_quantization_geometry_tolerance_mm",
+        ):
+            _nonnegative_finite(getattr(self, field), field, positive=True)
+
+
+@dataclass(frozen=True, slots=True)
 class PluginSettings:
     schema_version: str
     surface_error_tolerance_mm: float
