@@ -62,3 +62,39 @@ These are **test coverage gaps**, not a confirmed omission from the serializer r
 **B-02 (Medium, confirmed):** `domain/plan.py::SubEdgePlan.__post_init__` uses `isinstance(self.content, PlanSemanticContent)`, allowing subclasses of the declared content DTO even though `create_plan` requires exact `PlanSemanticContent`. The constructor also checks `plan_hash` as exact `str` but only compares `plan_id` for equality, permitting an equal-valued `str` subclass ID. These are inconsistent with the canonical exact-type registered schema and typed identity contract in Accepted ADR-0064. A directly constructed frozen `SubEdgePlan` can pass early checks then fail at publishing/verification, or have noncanonical ID type.
 
 Confirmed disposition: change only SubEdgePlan construction checks to require exact PlanSemanticContent and exact builtin `str` plan_id, retain authoritative hash equality and existing 64-hex validation. Add subclass-negative tests plus an ordinary plan-positive regression. This does not recompute content hash inside domain, which remains the application/hashing owner; `verify_plan` continues recomputation.
+
+## Tasks 10–12: derived identity DTO construction and final checks
+
+- Task 10: **B-02 Medium confirmed**. `SubEdgePlan.__post_init__` checked `isinstance(content, PlanSemanticContent)` while application `create_plan` accepts only the exact frozen registered type; a subclassed content DTO could construct a Plan, then fail publication/verification. The constructor also permitted a `str` subclass as an equal-valued derived `plan_id`. Both violate the exact canonical DTO/identity value-type boundary, while no hash recomputation belongs inside domain.
+- Task 11: `domain/plan.py` now requires exact `PlanSemanticContent`, exact `str` for `plan_hash` **and** `plan_id`, and still enforces full equal lowercase 64-hex authoritative identity. New `tests/unit/test_subedge_plan_construction.py`: four cases for ordinary plan verification, rejection of PlanSemanticContent subtype and plan-ID string subtype, and retained explicit hash mismatch rejection by `verify_plan`. One atomic source/test commit `ed510550cfcb78374d9b02277f25671c498239be`.
+- Task 12: GitHub Actions [38377685837](https://github.com/nobunora/Smoothificator/actions/runs/38377685837) for source commit `ed510550cfcb78374d9b02277f25671c498239be`: Python 3.12 compileall PASS; `python -m unittest discover -s tests -p 'test_*.py' -v` **116/116 PASS**, no failures/errors (0.141s test log). Reconfirm after this record commit on exact final HEAD.
+
+## Final 12-task ledger
+
+| Step | Work | Outcome |
+| --- | --- | --- |
+| 1 | Read AGENTS, branch/PR, changed files, canonical 81-blob set | PASS |
+| 2 | Review signed error mean and canonical identities | B-01 confirmed |
+| 3 | Commit reviewed scope and verification plan | complete |
+| 4 | Enforce signed mean error within max absolute error | source repair |
+| 5 | Three numerical error/recomputed identity regressions | +3 |
+| 6 | CI checkpoint | 108/108 PASS |
+| 7 | Audit plan field-level semantic SHA sensitivity | missing test coverage |
+| 8 | Four field-family hash-sensitivity tests | +4 |
+| 9 | CI checkpoint | 112/112 PASS |
+| 10 | Review SubEdgePlan content/ID strict-type handling | B-02 confirmed |
+| 11 | Enforce exact DTO/string identity types and four regressions | +4 |
+| 12 | Verify CI, Git diff, PR status, manifest; close evidence | 116/116 PASS on source |
+
+## Primary dispositions and risk boundaries
+
+- **B-01 confirmed -> resolved:** signed-mean bound in ErrorMetrics; a value-type invariant, not the bidirectionally converged error-estimator algorithm. Normal schema and hash bytes unchanged.
+- **B-02 confirmed -> resolved:** exact registered frozen content type and authoritative plan_id builtin string at Plan construction, avoiding deferred failures.
+- **Field sensitivity coverage gap -> verified:** plugin metadata/injectability/reason, volumes/time, segment width/flow/speed/seam and typed identities affect semantic Plan SHA as defined in ADR-0064. The `injectable=True` test fixture is only an immutable plan identity fixture and does not enable any physical injector.
+- Starting 105 tests and ending **116 tests**, +11. Six changed/added paths relative to `a7c6c03856aa30e1e170a8826c97db3f1e769b6e`: `domain/metrics.py`, `domain/plan.py`, `tests/unit/test_error_metrics_invariants.py`, `tests/unit/test_plan_semantic_field_sensitivity.py`, `tests/unit/test_subedge_plan_construction.py`, and this record. No legacy code or Orca/physical execution paths changed.
+- Draft implementation PR #2 and Proposed ADR-0066 Draft PR #3 remain unmerged. Pinned 81 canonical docs/ADRs unchanged.
+- **Still blocked/NOT VERIFIED:** complete PluginSettings v2 schema (Proposed ADR-0066 not Accepted), association of an immutable PlanSnapshot with unique actual Orca export attempt, concrete Ports signatures, embedded Orca Python/NumPy ndarray C/F/endianness fixture, G-code postprocess, physical printing and independent blind review. Ruff/mypy and wheel build remain NOT CONFIGURED.
+- Existing compileall/unittest success is contract-specific evidence, not READY_TO_MERGE or printer release permission. Physical Injection remains forbidden.
+- Rollback reverses only the two invariant checks and their tests; it would admit malformed DTOs but cannot change printer output because no production injector exists.
+
+**Stop after exactly twelve tasks.**
