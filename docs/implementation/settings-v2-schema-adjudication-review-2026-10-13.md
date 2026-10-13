@@ -44,3 +44,38 @@ Status: **Review-only / not validated / not an Accepted ADR**. This document is 
 ## Required next review gate
 
 Determine the missing field-level policy from source/fixtures, settle the semantic-version location, amend the proposed ADR, obtain a separate specification review and repository revalidation, then update canonical specification, implementation, audited manifest and handoff. Only after disposition `validated` may the v2 implementation begin. Draft PR #2 remains research-only and physical injection disabled.
+
+## Concrete proposed v2 semantic projection — for specification review, NOT authority
+
+The following is a complete **decision register of settings groups**, not a list of verified printer parameters. Each identifier marked **proposed** is a schema candidate; it is not a field implemented on PR #2. The `PluginSettingsV2` root version `"2"` is **proposed**, while the ADR-0062 canonical byte encoder and domain tags remain version `"1"`. Every numeric value below must be supplied explicitly and verified for its target fixture; **none has a physical default**.
+
+| Proposed v2 name/ownership | Type/units and basic validation | Source requirement | Decision required before Accepted |
+| --- | --- | --- | --- |
+| `schema_version` | builtin `str`, exactly `"2"` | ADR-0062 versioned identity | Confirm root/DTO marker agreement and invalid old plans |
+| `surface_error_tolerance_mm` | finite positive binary64, mm | SPECIFICATION §16–17; v1 implemented | Retain v1 name, never silently migrate |
+| `minimum_effective_bead_height_mm` | finite positive binary64, mm | SPECIFICATION §17; v1 implemented | Confirm physical support semantics |
+| `candidate_seam_gap_mm` | finite nonnegative binary64, mm | SPECIFICATION §17; v1 implemented | Confirm upper bound owner |
+| `tool_clearance_profile` | exact immutable `ToolClearanceProfile` / `None` research-only | ADR-0061, ToolClearanceProfile contract | Physical mode requires independently reviewed fixture |
+| `candidate_segment_regularity_policy` | exact versioned `CandidateSegmentRegularityPolicy` | Accepted ADR-0063 | Choose v1 `regularity_policy` retention/rename semantics |
+| `error_estimator_config` | exact `ErrorEstimatorConfig` (mm, factor, levels, version) | Accepted ADR-0045 | Decide mandatory nested policy and convergence rules |
+| `surface_correspondence_policy` | exact immutable nested `SurfaceCorrespondencePolicy` inside estimator | Accepted ADR-0050 | Ensure no duplicate top-level fingerprint owner |
+| `mesh_section_policy` | exact `MeshSectionPolicy`, mm/version | Accepted ADR-0059 | Confirm section-sampling convergence version |
+| `candidate_motion_limits` | **proposed** frozen `CandidateMotionLimits` with `max_candidate_speed_mm_s`, `max_subedge_acceleration_mm_s2`, `max_subedge_jerk_mm_s`; finite positive, mm/s, mm/s², mm/s | IMPLEMENTATION §12; SPECIFICATION §17 | Supported firmware jerk convention, tool/profile evidence; compare to ExecutionConfig limits |
+| `candidate_bead_bounds` | **proposed** frozen `CandidateBeadBounds` with `min_candidate_width_mm`, `max_candidate_width_mm`, `min_candidate_effective_height_mm`, `max_candidate_effective_height_mm`; finite positive, ordered, mm | IMPLEMENTATION §12 and SPECIFICATION §17 | Nozzle/flow/width-to-height constraints and correct value source |
+| `support_coverage_policy` | **proposed** frozen `SupportCoveragePolicy`, `required_support_coverage_ratio` finite `[0,1]`, plus **unresolved** support sampling/contact tolerance and algorithm version | SPECIFICATION §17, Gate F, ADR-0058 | Define the actual tolerance unit and metric semantics; measurement `SupportCoverageMetrics` is NOT Settings |
+| `directional_error_weights` | **proposed** frozen `DirectionalErrorWeights`; independent nonnegative finite predicted→source/source→predicted weights | Accepted ADR-0050 and SPECIFICATION §16–17 | Define dimensionless normalization and optimization objective coupling; avoid sample-count weighting |
+| `optimizer_cost_policy` | **proposed** frozen `OptimizerCostPolicy` incorporating residual error, path length, commanded volume, added time, complexity/risk cost | SPECIFICATION §16 | Fix units/scaling, lexicographic vs weighted objective, deterministic tie-break |
+| `candidate_execution_policy` | **proposed** versioned identifier/DTO for allowable deterministic order, travel and support selection | SPECIFICATION §17; ADR-0032 | Identify which switches actually exist; do not duplicate immutable per-Plan execution order |
+| `physical_injection_requested` | builtin bool, always false until separate physical gate | Existing Phase 0.5 research DTO/handoff | Retain v1 research disable regardless of v2 schema validity |
+
+**Excluded by ownership**: raw Orca profile/config keys, per-object print transformations, resolved filament speed/flow, machine XYZ offsets, final emitted E and mutable attempt/status. These belong to resolved `ExecutionConfigFingerprint`, immutable plan intent or runtime attempt state, never to arbitrary `PluginSettings` `__dict__` hashing.
+
+### Reviewer decision matrix (each item needs Accepted/spec rationale)
+
+1. **D1 — nested Settings structure:** approve the above groups, fix every remaining identifier and precise type; decide whether nested `SurfaceCorrespondencePolicy` lives only in `ErrorEstimatorConfig`.
+2. **D2 — numeric units and normalization:** finish coverage sampling tolerance units, motion/jerk dialect, direction weights/cost objective units and normalization, and which constraints are compulsory for analysis vs physical export.
+3. **D3 — provenance and requiredness:** decide which research-only missing profiles produce analysis output but MUST remain non-injectable; no guessed physical defaults.
+4. **D4 — canonical schema ID migration:** require exact v1/v2 root + DTO version match, unchanged tag/magic/byte grammar and separate golden vectors; old v1 Plan hashes never interpreted as v2.
+5. **D5 — source of truth of final export config:** identify how late export properties are resolved and rechecked without hashing them twice in PluginSettings; review against ADR-0037/0065 before implementation.
+
+Until D1–D5 are independently adjudicated in the specification workflow, **no v2 Settings class, migration path, or physical-mode permission may be implemented as if normative**.
