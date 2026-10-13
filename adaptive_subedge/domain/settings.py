@@ -62,6 +62,44 @@ class CandidateSegmentRegularityPolicy:
 
 
 @dataclass(frozen=True, slots=True)
+class SurfaceCorrespondencePolicy:
+    """ADR-0050 research-only, versioned correspondence constraints.
+
+    Defining this immutable value does not register it with PluginSettings v1.
+    """
+    version: str
+    max_surface_correspondence_distance_mm: float
+    min_surface_normal_dot: float
+    interaction_neighborhood_expansion_mm: float
+    interaction_neighborhood_tolerance_mm: float
+    normal_ray_numeric_tolerance_mm: float
+    normal_ray_numeric_policy_version: str
+    closest_point_fallback_policy_version: str
+
+    def __post_init__(self) -> None:
+        for field in ("version", "normal_ray_numeric_policy_version",
+                      "closest_point_fallback_policy_version"):
+            label = getattr(self, field)
+            if type(label) is not str or not label.strip():
+                raise ContractError(ReasonCode.INVALID_SETTING, "invalid correspondence version")
+        _nonnegative_finite(
+            self.max_surface_correspondence_distance_mm,
+            "maximum correspondence distance", positive=True)
+        _nonnegative_finite(
+            self.interaction_neighborhood_expansion_mm,
+            "interaction neighborhood expansion")
+        _nonnegative_finite(
+            self.interaction_neighborhood_tolerance_mm,
+            "interaction neighborhood tolerance", positive=True)
+        _nonnegative_finite(
+            self.normal_ray_numeric_tolerance_mm,
+            "normal ray numerical tolerance", positive=True)
+        if (not finite_binary64(self.min_surface_normal_dot)
+                or not -1.0 <= self.min_surface_normal_dot <= 1.0):
+            raise ContractError(ReasonCode.INVALID_SETTING, "invalid surface normal dot threshold")
+
+
+@dataclass(frozen=True, slots=True)
 class PluginSettings:
     schema_version: str
     surface_error_tolerance_mm: float
