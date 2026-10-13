@@ -38,6 +38,40 @@ class DependencyContractTests(unittest.TestCase):
         plan = create_plan(content((lower, upper)))
         self.assertEqual(len(plan.plan_hash), 64)
 
+    def test_valid_support_dependency_changes_authoritative_plan_identity(self):
+        lower = path("lower", 0.2, 0)
+        supported = path("upper", 0.3, 1, ("lower",))
+        direct_structural = replace(supported, support_dependency_path_ids=())
+        with_dependency = create_plan(content((lower, supported)))
+        without_dependency = create_plan(content((lower, direct_structural)))
+        self.assertNotEqual(with_dependency.plan_hash, without_dependency.plan_hash)
+        self.assertEqual(with_dependency.plan_id, with_dependency.plan_hash)
+
+    def test_execution_order_change_is_part_of_plan_identity(self):
+        lower = path("lower", 0.2, 0)
+        upper = path("upper", 0.3, 1, ("lower",))
+        original = create_plan(content((lower, upper)))
+        shifted = create_plan(content((
+            replace(lower, execution_order=2),
+            replace(upper, execution_order=3),
+        )))
+        self.assertNotEqual(original.plan_hash, shifted.plan_hash)
+
+    def test_three_level_support_dependencies_remain_acyclic_and_hashable(self):
+        lower = path("lower", 0.2, 0)
+        middle = path("middle", 0.3, 1, ("lower",))
+        upper = path("upper", 0.4, 2, ("middle",))
+        result = create_plan(content((lower, middle, upper)))
+        self.assertEqual(len(result.plan_hash), 64)
+
+    def test_same_z_paths_without_required_support_are_valid(self):
+        left = path("a", 0.2, 0)
+        right = path("b", 0.2, 1)
+        plan = create_plan(content((left, right)))
+        self.assertEqual(len(plan.plan_hash), 64)
+        with self.assertRaises(ContractError):
+            content((left, replace(right, support_dependency_path_ids=("a",))))
+
     def test_missing_dependency_is_rejected(self):
         with self.assertRaises(ContractError):
             content((path("upper", 0.3, 1, ("absent",)),))
