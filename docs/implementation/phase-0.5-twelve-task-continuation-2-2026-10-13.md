@@ -57,3 +57,36 @@ Pending work items 3–12. Report exact commit SHA, commands, CI run ID, test co
 - The current test also does not construct a top-level module dependency graph to reject import-time cycles, although AGENTS/QUALITY_GATES require material import and architecture cycle tests.
 - The in-function deferred `serialization.py -> hashing.py` call path is distinct from a Python module initialization cycle: the `hashing.py -> serialization.py` import is top-level, but the reverse is delayed until function execution. The planned focused graph check will classify module-level imports separately; later full architecture/ownership review must still assess this mutual runtime dependency.
 - Disposition: **confirmed architecture test coverage gaps**, not evidence that forbidden code currently executes. Planned repair is tests-only and cannot relax runtime boundaries.
+
+## Tasks 10–12 completed — architecture validation and final gate
+
+- Step 10: audited `tests/architecture/test_boundaries.py` against AGENTS, ARCHITECTURE and QUALITY_GATES. The previous AST test ignored relative-import levels and did not test module initialization dependency cycles. These were verification-coverage findings, **not** evidence of new forbidden imports in the current source. Module-level `hashing -> serialization` is acyclic; a separately delayed `serialization -> hashing` call dependency remains a future ownership review item, not a top-level initialization cycle.
+- Step 11: added 3 architecture tests resolving absolute and relative `ImportFrom` nodes, demonstrating rejection of synthetic forbidden imports, and checking acyclic *module-level* imports through the package. Code commit `d06a61eedf2d27122ca480c18a3efd5d41a01441`. No production source changes in tasks 10–11.
+- Step 12: GitHub Actions `Phase 0.5 contracts` run [38333792305](https://github.com/nobunora/Smoothificator/actions/runs/38333792305) for `d06a61eedf2d27122ca480c18a3efd5d41a01441`: Python 3.12 `python -m compileall -q adaptive_subedge orca_plugin tests` PASS, `python -m unittest discover -s tests -p 'test_*.py' -v` **51 tests PASS** (zero errors/failures, 0.078 s).
+- Final Git comparison versus `0bed44e74aa9a668c5dcaca70579901b1cf67f32`: **8 file paths** changed (application hashing + serialization, domain metrics, 4 test files, this record). Both legacy scripts retain exact blobs; no new Orca/G-code injector or print path.
+- Git tree at source head `d06a61eedf2d27122ca480c18a3efd5d41a01441` remains fully readable (not truncated); all 81 canonical manifest entries match pinned blob SHAs, 65 ADR files retained.
+- Final source review dispositions: C-01/C-02 confirmed -> resolved; identity label / large integer canonical compatibility confirmed -> resolved; concurrency and import-graph items were **test gaps** and are now directly verified in their bounded scope.
+- Relative to initial 39 tests, this twelve-task tranche added **12 tests**, reaching 51; no coverage/performance extrapolation beyond these cases.
+- **Not independently verified:** Orca embedded Windows Python/NumPy, actual ndarray C/F adapter parity, complete settings/schema/port/surface-band coverage, printer physics, G-code file mutation, package/wheel build, and independent implementation/blind review. Ruff/mypy remain NOT CONFIGURED.
+- PR #2 remains Draft, open, and unmerged. The scope is still **partial Phase 0.5 implementation**, not a `READY_TO_MERGE` or physical injection decision. No exact printer fixture limits were invented.
+
+## Task outcome ledger
+
+| Task | Action | Disposition |
+| --- | --- | --- |
+| 1 | Verify head, handoff and 81 manifest entries | PASS |
+| 2 | Audit cyclic identity inputs and coverage version | 2 findings confirmed |
+| 3 | Fix both and add tests | 41/41 PASS |
+| 4 | Review PlanStore/AttemptStore atomicity | no new material source defect confirmed; test gap |
+| 5 | Add four concurrent store/attempt tests | implemented |
+| 6 | CI and checkpoint | 45/45 PASS |
+| 7 | Review integer hash portability and typed identity labels | two input-boundary issues confirmed |
+| 8 | Implement exact integer fallback, strict identity labels, three regression vectors | implemented |
+| 9 | CI and checkpoint | 48/48 PASS |
+| 10 | Audit architecture import boundary and initialization cycles | test coverage gap |
+| 11 | Add three AST/graph tests | implemented |
+| 12 | Final CI, diff, manifest check and ledger | 51/51 PASS |
+
+## Next gate
+
+Stop after exactly 12 tasks. Prioritize an **independent** Phase 0.5 implementation review and complete missing approved immutable Settings, support/surface-band model and port contracts in separately reviewable steps. If that work requires a new semantic policy/schema, adjudicate via ADR first. Physical injection remains disabled.
