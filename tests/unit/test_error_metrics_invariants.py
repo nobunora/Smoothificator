@@ -30,6 +30,26 @@ class ErrorMetricsInvariantTests(unittest.TestCase):
             ErrorMetrics(0.02, 0.01, 0.021, 0.0)
         self.assertEqual(caught.exception.reason, ReasonCode.INVALID_GEOMETRY)
 
+    def test_signed_mean_larger_than_maximum_in_both_directions_rejected(self):
+        for mean in (-0.051, 0.051):
+            with self.subTest(mean=mean), self.assertRaises(ContractError) as ctx:
+                ErrorMetrics(0.05, 0.03, 0.04, mean)
+            self.assertEqual(ctx.exception.reason, ReasonCode.INVALID_GEOMETRY)
+
+    def test_signed_mean_on_maximum_boundary_is_allowed(self):
+        for mean in (-0.05, 0.05):
+            with self.subTest(mean=mean):
+                outcome = ErrorMetrics(0.05, 0.05, 0.05, mean)
+                self.assertEqual(outcome.signed_mean_mm, mean)
+        self.assertEqual(ErrorMetrics(0.0, 0.0, 0.0, 0.0).signed_mean_mm, 0.0)
+
+    def test_signed_mean_changes_authoritative_plan_hash_without_other_field_changes(self):
+        baseline = plan_content()
+        altered = replace(baseline, error_metrics=replace(
+            baseline.error_metrics, signed_mean_mm=0.001))
+        self.assertNotEqual(create_plan(baseline).plan_hash,
+                            create_plan(altered).plan_hash)
+
     def test_valid_metric_change_affects_plan_hash_and_bytes(self):
         original = plan_content()
         changed = replace(original, error_metrics=replace(original.error_metrics, e_rms_mm=0.025))
