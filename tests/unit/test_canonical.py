@@ -143,6 +143,32 @@ class CanonicalTests(unittest.TestCase):
         with self.assertRaises(ContractError):
             typed_identities_equal("source-geometry", a.digest_hex, equal)
 
+    def test_large_canonical_integers_are_environment_independent(self):
+        positive = 10 ** 5000
+        expected = b"i1" + b"0" * 5000 + b";"
+        self.assertEqual(canonical_bytes(positive), expected)
+        self.assertEqual(canonical_bytes(-positive), b"i-1" + b"0" * 5000 + b";")
+        self.assertEqual(canonical_bytes(0), b"i0;")
+
+    def test_identity_api_rejects_unhashable_type_labels(self):
+        from adaptive_subedge.application.serialization import validate_root
+        sample = typed_identity("source-geometry", {"mesh": 1})
+        for bad in ([], {"type": "source-geometry"}, 1):
+            with self.subTest(bad=bad), self.assertRaises(ContractError):
+                typed_identity(bad, {})
+            with self.subTest(comparison=bad), self.assertRaises(ContractError):
+                typed_identities_equal(bad, sample, sample)
+            with self.subTest(root=bad), self.assertRaises(ContractError):
+                validate_root(identity_root("source-geometry", {}), bad)
+
+    def test_anchor_semantic_identity_changes_plan_hash(self):
+        from adaptive_subedge.domain.plan import InsertionAnchor
+        original = plan_content()
+        changed = replace(original, anchors=(InsertionAnchor("insert-1", ("loop-1",), 2, "known"),))
+        self.assertNotEqual(create_plan(original).plan_hash, create_plan(changed).plan_hash)
+        changed_again = replace(changed, anchors=(InsertionAnchor("insert-2", ("loop-1",), 2, "known"),))
+        self.assertNotEqual(create_plan(changed).plan_hash, create_plan(changed_again).plan_hash)
+
     def test_fingerprints_no_map_order_and_settings_change(self):
         a = fingerprint_resolved_execution({"z": 1, "a": 0.5})
         b = fingerprint_resolved_execution({"a": 0.5, "z": 1})

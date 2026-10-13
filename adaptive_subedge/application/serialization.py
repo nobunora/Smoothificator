@@ -82,6 +82,24 @@ def canonical_bytes(value: object) -> bytes:
         raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "cyclic or excessively deep canonical data") from exc
 
 
+def _decimal_int_bytes(value: int) -> bytes:
+    """Portable integer decimal encoding even when Python's str-digit cap is enabled."""
+    try:
+        return str(value).encode("ascii")
+    except ValueError:
+        # Python 3.11+ limits int-to-str digits by environment. The ADR does
+        # not cap canonical integers; encode in bounded 1000-digit chunks.
+        negative = value < 0
+        remaining = abs(value)
+        chunk_base = 10 ** 1000
+        chunks = []
+        while remaining >= chunk_base:
+            remaining, lower = divmod(remaining, chunk_base)
+            chunks.append(str(lower).zfill(1000))
+        token = ("-" if negative else "") + str(remaining) + "".join(reversed(chunks))
+        return token.encode("ascii")
+
+
 def _canonical_bytes(value: object) -> bytes:
     """Exact tagged encoding; normal inputs retain byte-identical results."""
     if value is None:
@@ -89,7 +107,7 @@ def _canonical_bytes(value: object) -> bytes:
     if type(value) is bool:
         return b"b1" if value else b"b0"
     if type(value) is int:
-        return b"i" + str(value).encode("ascii") + b";"
+        return b"i" + _decimal_int_bytes(value) + b";"
     if type(value) is float:
         if not isfinite(value):
             raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "nonfinite identity float")
@@ -116,7 +134,7 @@ def identity_root(identity_type: str, payload: object, *, schema_version: str = 
 
 
 def validate_root(root: object, expected_type: str) -> None:
-    if type(root) is not dict or frozenset(root) != _ROOT_KEYS or expected_type not in _TYPES or root["identity_type"] != expected_type or root["schema_version"] != "1" or root["canonical_encoding_version"] != "1":
+    if type(root) is not dict or frozenset(root) != _ROOT_KEYS or type(expected_type) is not str or expected_type not in _TYPES or root["identity_type"] != expected_type or root["schema_version"] != "1" or root["canonical_encoding_version"] != "1":
         raise ContractError(ReasonCode.UNKNOWN_IDENTITY_SCHEMA, "invalid typed identity root")
 
 

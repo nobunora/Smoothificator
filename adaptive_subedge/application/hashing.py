@@ -33,7 +33,7 @@ def domain_digest(domain_tag: str, payload: bytes) -> str:
 
 def typed_identities_equal(expected_type: str, left: IdentityReference, right: IdentityReference) -> bool:
     """Reject untyped/cross-schema comparisons rather than comparing raw hex."""
-    if expected_type not in _DOMAIN:
+    if type(expected_type) is not str or expected_type not in _DOMAIN:
         raise ContractError(ReasonCode.UNKNOWN_IDENTITY_SCHEMA, "unknown identity comparison class")
     for ref in (left, right):
         if (type(ref) is not IdentityReference or ref.identity_type != expected_type
@@ -43,7 +43,7 @@ def typed_identities_equal(expected_type: str, left: IdentityReference, right: I
 
 
 def typed_identity(identity_type: str, semantic_payload: object) -> IdentityReference:
-    if identity_type not in _DOMAIN:
+    if type(identity_type) is not str or identity_type not in _DOMAIN:
         raise ContractError(ReasonCode.UNKNOWN_IDENTITY_SCHEMA, "unrecognized identity type")
     root = identity_root(identity_type, semantic_payload)
     validate_root(root, identity_type)
