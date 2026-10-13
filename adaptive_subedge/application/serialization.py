@@ -13,7 +13,8 @@ from adaptive_subedge.domain.plan import (
     IdentityReference, SubEdgeSegment, SubEdgePath, InsertionAnchor,
     FinalSurfaceEnvelope, ChronologicalSupportEnvelope, PlanSemanticContent,
 )
-from adaptive_subedge.domain.settings import ToolRadialKeepOut, ToolClearanceProfile, CandidateSegmentRegularityPolicy, PluginSettings
+from adaptive_subedge.domain.settings import (ToolRadialKeepOut, ToolClearanceProfile, CandidateSegmentRegularityPolicy, PluginSettings,
+    SurfaceCorrespondencePolicy, ErrorEstimatorConfig)
 
 _FIELDS = {
     PrintPoint2: ("x_mm", "y_mm"),
@@ -32,6 +33,13 @@ _FIELDS = {
     ToolRadialKeepOut: ("height_above_tip_mm", "radial_clearance_mm"),
     ToolClearanceProfile: ("profile_id", "version", "fixture_evidence_ref", "axial_height_mm", "radial_safety_margin_mm", "vertical_safety_margin_mm", "radial_keep_out"),
     CandidateSegmentRegularityPolicy: ("version", "fixture_evidence_ref", "min_candidate_segment_length_mm", "min_candidate_segment_time_s", "max_adjacent_commanded_volumetric_rate_step_mm3_s", "max_adjacent_width_step_mm", "max_adjacent_effective_height_step_mm"),
+    SurfaceCorrespondencePolicy: ("version", "max_surface_correspondence_distance_mm", "min_surface_normal_dot",
+        "interaction_neighborhood_expansion_mm", "interaction_neighborhood_tolerance_mm",
+        "normal_ray_numeric_tolerance_mm", "normal_ray_numeric_policy_version",
+        "closest_point_fallback_policy_version"),
+    ErrorEstimatorConfig: ("version", "initial_error_sample_spacing_mm", "error_refinement_factor",
+        "error_metric_convergence_mm", "max_error_refinement_levels",
+        "closest_point_sign_numeric_tolerance_version", "surface_correspondence_policy"),
     PluginSettings: ("schema_version", "surface_error_tolerance_mm", "minimum_effective_bead_height_mm", "candidate_seam_gap_mm", "regularity_policy", "tool_clearance_profile", "physical_injection_requested"),
 }
 _ROOT_KEYS = frozenset(("identity_type", "schema_version", "canonical_encoding_version", "payload"))
