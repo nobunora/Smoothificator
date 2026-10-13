@@ -32,6 +32,12 @@ This ADR proposes migration semantics. It does not yet commit to exact final fie
 6. **Fixture evidence remains external proof.** Schema-valid numeric settings alone do not certify a physical fixture; fixture calibration, Orca runtime and blind-review gates stay independent. No version of Settings can bypass them.
 7. **New plan semantic identity.** Changing the plugin-settings typed identity reference changes the `SubEdgePlan` hash under the existing plan-domain hashing contract. Derived plan_hash/id, runtime epoch/generation/status and machine E remain excluded; `plan_id == plan_hash`.
 
+## Primary schema inventory (review only)
+
+A field-level provenance matrix, unresolved mandatory caps/weights/coverage policy, and the v1-versus-v2 identity-version issue are recorded at [the adjudication review packet](../implementation/settings-v2-schema-adjudication-review-2026-10-13.md). This reference supports review only; it does **not** make missing field names or numeric limits normative. The review packet does not grant Accepted status.
+
+The v1 canonical root currently uses `schema_version="1"`, and its payload includes a separate `PluginSettings.schema_version="1"`. Candidate decision **for review**: a completed v2 must use a typed `plugin-settings` root with `schema_version="2"` and an unambiguous v2 DTO schema marker also equal to `"2"`. The root encoder's `canonical_encoding_version="1"` remains unchanged unless the actual tagged-byte grammar changes. Mismatched root/DTO versions must fail closed. This is a **proposal**, not authorization to modify the currently registered `identity_root` allowed versions.
+
 ## Required remaining decisions before Acceptance
 
 - Name every missing settings field and fix its domain type, range, unit and required-vs-optional status using canonical `SPECIFICATION` and `IMPLEMENTATION` without ambiguous unions.
