@@ -8,14 +8,29 @@ from tests.architecture.test_boundaries import ROOT, _module_name, _import_forbi
 
 
 def _literal_dynamic_targets(tree, module):
-    """Inspect explicit literal module names; computed imports require separate review."""
+    """Detect statically named literal imports, including importlib aliases.
+
+    This is a lexical gate, not Python-wide scope/monkeypatch resolution.
+    Computed and dynamically rebound names still require independent review.
+    """
+    module_aliases = {"importlib"}
+    function_aliases = set()
+    for imported in ast.walk(tree):
+        if isinstance(imported, ast.Import):
+            module_aliases.update(alias.asname or "importlib" for alias in imported.names
+                                  if alias.name == "importlib")
+        elif isinstance(imported, ast.ImportFrom) and imported.module == "importlib":
+            function_aliases.update(alias.asname or alias.name for alias in imported.names
+                                    if alias.name == "import_module")
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call) or not node.args:
             continue
         fn = node.func
         is_builtin = isinstance(fn, ast.Name) and fn.id == "__import__"
-        is_importlib = (isinstance(fn, ast.Attribute) and fn.attr == "import_module"
-                        and isinstance(fn.value, ast.Name) and fn.value.id == "importlib")
+        is_importlib = (
+            (isinstance(fn, ast.Attribute) and fn.attr == "import_module"
+             and isinstance(fn.value, ast.Name) and fn.value.id in module_aliases)
+            or (isinstance(fn, ast.Name) and fn.id in function_aliases))
         if not (is_builtin or is_importlib):
             continue
         first = node.args[0]
