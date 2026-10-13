@@ -223,6 +223,47 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(len({e.analysis_generation_id for e in entries}), 20)
         self.assertEqual(len(store.snapshot().candidates), 4)
 
+    def test_rejected_publication_preserves_state_and_generation(self):
+        from adaptive_subedge.domain.plan import SubEdgePlan
+        store = PlanStore(2)
+        accepted = plan(2400, injectable=True)
+        first = store.publish(accepted)
+        prior = store.snapshot()
+        tampered = SubEdgePlan(plan(2401, injectable=True).content, "0" * 64, "0" * 64)
+        with self.assertRaises(ContractError):
+            store.publish(tampered)
+        with self.assertRaises(ContractError):
+            store.publish(object())
+        unchanged = store.snapshot()
+        self.assertEqual(unchanged.plugin_session_epoch, prior.plugin_session_epoch)
+        self.assertEqual(unchanged.candidates, prior.candidates)
+        next_plan = store.publish(plan(2402, injectable=True))
+        self.assertEqual(next_plan.analysis_generation_id, first.analysis_generation_id + 1)
+
+    def test_rejected_attempt_begin_does_not_publish_record(self):
+        attempts = InjectionAttemptStore()
+        for invalid_plan, file_id in (("malformed", "source"), (None, [1]), (None, "")):
+            with self.subTest(file_id=repr(file_id), invalid_plan=invalid_plan):
+                with self.assertRaises(ContractError):
+                    attempts.begin(invalid_plan, file_id)
+                self.assertEqual(attempts.snapshot(), ())
+        valid = attempts.begin(None, "source")
+        self.assertEqual(attempts.snapshot(), (valid,))
+
+    def test_rejected_attempt_transitions_leave_immutable_snapshot(self):
+        attempts = InjectionAttemptStore()
+        started = attempts.begin(None, "source")
+        with self.assertRaises(ContractError):
+            attempts.transition(started.attempt_id, AttemptState.SKIPPED)
+        with self.assertRaises(ContractError):
+            attempts.transition(started.attempt_id, AttemptState.EMITTED_TEMP)
+        with self.assertRaises(ContractError):
+            attempts.transition(started.attempt_id, AttemptState.VALIDATED, ReasonCode.STALE_PLAN)
+        self.assertEqual(attempts.snapshot(), (started,))
+        changed = attempts.transition(started.attempt_id, AttemptState.VALIDATED)
+        self.assertEqual(attempts.snapshot(), (changed,))
+        self.assertEqual(started.state, AttemptState.STARTED)
+
     def test_attempts_independent_and_monotonic(self):
         status = InjectionAttemptStore()
         a = status.begin(None, "export-A")
