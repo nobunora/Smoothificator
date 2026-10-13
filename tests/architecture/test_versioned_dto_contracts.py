@@ -31,6 +31,34 @@ class VersionedDTOArchitectureTests(unittest.TestCase):
         self.assertNotIn(SurfaceCorrespondencePolicy, (f.type for f in fields(PluginSettings)))
         self.assertNotIn(MeshSectionPolicy, (f.type for f in fields(PluginSettings)))
 
+    def test_incomplete_v2_cannot_be_mislabeled_as_v1_settings_fingerprint(self):
+        from adaptive_subedge.application.serialization import identity_root
+        from adaptive_subedge.domain.settings import ErrorEstimatorConfig, SurfaceCorrespondencePolicy
+        with self.assertRaises(ContractError):
+            fingerprint_plugin_settings(ErrorEstimatorConfig)
+        with self.assertRaises(ContractError):
+            fingerprint_plugin_settings(SurfaceCorrespondencePolicy)
+        with self.assertRaises(ContractError):
+            identity_root("plugin-settings", {"partial": 1}, schema_version="2")
+        with self.assertRaises(ContractError):
+            identity_root("plugin-settings", {"partial": 1}, canonical_encoding_version="2")
+
+    def test_versioned_research_values_not_implicitly_part_of_v1(self):
+        from adaptive_subedge.domain.settings import MeshSectionPolicy
+        from adaptive_subedge.application.serialization import identity_root, validate_root
+        baseline = PluginSettings("1", 0.05, 0.08, 0.01,
+            CandidateSegmentRegularityPolicy("research", None, 0.01, 0.001, 1.0, 0.01, 0.01))
+        identity = fingerprint_plugin_settings(baseline)
+        metadata = identity_root("plugin-settings", baseline)
+        self.assertEqual(set(metadata), {"identity_type", "schema_version", "canonical_encoding_version", "payload"})
+        self.assertEqual(metadata["schema_version"], "1")
+        self.assertEqual(identity.schema_version, "1")
+        self.assertNotIn("mesh_section_policy", metadata["payload"])
+        self.assertNotIn("error_estimator_config", metadata["payload"])
+        validate_root(metadata, "plugin-settings")
+        with self.assertRaises(ContractError):
+            validate_root({**metadata, "undocumented": 1}, "plugin-settings")
+
     def test_physical_enablement_stays_disallowed(self):
         policy = CandidateSegmentRegularityPolicy("research-only", None, 0.01, 0.001, 1.0, 0.01, 0.01)
         settings = PluginSettings("1", 0.05, 0.08, 0.01, policy)
