@@ -120,6 +120,29 @@ class CanonicalTests(unittest.TestCase):
         with self.assertRaises(ContractError):
             domain_digest_chunks("array", (b"ok", bytearray(b"mutable")))
 
+    def test_streaming_digest_rejects_unordered_and_scalar_chunks(self):
+        for bad in (None, 5, b"", "", bytearray(), {}, {b"one"}, set(), frozenset()):
+            with self.subTest(bad=repr(bad)), self.assertRaises(ContractError):
+                domain_digest_chunks("array", bad)
+        self.assertEqual(domain_digest_chunks("array", iter(())),
+                         domain_digest("array", b""))
+
+    def test_streaming_digest_rejects_invalid_domain_or_nested_chunk(self):
+        with self.assertRaises(ContractError):
+            domain_digest_chunks("unsupported", (b"ok",))
+        with self.assertRaises(ContractError):
+            domain_digest_chunks("array", (b"one", [b"nested"]))
+        self.assertEqual(domain_digest_chunks("array", (b"", b"payload")),
+                         domain_digest("array", b"payload"))
+
+    def test_invalid_unicode_surrogate_and_nan_in_array_fail_typed(self):
+        with self.assertRaises(ContractError):
+            canonical_bytes("\ud800")
+        with self.assertRaises(ContractError):
+            typed_identity("source-geometry", {"text": "\ud800"})
+        with self.assertRaises(ContractError):
+            canonical_array_token("f64", (1,), (float("nan"),))
+
     def test_subnormal_float_array_and_unknown_token_schema(self):
         subnormal = float.fromhex("0x0.0000000000001p-1022")
         header = b"ASE_ARRAY_V1\0f64" + struct.pack(">IQ", 1, 1)

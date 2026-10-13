@@ -17,6 +17,11 @@ def domain_digest_chunks(domain_tag: str, chunks: Iterable[bytes]) -> str:
     """One authoritative digest owner; incremental input keeps arrays bounded."""
     if type(domain_tag) is not str or domain_tag not in frozenset((*_DOMAIN.values(), "array")):
         raise ContractError(ReasonCode.UNKNOWN_IDENTITY_SCHEMA, "unknown hash domain")
+    # The stream must be ordered and contain byte chunks. Empty mappings/sets
+    # and scalar byte strings are not canonical streams, even when empty.
+    if (not isinstance(chunks, Iterable)
+            or isinstance(chunks, (str, bytes, bytearray, Mapping, set, frozenset))):
+        raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "ordered byte-chunk iterable required")
     sha = hashlib.sha256(_MAGIC + b"\0" + domain_tag.encode("ascii") + b"\0")
     for chunk in chunks:
         if type(chunk) is not bytes:
