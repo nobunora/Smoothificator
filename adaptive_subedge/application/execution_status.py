@@ -27,6 +27,8 @@ class InjectionAttemptStore:
             return record
 
     def transition(self, attempt_id: str, state: AttemptState, reason: ReasonCode | None = None) -> InjectionAttemptRecord:
+        if type(attempt_id) is not str or not attempt_id:
+            raise ContractError(ReasonCode.INVALID_STATE_TRANSITION, "valid attempt identity required")
         with self._lock:
             previous = self._records.get(attempt_id)
             if previous is None or not isinstance(state, AttemptState) or previous.state in _TERMINAL:
