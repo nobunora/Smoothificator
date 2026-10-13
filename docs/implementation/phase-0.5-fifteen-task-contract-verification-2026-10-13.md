@@ -72,3 +72,52 @@ To be appended after CI/compare; do not label unverified tasks PASS.
 - Task 10: primary focused audit of `PlanStore.publish`, `PlanStore.snapshot` and `InjectionAttemptStore.begin/transition`. Publication verifies the full content hash **before** assigning generation, and attempts create a validated record before insertion; their rejection atomicity was not explicitly covered by previous tests. Existing ADR-0065 attempt-to-snapshot association gap C-02 remains **requires-further-evidence** and was not silently implemented.
 - Task 11: added three regression tests in `tests/unit/test_stores.py`, commit `5aaff4ca0b2976bcd53c44f389bd13b8f392f1c4`. Bad/tampered plan and unregistered DTO publications consume no generation or retained entry; invalid attempt creation leaves the store empty; rejected invalid state transitions preserve the previous immutable record.
 - Task 12: GitHub Actions [38362725694](https://github.com/nobunora/Smoothificator/actions/runs/38362725694) Python 3.12 compileall PASS and **93/93 unittest PASS**, 0 failures/errors (0.097 s in log). These are tests for existing fail-closed contracts, not a newly added Atomic Snapshot+Attempt interface.
+
+## Tasks 13–15 — Strict streaming-digest input and final reconciliation
+
+### Task 13 — Hash entry-point and architecture audit
+
+- Primary focused review read `adaptive_subedge/application/hashing.py::domain_digest_chunks` and test call sites plus accepted ADR-0062 canonical domain/byte rules.
+- **C-05 Medium / confirmed:** the chunk-hasher previously accepted an empty `dict`, `set`, `frozenset` or scalar `b""`/empty string as an iterable of bytes, yielding the digest of a legitimate empty byte stream. A non-iterable `None` yielded a raw `TypeError`. An unordered iterable of byte chunks could generate order-dependent digests. This violates strict deterministic typed canonical boundaries. No valid byte-chunk tuple/list/generator is affected by the repair.
+- Architecture remains a self-contained Phase 0.5 standard-library package, no new runtime imports, adapters or physical runtime hooks. No hypothetical Orca API was inferred.
+
+### Task 14 — Input rejection and independent regression checks
+
+- `application/hashing.py` now fails closed with `ContractError(INVALID_CANONICAL_VALUE)` for noniterable/scalar, mapping and unordered `domain_digest_chunks` sources. Valid ordered byte-chunk streams still yield the previous ADR-0062 SHA-256.
+- Added **three** tests in `tests/unit/test_canonical.py`: reject scalar/empty mapping/set sources; reject unknown domain and nested nonbytes while retaining valid zero-length chunk SHA parity; reject malformed Unicode surrogate identity text and NaN-valued f64 array with typed contract failures.
+- Source/test commit: `fe0f875d17c348c5c258d01969de360a5224237a`. Confirmed C-05 -> resolved. No canonical byte grammar, version or existing valid hash changed.
+
+### Task 15 — Final source, test and diff evidence
+
+- Python 3.12 GitHub Actions [38362980291](https://github.com/nobunora/Smoothificator/actions/runs/38362980291), source commit `fe0f875d17c348c5c258d01969de360a5224237a`:
+  - `python -m compileall -q adaptive_subedge orca_plugin tests`: **PASS**.
+  - `python -m unittest discover -s tests -p 'test_*.py' -v`: **96/96 PASS**, 0 failures/errors, 0.140s in job log.
+- Total +12 tests from baseline 84: +3 coverage ratio DTO boundaries, +3 v1 Settings field-sensitivity, +3 rejected-store atomicity, +3 canonical streaming fail-closed cases.
+- Git compare at source commit `fdaa0302e519a54e5748f23d1c38bffa5c3b47b8...fe0f875d17c348c5c258d01969de360a5224237a`: six changed paths: `application/hashing.py`, `tests/unit/test_canonical.py`, `tests/unit/test_stores.py`, `tests/unit/test_support_coverage_boundary.py`, `tests/unit/test_v1_settings_field_sensitivity.py`, this report. Only the streaming input validation changes production behavior.
+- Draft [PR #2](https://github.com/nobunora/Smoothificator/pull/2) remains open/draft/unmerged. Separate Proposed ADR-0066 [PR #3](https://github.com/nobunora/Smoothificator/pull/3) remains open/draft/unmerged and **not Accepted**. No old Smoothificator scripts, live Orca capability/adapters, G-code parser/injector, or printer behavior changed.
+- Existing manifest remains 81/81 exact SHA matches; this implementation-only branch did not change canonical docs or any Accepted ADR.
+- Tooling: Ruff/mypy/static type and wheel packaging **NOT CONFIGURED**; actual Orca embedded Python and NumPy C/F/endianness adapters **NOT VERIFIED**; independent implementation/blind review **NOT PERFORMED**. **Physical injection remains prohibited**.
+- C-01 (Settings full v2) **spec-change-required**, C-02 (attempt-bound snapshot) **requires-further-evidence**, C-03 (Ports/external runtime) **requires-further-evidence**, C-04 (initial stale coverage DTO claim) **rejected**, C-05 (hash stream input) **confirmed -> resolved**.
+- Rollback: reverting the hash change restores prior acceptance of malformed stream containers; reversing the independent test/report commits has no printer/G-code output effect. None of this work authorizes production deployment.
+
+## Fifteen-task final ledger
+
+| # | Purpose | Outcome |
+| --- | --- | --- |
+| 1 | Verify HEAD, PR, audited canonical 81-blob set | PASS 81/81 |
+| 2 | Classify v2/attempt/Ports blockers against accepted documents | completed, unresolved gates retained |
+| 3 | Write bounded review/test plan | committed |
+| 4 | Verify coverage-version finding against actual current source | rejected stale finding |
+| 5 | Add strict coverage ratio/immutability tests | +3 |
+| 6 | CI coverage boundary checkpoint | PASS 87/87 |
+| 7 | Audit all currently declared v1 fingerprint field groups | completed |
+| 8 | Test each top-level/tool profile field and canonical ordered inputs | +3 |
+| 9 | CI identity checkpoint | PASS 90/90 |
+| 10 | Audit rejected PlanStore and Attempt mutations | completed |
+| 11 | Add atomic rejected-publication/attempt-transition tests | +3 |
+| 12 | CI rejected-state checkpoint | PASS 93/93 |
+| 13 | Audit canonical streaming API entrypoint and permitted import boundary | C-05 confirmed |
+| 14 | Close input validation gap with regression/golden tests | +3; C-05 resolved |
+| 15 | Verify CI, exact changed files, PR status and close report | PASS 96/96 |
+
+**Stop after 15 bounded tasks.** Next implementation step must be scoped by an accepted full schema, a renewed repository review, and independent review where applicable. No postprocess/physical print enablement.
