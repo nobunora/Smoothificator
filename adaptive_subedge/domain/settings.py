@@ -100,6 +100,35 @@ class SurfaceCorrespondencePolicy:
 
 
 @dataclass(frozen=True, slots=True)
+class ErrorEstimatorConfig:
+    """ADR-0045 sampled/converged estimator configuration, no estimator behavior."""
+    version: str
+    initial_error_sample_spacing_mm: float
+    error_refinement_factor: float
+    error_metric_convergence_mm: float
+    max_error_refinement_levels: int
+    closest_point_sign_numeric_tolerance_version: str
+    surface_correspondence_policy: SurfaceCorrespondencePolicy
+
+    def __post_init__(self) -> None:
+        if (type(self.version) is not str or not self.version.strip()
+                or type(self.closest_point_sign_numeric_tolerance_version) is not str
+                or not self.closest_point_sign_numeric_tolerance_version.strip()
+                or type(self.surface_correspondence_policy) is not SurfaceCorrespondencePolicy):
+            raise ContractError(ReasonCode.INVALID_SETTING, "invalid estimator version/correspondence policy")
+        _nonnegative_finite(
+            self.initial_error_sample_spacing_mm, "initial sample spacing", positive=True)
+        _nonnegative_finite(
+            self.error_metric_convergence_mm, "estimator convergence tolerance", positive=True)
+        if (not finite_binary64(self.error_refinement_factor)
+                or self.error_refinement_factor <= 1.0):
+            raise ContractError(ReasonCode.INVALID_SETTING, "refinement factor must exceed one")
+        if (type(self.max_error_refinement_levels) is not int
+                or self.max_error_refinement_levels < 1):
+            raise ContractError(ReasonCode.INVALID_SETTING, "positive integer refinement limit required")
+
+
+@dataclass(frozen=True, slots=True)
 class PluginSettings:
     schema_version: str
     surface_error_tolerance_mm: float
