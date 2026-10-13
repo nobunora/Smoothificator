@@ -77,6 +77,10 @@ Accepted ADR-0065 already requires each invocation to atomically snapshot eligib
 
 **External evidence condition:** integration must use a source-verified Orca hook and documented invocation lifecycle, not a guessed Orca session key. Pure-process coordination can be unit-tested in isolation, but integration cannot be certified from those tests alone.
 
+### New pinned Orca source evidence for D4
+
+A direct inspection of the previously audited Orca source commit `7d44b60ae4042b4de8c3844eb9dd2671c2d2d873` is documented in [the pinned postprocess invocation review](../implementation/phase05-orca-postprocess-invocation-review-2026-10-14.md). `PostProcessor.cpp` constructs `SlicingPipelineContext` and calls `cap->execute(ctx)` for each selected plugin capability. The context exposes a working `gcode_path` and resolved config fallback but no native unique invocation ID. An application-generated unique attempt ID at each supported hook entry is therefore source-consistent, without fabricating a native Orca session identifier. **The application-level atomic snapshot/attempt API and its lock/error rollback design remain unapproved and unimplemented**; installed-target runtime fixture evidence is still missing.
+
 ### D5. Clarify architectural file-tree milestone boundary
 
 ARCHITECTURE §2 lists the eventual engine, ports, adapters, preview and G-code modules. The Phase 0.5 handoff expressly **forbids implementing** source mesh, optimizer, Orca live bindings and G-code parser/emitter.
