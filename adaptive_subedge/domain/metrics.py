@@ -15,6 +15,10 @@ class ErrorMetrics:
         values = (self.e_max_mm, self.e_rms_mm, self.e_p95_mm, self.signed_mean_mm)
         if any(not finite_binary64(v) for v in values) or min(values[:3]) < 0:
             raise ContractError(ReasonCode.INVALID_GEOMETRY, "invalid error metric")
+        # Both bidirectional summary RMS and p95 are bounded by the largest
+        # directional maximum. This checks DTO coherence, not convergence.
+        if self.e_rms_mm > self.e_max_mm or self.e_p95_mm > self.e_max_mm:
+            raise ContractError(ReasonCode.INVALID_GEOMETRY, "error summary exceeds maximum")
 
 
 @dataclass(frozen=True, slots=True)
