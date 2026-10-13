@@ -16,7 +16,7 @@ Validated scope: DTO input contracts, canonical v1 binary grammar/hash strictnes
 - **C-01 / spec-change-required:** complete Settings v2 fingerprint owner/field validation remains blocked on Proposed ADR-0066 and renewed normative audit/Spec-Validated gate; do not add v2 fields to v1 hash.
 - **C-02 / requires-further-evidence:** PlanStore-issued snapshot is not yet atomically associated with a unique export attempt. ADR-0065 requires lifecycle provenance for a postprocess invocation; existing `snapshot()` and `InjectionAttemptStore.begin()` separate APIs cannot establish that association. Do not invent an Orca invocation key or subtly redefine selector lifetime.
 - **C-03 / requires-further-evidence:** exact Ports signatures and installed Orca embedded Python/NumPy remain unverified; no placeholders or installation assumptions.
-- **C-04 / candidate code defect:** `SupportCoverageMetrics.version` checks truthiness but not exact immutable string type; a mutable list can enter a frozen cross-boundary DTO. Strict DTO type fidelity is approved by handoff and ADR-0044.
+- **C-04 / rejected as stale finding:** this initial hypothesis was falsified by reading current `adaptive_subedge/domain/metrics.py`: the exact builtin-string version check already exists, with `test_coverage_version_requires_immutable_text` in `tests/unit/test_contracts.py`. No source fix is appropriate. The remaining coverage task is a focused regression of numerical ratio boundary values and immutable DTO behavior, **not** the ADR-0044 physical support metric algorithm.
 
 ## Task 3 — Review-only outcome and fifteen-task bounded verification plan
 
@@ -25,8 +25,8 @@ Created this evidence record before source changes, with the following independe
 1. Baseline/manifest/PR verification **done**
 2. Approved scope and unresolved blockers disposition **done**
 3. Record findings and exact scoped test strategy **done**
-4. Audit versioned coverage-metric DTO types/validation
-5. Fix only verified coverage-metric version type and add malformed-value tests
+4. Verify whether coverage-version DTO finding is still present; correct false/stale finding
+5. Add missing ratio edge/typed numeric/frozen DTO regressions; do not repeat existing version fix
 6. Run Python 3.12 compileall/unittest on task-5 head; report checkpoint
 7. Audit v1 Settings fingerprint sensitivity against exact registered schema, not proposed v2
 8. Add independent focused v1 hardware/tool-curve sensitivity and canonical tuple/list evidence tests
