@@ -160,6 +160,61 @@ class StoreTests(unittest.TestCase):
             with self.subTest(capacity=capacity), self.assertRaises(ContractError):
                 PlanStore(capacity)
 
+    def test_eviction_before_fresh_snapshot_is_not_recovered(self):
+        store = PlanStore(2)
+        oldest = plan(2000, injectable=True)
+        middle = plan(2001, injectable=True)
+        newest = plan(2002, injectable=True)
+        store.publish(oldest)
+        store.publish(middle)
+        in_flight = store.snapshot()
+        store.publish(newest)
+        fresh = store.snapshot()
+        self.assertEqual([x.plan_hash for x in store.eligible(in_flight)],
+                         [oldest.plan_hash, middle.plan_hash])
+        self.assertEqual([x.plan_hash for x in store.eligible(fresh)],
+                         [middle.plan_hash, newest.plan_hash])
+        self.assertNotIn(oldest.plan_hash, [x.plan_hash for x in store.eligible(fresh)])
+
+    def test_dedup_refreshes_retention_without_duplicate_candidate(self):
+        store = PlanStore(2)
+        first = plan(2100, injectable=True)
+        second = plan(2101, injectable=True)
+        third = plan(2102, injectable=True)
+        a = store.publish(first)
+        store.publish(second)
+        newest_first = store.publish(first)
+        self.assertGreater(newest_first.analysis_generation_id, a.analysis_generation_id)
+        store.publish(third)
+        published = store.snapshot().candidates
+        self.assertEqual([x.plan.plan_hash for x in published],
+                         [first.plan_hash, third.plan_hash])
+        self.assertEqual(len(store.eligible(store.snapshot())), 2)
+
+    def test_epoch_reset_and_generation_are_separate_scopes(self):
+        store = PlanStore(2)
+        first = store.publish(plan(2200, injectable=True))
+        old_epoch = first.plugin_session_epoch
+        store.publish(plan(2201, injectable=True))
+        store.reset()
+        second = store.publish(plan(2200, injectable=True))
+        self.assertNotEqual(old_epoch, second.plugin_session_epoch)
+        self.assertEqual(first.analysis_generation_id, 1)
+        self.assertEqual(second.analysis_generation_id, 1)
+        self.assertEqual(first.plan.plan_hash, second.plan.plan_hash)
+
+    def test_snapshot_registry_does_not_strongly_retain_abandoned_snapshots(self):
+        import gc
+        import weakref
+        store = PlanStore(1)
+        store.publish(plan(2300, injectable=True))
+        captured = store.snapshot()
+        ref = weakref.ref(captured)
+        self.assertEqual(len(store.eligible(captured)), 1)
+        del captured
+        gc.collect()
+        self.assertIsNone(ref())
+
     def test_parallel_publication_bounded(self):
         store = PlanStore(4)
         plans = [plan(i) for i in range(20)]
