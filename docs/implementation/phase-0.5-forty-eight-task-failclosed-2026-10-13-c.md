@@ -60,3 +60,11 @@ Status: PRIMARY REVIEW and scoped implementation of **existing Accepted contract
 - **16:** verified -0.0/+0.0 normalized float identity, with bool/int/float remaining distinct tagged scalars.
 - **17:** verified exact four-field root reject-extra/missing/cross-domain/unknown versions plus independent full SHA256 preimage vector. File `tests/unit/test_canonical_unicode_scalar_edges.py`, 4 tests, commit `6948e2502cbc319c435234b25f3d1fa12e3371be`.
 - **18:** Python3.12 GitHub Actions [38409806274](https://github.com/nobunora/Smoothificator/actions/runs/38409806274): compileall PASS, **188/188 unittest PASS**, 0 failures/errors.
+
+## Checkpoint 4 — tasks 19–24 COMPLETE
+- **19:** reviewed Accepted ADR-0023/0045/0050/0059/0063 hardware/profile/estimator schema boundaries, without claiming printable calibration.
+- **20:** keep-out curve radial clearance may vary non-monotonically as fixture-defined; do not invent monotonic-radius rule; frozen profile remains immutable.
+- **21:** candidate keep-out heights must start at tool tip, increase strictly and not exceed axial height.
+- **22:** regularity policy's fixture evidence identifier changes v1 fingerprint while invalid mutable evidence rejects; zero v1 safety qualification implied.
+- **23:** standalone `ErrorEstimatorConfig` canonical projection reacts to declared field changes but is rejected as an undeclared v1 PluginSettings fingerprint. Four tests `tests/unit/test_research_settings_boundary_v2.py`, commit `8e72124e11a8208daaf91c90a33408024287d731`.
+- **24:** Python3.12 GitHub Actions [38410037491](https://github.com/nobunora/Smoothificator/actions/runs/38410037491) compileall PASS, **192/192 unittest PASS**.
