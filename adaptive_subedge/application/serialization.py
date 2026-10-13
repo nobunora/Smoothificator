@@ -39,15 +39,23 @@ _TYPES = frozenset(("subedge-plan", "execution-config", "plugin-settings", "sour
 
 
 def semantic_tree(value: object) -> object:
+    """Versioned semantic projection, rejecting recursive input with a stable reason."""
+    try:
+        return _semantic_tree(value)
+    except RecursionError as exc:
+        raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "cyclic or excessively deep semantic identity") from exc
+
+
+def _semantic_tree(value: object) -> object:
     """Only explicitly registered dataclass fields and canonical primitives are accepted."""
     if value is None or type(value) in (str, bool, int, float):
         return value
     if type(value) in (tuple, list):
-        return [semantic_tree(v) for v in value]
+        return [_semantic_tree(v) for v in value]
     if type(value) is dict:
         if any(type(k) is not str for k in value):
             raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "nonstring mapping key")
-        return {k: semantic_tree(v) for k, v in value.items()}
+        return {k: _semantic_tree(v) for k, v in value.items()}
     registered = _FIELDS.get(type(value))
     if registered is not None and is_dataclass(value):
         # Annotated float DTO fields have IEEE-754 binary64 semantics regardless
@@ -61,13 +69,21 @@ def semantic_tree(value: object) -> object:
                     item = float(item)
                 except OverflowError as exc:
                     raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "float field outside binary64") from exc
-            normalized[name] = semantic_tree(item)
+            normalized[name] = _semantic_tree(item)
         return normalized
     raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "unregistered identity object")
 
 
 def canonical_bytes(value: object) -> bytes:
-    """ADR-0062 exact tagged grammar; rejects undeclared or nonfinite values."""
+    """ADR-0062 exact grammar, with bounded, typed failures for recursive inputs."""
+    try:
+        return _canonical_bytes(value)
+    except RecursionError as exc:
+        raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "cyclic or excessively deep canonical data") from exc
+
+
+def _canonical_bytes(value: object) -> bytes:
+    """Exact tagged encoding; normal inputs retain byte-identical results."""
     if value is None:
         return b"n"
     if type(value) is bool:
@@ -85,11 +101,11 @@ def canonical_bytes(value: object) -> bytes:
             raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "invalid UTF-8 text") from exc
         return b"s" + str(len(payload)).encode("ascii") + b":" + payload
     if type(value) in (tuple, list):
-        return b"l" + str(len(value)).encode("ascii") + b"[" + b"".join(canonical_bytes(x) for x in value) + b"]"
+        return b"l" + str(len(value)).encode("ascii") + b"[" + b"".join(_canonical_bytes(x) for x in value) + b"]"
     if type(value) is dict:
         if any(type(k) is not str for k in value):
             raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "nonstring mapping key")
-        return b"m" + str(len(value)).encode("ascii") + b"{" + b"".join(canonical_bytes(k) + canonical_bytes(value[k]) for k in sorted(value)) + b"}"
+        return b"m" + str(len(value)).encode("ascii") + b"{" + b"".join(_canonical_bytes(k) + _canonical_bytes(value[k]) for k in sorted(value)) + b"}"
     raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "undeclared canonical type")
 
 

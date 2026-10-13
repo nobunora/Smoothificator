@@ -54,6 +54,21 @@ class CanonicalTests(unittest.TestCase):
         with self.assertRaises(ContractError):
             identity_root("new-unknown-domain", {})
 
+    def test_cyclic_inputs_fail_with_stable_contract_reason(self):
+        cyclic_list = []
+        cyclic_list.append(cyclic_list)
+        cyclic_map = {}
+        cyclic_map["self"] = cyclic_map
+        for bad in (cyclic_list, cyclic_map):
+            with self.subTest(kind=type(bad).__name__):
+                with self.assertRaises(ContractError):
+                    semantic_tree(bad)
+                with self.assertRaises(ContractError):
+                    canonical_bytes(bad)
+                with self.assertRaises(ContractError):
+                    typed_identity("source-geometry", {"graph": bad})
+        self.assertEqual(canonical_bytes({"a": [1, 2]}), b"m1{s1:al2[i1;i2;]}")
+
     def test_independent_domain_sha256(self):
         root = identity_root("source-geometry", {"mesh": [1, 2]})
         encoded = canonical_bytes(root)

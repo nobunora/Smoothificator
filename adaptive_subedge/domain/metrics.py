@@ -24,5 +24,5 @@ class SupportCoverageMetrics:
     measured_coverage_ratio: float
 
     def __post_init__(self) -> None:
-        if not self.version or any(not finite_binary64(v) or not (0 <= v <= 1) for v in (self.required_coverage_ratio, self.measured_coverage_ratio)):
+        if type(self.version) is not str or not self.version.strip() or any(not finite_binary64(v) or not (0 <= v <= 1) for v in (self.required_coverage_ratio, self.measured_coverage_ratio)):
             raise ContractError(ReasonCode.INVALID_GEOMETRY, "invalid normalized coverage")

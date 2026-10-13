@@ -21,6 +21,13 @@ class ContractTests(unittest.TestCase):
         with self.assertRaises(ContractError):
             PrintPoint3(0.0, float("nan"), 1.0)
 
+    def test_coverage_version_requires_immutable_text(self):
+        from adaptive_subedge.domain.metrics import SupportCoverageMetrics
+        for bad in ([1], {"version": "v1"}, True, "  "):
+            with self.subTest(bad=bad), self.assertRaises(ContractError):
+                SupportCoverageMetrics(bad, 0.5, 0.75)
+        self.assertEqual(SupportCoverageMetrics("coverage-v1", 0.5, 0.75).version, "coverage-v1")
+
     def test_settings_reject_nonfinite_and_physical(self):
         self.assertIsNone(PluginSettings("1", .05, .08, .01, research_policy()).tool_clearance_profile)
         with self.assertRaises(ContractError):
