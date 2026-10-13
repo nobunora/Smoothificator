@@ -68,3 +68,14 @@ Status: PRIMARY REVIEW and scoped implementation of **existing Accepted contract
 - **22:** regularity policy's fixture evidence identifier changes v1 fingerprint while invalid mutable evidence rejects; zero v1 safety qualification implied.
 - **23:** standalone `ErrorEstimatorConfig` canonical projection reacts to declared field changes but is rejected as an undeclared v1 PluginSettings fingerprint. Four tests `tests/unit/test_research_settings_boundary_v2.py`, commit `8e72124e11a8208daaf91c90a33408024287d731`.
 - **24:** Python3.12 GitHub Actions [38410037491](https://github.com/nobunora/Smoothificator/actions/runs/38410037491) compileall PASS, **192/192 unittest PASS**.
+
+## Checkpoint 5 — tasks 25–30 COMPLETE
+- **25:** reviewed actual PlanStore lock/reset/issuance and Accepted ADR-0065 process-local semantics, without inventing postprocess-attempt association.
+- **26:** concurrent resetting, publishing and snapshotting cannot expose mixed-epoch entries; stale epochs return no eligible plans.
+- **27:** another PlanStore's cached/issued snapshot cannot substitute for a fresh session publication.
+- **28:** rejected invalid plan publication at capacity one does not advance analysis generation or evict valid retained plan.
+- **29:** repeated plan-hash publication and bounded eviction produce no duplicate semantic candidates in a deterministic retention sequence. File `tests/unit/test_planstore_reset_races_v2.py`, 4 tests, commit `a452900fba9044d0a33cc37dc9cfc9ec4688a1d3`.
+- **30:** Python3.12 GitHub Actions [38410248681](https://github.com/nobunora/Smoothificator/actions/runs/38410248681): compileall PASS, **196/196 unittest PASS**. Only in-process synchronization verified.
+
+## Task 31 — architecture helper audit, pending validation
+Current `tests/architecture/test_dynamic_import_boundaries.py::_literal_dynamic_targets` recognizes literal `importlib.import_module(...)` but not the equally explicit `from importlib import import_module as alias; alias(...)` nor `import importlib as alias; alias.import_module(...)`. A forbidden Domain -> Orca imported with those explicit literal aliases may not be covered by the dynamic import gate. This is a test-instrumentation coverage gap, **not** evidence that current production code imports forbidden modules. Resolve only lexical module/function aliases defined by import statements, keep computed names and shadowing limitations explicit, and test synthetic forbidden and allowed cases. No production source/import change.
