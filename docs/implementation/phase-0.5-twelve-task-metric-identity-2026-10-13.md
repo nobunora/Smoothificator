@@ -44,3 +44,9 @@ No Ruff/mypy configured, no wheel/package metadata or actual Orca runtime fixtur
 Read ADR-0032 execution-order and same-Z required-support prohibitions, ADR-0064 semantic identity projection, and `tests/unit/test_plan_dependencies.py`.
 
 Existing `PlanSemanticContent` rejects unknown dependencies, non-earlier execution order, and required same-Z candidate support; `SubEdgePath` preserves explicit immutable order and dependency IDs in canonical payload. Existing tests primarily exercise rejection and one valid lower-Z dependency; they do not prove that a *valid change* to explicit support dependency or execution order changes the SHA-256 plan identity. That is a **coverage gap**, not a new authorized geometry algorithm or source defect. Add positive transitive graph and same-Z non-support cases, and identity-mutation fixtures; no production plan/order semantics change.
+
+## Tasks 7–9 — support-graph and candidate identity coverage
+
+- Task 7: audited ADR-0032 and ADR-0064 against `PlanSemanticContent` and `SubEdgePath`. A valid support dependency/order change must alter plan hash; an invalid same-Z required support must reject. These were test gaps, not verified source defects.
+- Task 8: added four tests in `tests/unit/test_plan_dependencies.py`, commit `d4f74a1cbb38a6b2bf97df683fc283f0243c82a3`: support dependency alters plan hash; execution-order metadata affects plan hash; three-level earlier/lower candidate support is valid; same-Z independent paths are hashable but same-Z required support rejects.
+- Task 9: Python 3.12 GitHub Actions [38363680910](https://github.com/nobunora/Smoothificator/actions/runs/38363680910): `python -m compileall -q adaptive_subedge orca_plugin tests` **PASS**; `python -m unittest discover -s tests -p 'test_*.py' -v` **104/104 PASS**, 0 failures/errors, 0.147s reported. M-02 is covered within Phase 0.5 plan metadata only; geometric support adequacy and actual emitter order are NOT VERIFIED.
