@@ -30,3 +30,10 @@ Tasks 43–48: review unresolved v2 schema and Port runtime blockers, complete f
 
 ## Checkpoint evidence
 Pending tasks 4–48.
+
+## Checkpoint 1: tasks 1–6
+
+- **1** preflight Draft PR / starting HEAD `eb722777d74f4884476330385fc0daa59e28cd22`; **2** validated 81/81 manifest, Accepted canonical integer grammar; **3** filed review-only finding I-01 and bounded implementation/test plan.
+- **4** corrected fallback from 1000-digit to 100-digit decimal chunks in `application/serialization.py`; commit `5d82b444fce87eca46b69172aee5f6479c718691`. The canonical output grammar and normal-size integers are unchanged.
+- **5** added 3 tests `tests/unit/test_canonical_int_limit.py`, first commit `94f584257df221cac1cc635a6009962ce1aaf3bc`: 1501-digit nonzero remainder under Python's minimum configured 640-digit limit, small/640-digit identity and restricted-vs-unrestricted typed identity matching.
+- **6** first CI [38387279043](https://github.com/nobunora/Smoothificator/actions/runs/38387279043) **FAILED** due a test-only independent vector with 500 instead of 501 middle zeros. Second run [38387348882](https://github.com/nobunora/Smoothificator/actions/runs/38387348882) **FAILED** due duplicated "1" in negative expected token. Both fixtures corrected in commits `7690e7f644f6ebb503b2b226178f1340952e1590` and `571438ab243667be1d789c5c877bf3308b6cdccc`. Final source commit `571438ab243667be1d789c5c877bf3308b6cdccc`, CI [38387410905](https://github.com/nobunora/Smoothificator/actions/runs/38387410905) Python3.12 compileall PASS and **119/119 unittest PASS**. No implementation failure in either first test run; preserve failed-CI evidence. I-01 confirmed -> resolved in approved boundary.
