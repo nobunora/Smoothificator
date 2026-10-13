@@ -30,3 +30,16 @@ Status: scoped review / implementation. Primary code review, not independent bli
 
 ## Evidence and final results
 Pending work items 3–12. Report exact commit SHA, commands, CI run ID, test count, and non-executed checks. 
+
+## Tasks 1–3 completed — manifest and bounded input failures
+
+- Step 1: confirmed Draft PR #2 baseline `0bed44e74aa9a668c5dcaca70579901b1cf67f32`, handoff blob and 81/81 manifest blobs, and no legacy script changes.
+- Step 2: confirmed C-01 invalid mutable `SupportCoverageMetrics.version`, C-02 non-typed `RecursionError` from cyclic canonical tree inputs. Disposition: confirmed.
+- Step 3: fixed both without changing byte encoding of valid acyclic trees. New wrapper converts recursion to `ContractError`; version requires nonempty string. Commit `a399ac6e6bce301fd440dcfa863fa6ed136a3b67`. Python 3.12 CI run [38333297267](https://github.com/nobunora/Smoothificator/actions/runs/38333297267): compileall PASS; **41/41 tests PASS**. Dispositions: C-01/C-02 confirmed -> resolved in bounded source.
+
+## Tasks 4–6 completed — concurrent stores
+
+- Step 4: reviewed `PlanStore` and `InjectionAttemptStore` against ADR-0037/0065 for session lifetime, issued snapshots, bounded retention, atomic publication and terminal monotonicity. No new material source defect was substantiated within this focused boundary; missing concurrent snapshot/terminal-race coverage was identified as a test gap.
+- Step 5: added four focused tests for 24 parallel publications with immutable complete bounded snapshots, rejection of cross-store snapshots, two competing terminal status updates (exactly one wins), and invalid capacity values. This changes no production runtime code. Commit `81e939a792030bbd0da9e4b91ba6444553a1a490`.
+- Step 6: Python 3.12 GitHub Actions [38333416210](https://github.com/nobunora/Smoothificator/actions/runs/38333416210): compileall PASS, **45/45 focused tests PASS**, 0 failures/errors, 0.076 s per CI log.
+- Concurrency coverage is bounded; no proof of cross-process exclusion, Orca runtime callbacks, or G-code write atomicity is claimed. Original draft remains unmerged.
