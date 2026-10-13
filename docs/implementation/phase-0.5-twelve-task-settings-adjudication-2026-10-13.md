@@ -100,3 +100,14 @@ Next required scope: independent design review and *field-by-field* ADR-0066 adj
 A separately proposed Settings v2 schema cannot be integrated under the current validated implementation scope. Primary design-review packets were added to **Draft PR #3**, not to this PR: `docs/implementation/settings-v2-schema-adjudication-review-2026-10-13.md` (normative coverage matrix, missing fields) and `docs/implementation/settings-v2-migration-revalidation-cases-2026-10-13.md` (ADR-0037/0065 selection, precommit TOCTOU and epoch/eviction scenarios). `docs/adr/0066-...` remains **Proposed only**. These are not independent blind reviews or new accepted contracts.
 
 Implementation branch remains scoped to the established v1 fingerprint and versioned research DTOs. Additional focused review found a separate ADR-0062 type-normalization issue: subclassed string identity/version/dtype labels can compare equal to registered schema strings and pass boundary guards even though canonical scalar serializer accepts only exact builtin strings. Remedy only exact type validation; never change canonical byte values of valid inputs.
+
+## Final follow-up task 10 — identity determinism gap audit (primary)
+
+After fixing the strict string identity labels at commit `65f7e2f6c8d36f610556e40c0934417df7511a43`, GitHub Actions `38350966114` compiled and passed 71/71 tests on Python 3.12.
+
+Additional bounded test-gap review against ADR-0049/0062/0064:
+- Unicode exact-code-point preservation (NFC vs NFD) needs a direct negative-equivalence fixture, rather than only the multibyte UTF-8 length check.
+- Zero-sized canonical i64 arrays need explicit big-endian rank/shape fixture; empty values must not be confused with a scalar-shaped array that requires one value.
+- Runtime-only generation/attempt records must not silently change the Plan hash. Existing core objects exclude those by design; a direct lifecycle regression test is useful.
+
+These are **test coverage gaps**, not confirmed source defects. Add focused regression vectors without changing canonical bytes, v1 settings schema, or state ownership. No authority to treat Proposed ADR-0066 as Accepted.
