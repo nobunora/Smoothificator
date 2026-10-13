@@ -147,9 +147,9 @@ class PlanSemanticContent:
             raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "duplicate insertion anchor")
         if any(not set(anchor.structural_loop_ids).issubset(self.structural_reference_ids) for anchor in self.anchors):
             raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "anchor refers to undeclared structural loop")
-        if not all(isinstance(i, IdentityReference) for i in (self.source_geometry, self.execution_config, self.plugin_settings)):
+        if not all(type(i) is IdentityReference for i in (self.source_geometry, self.execution_config, self.plugin_settings)):
             raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "missing typed plan identity")
-        if not isinstance(self.error_metrics, ErrorMetrics) or type(self.injectable) is not bool or not isinstance(self.reason, str):
+        if type(self.error_metrics) is not ErrorMetrics or type(self.injectable) is not bool or type(self.reason) is not str:
             raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "invalid plan outcome/metrics")
         for v in (self.geometric_volume_mm3, self.commanded_volume_mm3, self.estimated_added_time_s):
             if not finite_binary64(v) or v < 0:

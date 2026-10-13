@@ -140,6 +140,48 @@ class ContractTests(unittest.TestCase):
         with self.assertRaises(ContractError):
             SubEdgeSegment(a, b, .2, .1, .1, .4, .03, .029, 30)
 
+    def test_plan_nested_identity_and_reason_types_match_canonical_schema(self):
+        from dataclasses import replace
+        from adaptive_subedge.domain.plan import IdentityReference
+        from adaptive_subedge.domain.metrics import ErrorMetrics
+        from adaptive_subedge.application.hashing import create_plan
+        from tests.unit.test_canonical import plan_content
+        class ExtendedIdentity(IdentityReference):
+            pass
+        class ExtendedMetrics(ErrorMetrics):
+            pass
+        class ExtendedReason(str):
+            pass
+        baseline = plan_content()
+        valid = create_plan(baseline)
+        self.assertEqual(valid.plan_id, valid.plan_hash)
+        for field, malformed in (
+            ("source_geometry", ExtendedIdentity(
+                baseline.source_geometry.identity_type,
+                baseline.source_geometry.schema_version,
+                baseline.source_geometry.canonical_encoding_version,
+                baseline.source_geometry.digest_hex)),
+            ("execution_config", ExtendedIdentity(
+                baseline.execution_config.identity_type,
+                baseline.execution_config.schema_version,
+                baseline.execution_config.canonical_encoding_version,
+                baseline.execution_config.digest_hex)),
+            ("plugin_settings", ExtendedIdentity(
+                baseline.plugin_settings.identity_type,
+                baseline.plugin_settings.schema_version,
+                baseline.plugin_settings.canonical_encoding_version,
+                baseline.plugin_settings.digest_hex)),
+            ("error_metrics", ExtendedMetrics(
+                baseline.error_metrics.e_max_mm,
+                baseline.error_metrics.e_rms_mm,
+                baseline.error_metrics.e_p95_mm,
+                baseline.error_metrics.signed_mean_mm)),
+            ("reason", ExtendedReason("analysis-only")),
+        ):
+            with self.subTest(field=field), self.assertRaises(ContractError) as error:
+                replace(baseline, **{field: malformed})
+            self.assertEqual(error.exception.reason, ReasonCode.INVALID_CANONICAL_VALUE)
+
     def test_candidate_constant_z_and_local_flow(self):
         a = PrintPoint2(0, 0)
         b = PrintPoint2(1, 0)
