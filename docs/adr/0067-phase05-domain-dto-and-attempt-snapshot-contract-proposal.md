@@ -100,6 +100,10 @@ ARCHITECTURE §2 lists the eventual engine, ports, adapters, preview and G-code 
 - Using an imagined Orca export-session ID or reconstructing an evicted plan from G-code.
 - Adding no-op placeholder Orca/G-code modules solely to make the listed package tree look complete.
 
+## Specification reviewer checklist
+
+An explicit six-decision approval sequence integrating this proposal with Proposed ADR-0066 is maintained at [Phase 0.5 specification approval checklist](../implementation/phase05-spec-approval-checklist-2026-10-14.md). It requires a separate reviewer disposition on Plan identity versioning, Settings ownership, public DTO semantics, attempt evidence states, snapshot-to-invocation provenance and the Phase 0.5 target package tree. **The checklist is NOT an Accepted ADR and does not authorize schema changes or physical injection.**
+
 ## Acceptance gates before any implementation of this proposal
 
 1. Source-review D1–D5 with concrete field types, units, meaning and owner; reconcile relevant Accepted ADRs and canonical SPECIFICATION / IMPLEMENTATION / ARCHITECTURE in a separate approved specification revision.
