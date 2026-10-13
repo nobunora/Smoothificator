@@ -39,3 +39,15 @@ No Accepted ADR modification without specification review; no schema v1 fingerpr
 `python -m unittest discover -s tests -p 'test_*.py' -v`
 
 Run using existing GitHub Actions on the actual pushed SHA and record PASS/FAIL explicitly. Further audit notes appended after each checkpoint.
+
+## Results: tasks 4–6 — specification proposal separated
+
+- Task 4: created `proposed-settings-schema-v2-20261013` from audited design commit `347098214979ff3efb5f669c6e3276c0c262d5a7`, separate from PR #2 and the implementation branch.
+- Task 5: added Proposed (NOT Accepted) `docs/adr/0066-plugin-settings-fingerprint-schema-versioning-proposal.md`, commit `7cd5da090a8470165501b32357fffeed942cb927`. Proposes preserving v1 canonical bytes, versioning a later complete PluginSettings identity, no safety defaults, distinct Orca execution fingerprint ownership, no implicit migration, outstanding field schema decisions.
+- Task 6: source cross-check of five relevant accepted ADR policy groups, Proposal status, absence of Accepted status, and a single-file git diff; opened **Draft [PR #3](https://github.com/nobunora/Smoothificator/pull/3)** against `adaptive-subedge-design`. Not merged and not authoritative. Full field schema, audit restamp and review still required before any v2 production implementation.
+
+## Results: tasks 7–9 — v1 compatibility regression
+
+- Task 7: added `tests/unit/test_v1_settings_fingerprint_golden.py` in commit `cb3bee8940a61951e870401e747142e5bbc96b45`. Four tests independently reconstruct ADR-0062 v1 tagged-root bytes using a separate test implementation with stdlib hashlib, verify semantic sensitivity of every regularity field and research-only ToolClearanceProfile metadata, and assert schema v2 / physical injection are still rejected.
+- Task 8: added two architecture tests in `tests/architecture/test_versioned_dto_contracts.py`, commit `00aae761d230b2ad8339c09e2921b90f5296ccbb`. These verify `fingerprint_plugin_settings` rejects non-PluginSettings DTOs and v2/unknown root versions; v1 still exposes the same seven fields and exact four-field typed identity root.
+- Task 9: GitHub Actions `Phase 0.5 contracts`, Python 3.12 run [38340202160](https://github.com/nobunora/Smoothificator/actions/runs/38340202160), head `00aae761d230b2ad8339c09e2921b90f5296ccbb`: `python -m compileall -q adaptive_subedge orca_plugin tests` **PASS** and `python -m unittest discover -s tests -p 'test_*.py' -v` **PASS 67/67**, 0 failures/errors (0.119s in logged test suite). No production Settings or identity change. Baseline test count was 61; added six, now 67.
