@@ -51,3 +51,19 @@ Full Phase 0.5 Settings/Fingerprint schema versioning remains **spec-change-requ
 ## Results
 
 To be appended with exact commit and verified test evidence after each 3-task block.
+
+## Tasks 4–9 — approved, standalone DTO implementation and CI
+
+- Task 4: `domain/settings.py` adds `SurfaceCorrespondencePolicy` from ADR-0050 with explicit distance, normal alignment, local neighborhood, ray numeric tolerance and versioned fallback policy fields. All caller-supplied, no defaults or geometry algorithms. Commit `7f04c69543bb6c5b6339e5aca97c6366ce8ca987`.
+- Task 5: `ErrorEstimatorConfig` from ADR-0045 includes initial error spacing, refinement factor >1, convergence tolerance, maximum refinements, sign/closest-point version and nested immutable correspondence policy. Commit `0b27767be83bd6a4ada7c4fbf83a4815ad7f95c2`.
+- Task 6: explicit `serialization._FIELDS` whitelist for these two DTOs and four focused tests for frozen values, canonical determinism, meaningful field mutation, nonfinite/type/range rejection. Commit `2e67f0f52b5db7a184c792b7fde231e68e0d3e76`; Python 3.12 GitHub Actions `38336969467`: compileall PASS, **55/55 tests PASS**.
+- Task 7: `MeshSectionPolicy` from ADR-0059: caller-supplied predicate epsilon, coplanar epsilon, join tolerance, quantization geometry tolerance and sampling/convergence policy version. Strict positive finite numerics; no broad vertex exclusion default. Commit `f70d69c824f63ff534bb35a428a74de7c0b96a50`.
+- Task 8: registered exact serializer fields and three frozen/canonical/invalid-boundary tests. Commit `2060f0d539c7a9582b9adf64e5b1efc572b50b5a`.
+- Task 9: Python 3.12 GitHub Actions `38337106103`: compileall PASS and **58/58 tests PASS** (0 failures/errors). No live Orca adapter, optimizer, physical output or G-code mutation.
+
+## Task 10 — Settings identity/schema integration audit
+
+- `PluginSettings.schema_version` still equals `"1"`, with a closed v1 dataclass and canonical serializer field registry. It does **not** contain these three standalone DTOs.
+- ADR-0045/0050/0059 demand estimator/correspondence/section settings take part in the eventual PluginSettingsFingerprint. ADR-0049/0062 require schema/version update when adding identity-affecting semantics. Inserting these fields into current v1 and still claiming v1 identity would silently change the digest contract.
+- Disposition: **spec-change-required** for complete settings fingerprint integration. Requires accepted versioned Settings schema decision, canonical specification/handoff restamping and repository review **before** consuming these new DTOs for actual injection. The existence of a research-only value DTO does not satisfy the end-to-end plugin-Settings/Fingerprint requirement.
+- Scope boundary is deliberate. No independent Orca runtime compatibility proof is available; no package build, mesh section/estimator implementation, safety calibration, source-geometry correspondence or physical injection is claimed.
