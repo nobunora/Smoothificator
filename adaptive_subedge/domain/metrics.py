@@ -17,7 +17,8 @@ class ErrorMetrics:
             raise ContractError(ReasonCode.INVALID_GEOMETRY, "invalid error metric")
         # Both bidirectional summary RMS and p95 are bounded by the largest
         # directional maximum. This checks DTO coherence, not convergence.
-        if self.e_rms_mm > self.e_max_mm or self.e_p95_mm > self.e_max_mm:
+        if (self.e_rms_mm > self.e_max_mm or self.e_p95_mm > self.e_max_mm
+                or abs(self.signed_mean_mm) > self.e_max_mm):
             raise ContractError(ReasonCode.INVALID_GEOMETRY, "error summary exceeds maximum")
 
 
