@@ -67,3 +67,18 @@ To be appended with exact commit and verified test evidence after each 3-task bl
 - ADR-0045/0050/0059 demand estimator/correspondence/section settings take part in the eventual PluginSettingsFingerprint. ADR-0049/0062 require schema/version update when adding identity-affecting semantics. Inserting these fields into current v1 and still claiming v1 identity would silently change the digest contract.
 - Disposition: **spec-change-required** for complete settings fingerprint integration. Requires accepted versioned Settings schema decision, canonical specification/handoff restamping and repository review **before** consuming these new DTOs for actual injection. The existence of a research-only value DTO does not satisfy the end-to-end plugin-Settings/Fingerprint requirement.
 - Scope boundary is deliberate. No independent Orca runtime compatibility proof is available; no package build, mesh section/estimator implementation, safety calibration, source-geometry correspondence or physical injection is claimed.
+
+## Task 11 — architecture/schema regression suite
+
+- Added `tests/architecture/test_versioned_dto_contracts.py` at commit `37b313bc42a9a9f98280029f0682d57fa6560302`.
+- Tests assert three new DTOs have exact explicit canonical `_FIELDS` corresponding to declared dataclass fields; `PluginSettings` v1 still contains its original seven fields and does not silently fingerprint research-only DTOs; physical injection remains rejected with `PHYSICAL_INJECTION_NOT_AUTHORIZED`.
+- CI [38337219038](https://github.com/nobunora/Smoothificator/actions/runs/38337219038): Python 3.12 compileall PASS, **61/61 focused tests PASS**, 0 failures/errors. No claim of full optimizer/policy completeness.
+
+## Task 12 — final diff, evidence and stop condition
+
+- Compared implementation branch against base head `5137492697191e50c84e64fc5c3cd8a4fc606d54`. Six changed file paths: `domain/settings.py`, `application/serialization.py`, three new `tests/` files and this implementation review record. No legacy Smoothificator scripts or G-code execution components changed.
+- Canonical specification/ADR references remain at the same pinned revision, no unreviewed ADR or hash identity schema modification has been made.
+- Focused suite increased from 51 to **61 tests**, all successful in Python 3.12. This is positive bounded code evidence, not evidence of compatibility with actual installed OrcaSlicer or physical machine.
+- **Findings dispositions**: missing ADR-0045/0050/0059 immutable value DTO coverage confirmed -> resolved *as standalone research-only DTOs*. Validation and canonical field registry complete for this scope. End-to-end PluginSettingsFingerprint inclusion remains **spec-change-required / unresolved**; it was intentionally not implemented under the existing v1 semantic identity.
+- **Not run / not configured**: embedded Orca runtime, actual NumPy array adapter C/F/endian tests, wheel build, fixture calibration, optimizer/mesh section geometry, full static type analyzer and independent implementation/blind review. Physical injection remains forbidden.
+- Draft PR #2 stays **open, Draft and unmerged**. Work stopped after the twelve bounded tasks. Next gate is ADR-led PluginSettings fingerprint schema finalization/re-audit, completion of other Phase 0.5 DTO/ports, and genuinely independent reviewer examination; no code merge or print authorization.
