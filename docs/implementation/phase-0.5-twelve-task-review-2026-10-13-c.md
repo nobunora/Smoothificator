@@ -45,3 +45,11 @@ No broad dependency upgrade, new adapter, printer/G-code work, physical default 
 - Task 4: exact builtin string-key validation added to `validate_root` and `validate_array_token`, commit `d705aa62cc39160c489a47fe43b2ff6533a258bd`. Valid canonical byte framing, domain tags and v1 Settings hash unchanged.
 - Task 5: two negative/positive tests verify that equal-looking `str`-subclass dictionary keys are rejected immediately by the typed validators while valid exact roots and array tokens remain accepted; commit `1f75df0b8643c0d11bc2bb0a0556e0db6cadd2c7`.
 - Task 6: Python 3.12 GitHub Actions [38357681532](https://github.com/nobunora/Smoothificator/actions/runs/38357681532) on `1f75df0b8643c0d11bc2bb0a0556e0db6cadd2c7`: `python -m compileall -q adaptive_subedge orca_plugin tests` **PASS**, `python -m unittest discover -s tests -p 'test_*.py' -v` **77/77 PASS**, 0 failures/errors. K-01/K-02 disposition **confirmed -> resolved** for typed boundary checking.
+
+## Task 7 — ADR-0065 lifecycle audit (primary, bounded)
+
+Reviewed actual `PlanStore.publish/snapshot/reset/eligible`, store tests, ADR-0037 and Accepted ADR-0065. Current implementation is a bounded `OrderedDict` publication index, with a weak registry proving snapshot issuance and an epoch guard. Newer analyzer publications and bounded evictions do not mutate an already captured immutable snapshot.
+
+Existing tests did not independently assert all of: eviction **before a fresh snapshot** makes a plan unavailable, MRU deduplication's effect on bounded eviction, epoch-local generation restart, and no strong retention of discarded snapshots. These are **coverage gaps**, not new ADR-authorized production behavior changes.
+
+The separate K-03 concern remains: a store-issued snapshot may be reused by another caller after eviction; only a future postprocess invocation/attempt association can prove it was captured for an already-running export. It must not be 'fixed' by revoking every old snapshot (which would violate ADR-0065), or by inventing a speculative API in Phase 0.5. Disposition: `requires-further-evidence` for the exact runtime attempt binding. Add only tests for established boundaries now.
