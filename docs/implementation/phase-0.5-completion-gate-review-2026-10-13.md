@@ -72,3 +72,13 @@ Accepted ADR-0065's **in-process** `(eligible PlanSnapshot, unique InjectionAtte
 - **Still NOT CLOSED:** the exact verified Orca callback adapter does not yet invoke this operation; source-file identity and final G-code safety gates are deferred to later phases. Richer attempt evidence types required by ADR-0037, missing domain DTO semantics including SurfaceBand, and complete PluginSettings v2 fingerprint fields remain subject to unapproved ADR-0067 (Draft PR #4) and ADR-0066 (Draft PR #3).
 
 The original acceptance table above is a historical review at commit `e345b9a9850e0203f1b441d6eb3f2692faa921c3`. Its row saying two stores are separate applies to **that** baseline, not to the newly added paired in-process method. The final Phase 0.5 status remains **NOT READY / SPEC-CHANGE-REQUIRED** pending the other missing accepted semantic contracts and reviewer decisions. No physical injection, G-code mutation or legacy scripts were added.
+
+## 2026-10-14 additional bounded implementation and completion gate
+
+After the already-Accepted ADR-0065 in-process attempt/snapshot pair was introduced, three adversarial concurrency tests showed snapshot/attempt issuance holds the PlanStore lock through record creation, releases it after failure, and denies unrelated PlanStore provenance; [CI 213/213 PASS](https://github.com/nobunora/Smoothificator/actions/runs/38426481158).
+
+A subsequent pre-edit scoped review [attempt-ID uniqueness collision review](phase05-attempt-identity-collision-review-2026-10-14.md) confirmed that the unique-ID requirement of ADR-0037/0065 could be breached by an improbable generated ID collision overwriting an existing dict entry. Source `application/execution_status.py` now fails closed before overwrite (commit `cf1c3bd6f7b0921ba89f9900f673e2aedfb13791`). Tests cover UUID collisions and rollback within the atomic snapshot pair; [Python 3.12 CI 216/216 PASS](https://github.com/nobunora/Smoothificator/actions/runs/38426756545).
+
+These close **in-scope execution record collision and concurrency test gaps**, not the remaining specification-wide Phase 0.5 blockers: incomplete accepted Settings schema/fingerprint, missing normative SurfaceBand/plan field schema, richer Attempt evidence DTO contract, review/disposition/acceptance of Proposed ADR-0066 (Draft PR #3) and ADR-0067 (Draft PR #4). Exact Orca embedded runtime is a later-phase fixture gate under the handoff. No printer/G-code work or unsupported schema version was added.
+
+**Disposition remains SPEC-CHANGE-REQUIRED; the completed 216 unit tests do NOT qualify Phase 0.5 for merge or physical injection.**
