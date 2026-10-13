@@ -87,3 +87,81 @@ Current `tests/architecture/test_dynamic_import_boundaries.py::_literal_dynamic_
 - **34:** relative importlib function alias resolves explicit `package` into the forbidden full module.
 - **35:** computed runtime import strings explicitly **NOT DETECTED** and not falsely claimed; scan currently present domain/engine/Ports/application/Orca package source for direct/alias literal dynamic imports. Test helper modified plus four tests in `tests/architecture/test_dynamic_import_aliases.py`, atomic commit `8470666129cb88f46341812a56837b372224de61`.
 - **36:** Python3.12 GitHub Actions [38410560810](https://github.com/nobunora/Smoothificator/actions/runs/38410560810) compileall PASS, **200/200 unittest PASS**, 0 failures/errors. Dynamic import alias detection is a scoped lexical check, not a full Python scope/monkeypatch analysis.
+
+## Checkpoint 7 — tasks 37–42 COMPLETE
+- **37:** reviewed ADR-0049/0064 and current canonical DTO ownership registry; `SubEdgePlan`, runtime attempt records and process session metadata must not enter the immutable semantic preimage.
+- **38:** confirmed `PlanSemanticContent` projection has exactly its registered semantic fields, excludes plan_id/hash, attempt ID and epoch, and recomputes valid plan hash.
+- **39:** confirmed `semantic_tree` rejects derived/runtime `SubEdgePlan`, `InjectionAttemptRecord`, `PublishedPlan` and `PlanSnapshot` DTOs.
+- **40:** tested independent attempt transition and PlanStore epoch reset leave the *semantic Plan SHA* unchanged.
+- **41:** tested exact registered immutable types; derived `ErrorMetrics` and `IdentityReference` subclasses fail the domain serializer boundary. Four tests added in `tests/architecture/test_semantic_projection_closure_v2.py`, commit `a4f0dcf56d1cf4742233cfa9645051b4e94a966f`.
+- **42:** Python3.12 GitHub Actions [38410834575](https://github.com/nobunora/Smoothificator/actions/runs/38410834575) conclusion SUCCESS; compileall PASS, **204/204 unittest PASS** (0 failures/errors, 0.542 s reported).
+
+## Tasks 43–46 — governance, provenance and audit outcome
+- **43:** current pre-closure implementation tree `1606f49f9da6d5f347ae70a66d95a320b753a653`, not truncated, **81/81 audited blob SHAs** match, 65 numbered ADR files. Legacy blobs `Smoothificator.py` `91dd3c1b322a5876f144412f6414ebe86ea3fdce` and `Smoothificator_Adaptive.py` `5e26ecffaa41e95bb381fc68ad012ffa690d0565` unchanged.
+- **44:** re-read Proposed ADR-0066 on design Draft PR #3. Status remains **Proposed / NOT ACCEPTED**. Complete Settings v2 typed field list, policy weights, migration, physical limits and Orca runtime requirements are unresolved. Accepted ADR-0065 demands postprocess attempt ↔ eligible PlanStore snapshot atomic association; actual Orca invocation proof and Port interface signatures remain **requires-further-evidence**.
+- **45:** compared implementation branch to initial `ca7e23a08f965d8bac817ffdf39c31bd3b2205af`: ten changed/added paths at pre-closure head: one production file `application/execution_status.py` (only +2 guard lines), 8 test paths (including one existing architecture test helper) and this evidence record. No legacy changes, new dependencies, physical threshold, G-code handler, Orca adapter, or v1 Settings schema change.
+- **46:** this final auditable results ledger. Next check terminal record SHA CI and PR/diff/manifest after this documentation commit.
+
+## All 48 tasks ledger
+
+| Tasks | Executed work / verified outcome |
+|---|---|
+| 1 | Git branch, two Draft PR states and diff baseline verified |
+| 2 | 81 audited blob SHAs and Accepted ADR governance verified |
+| 3 | F-01 identified, review-only implementation scope documented |
+| 4 | Exact attempt-ID front-door guard added; no raw TypeError from invalid ID |
+| 5 | Three wrong/unknown/valid-ID tests and unchanged authoritative record |
+| 6 | GitHub Actions **180/180 PASS** |
+| 7 | Reviewed terminal Attempt DTO fields, exact identity and stable reasons |
+| 8 | Full lowercase SHA and None acceptance tested; invalid hash rejected |
+| 9 | Attempt/file ID must be builtin nonempty strings |
+| 10 | Terminal reason required and nonterminal reasons forbidden |
+| 11 | Frozen AttemptState enum / string alias rejection |
+| 12 | GitHub Actions **184/184 PASS** |
+| 13 | Rechecked Accepted v1 canonical scalar/root requirements |
+| 14 | UTF-8 byte-length vectors including combining/emoji/NUL |
+| 15 | Unicode codepoint key sorting/insertion order independence |
+| 16 | -0.0 normalization and distinct boolean/integer/float tags |
+| 17 | Exact typed root keys/version rejection and independent digest |
+| 18 | GitHub Actions **188/188 PASS** |
+| 19 | Reviewed research-only Settings and ToolClearance contract |
+| 20 | Monotone height but fixture-defined, nonmonotone radial curve |
+| 21 | Tool curve tip origin/height upper bound/strict order |
+| 22 | Regularity fixture ID changes v1 hash; mutable evidence rejected |
+| 23 | Estimator research DTO canonical but cannot impersonate PluginSettings |
+| 24 | GitHub Actions **192/192 PASS** |
+| 25 | Reviewed ADR-0065 PlanStore epoch + publication guarantees |
+| 26 | Simultaneous reset/publication/snapshot cannot mix epochs |
+| 27 | Old/cached sessions not eligible in a fresh store |
+| 28 | Invalid plan publish does not evict or advance generation |
+| 29 | Repeat hash updates preserve bounded unique publication candidates |
+| 30 | GitHub Actions **196/196 PASS** |
+| 31 | Reviewed literal dynamic import alias test gap |
+| 32 | From-imported module loader alias recognized and flagged |
+| 33 | Imported importlib module alias recognized and flagged |
+| 34 | Relative import alias resolves package and forbidden target |
+| 35 | Computed module names explicitly excluded; actual source scan verified |
+| 36 | GitHub Actions **200/200 PASS** |
+| 37 | Reviewed canonical ownership versus runtime derived DTOs |
+| 38 | Exact PlanSemanticContent field whitelist/root identity |
+| 39 | Derived/runtime DTOs excluded from semantic preimage |
+| 40 | Generation/attempt status changes do not change Plan SHA |
+| 41 | Subclassed DTOs rejected from canonical plan payload |
+| 42 | GitHub Actions **204/204 PASS** |
+| 43 | Final pre-closure audited 81-blob tree and legacy evidence checked |
+| 44 | Proposed ADR-0066/Ports/attempt association remain unresolved |
+| 45 | Narrow diff reviewed, no legacy/G-code or Settings changes |
+| 46 | Complete evidence record and dispositions |
+| 47 | Verify exact closure-commit GitHub Actions success |
+| 48 | Recheck final SHA, both Draft PRs, manifest, STOP |
+
+## Final technical disposition and limitations
+- **F-01 Medium confirmed -> resolved:** `InjectionAttemptStore.transition` now reports stable `ContractError(INVALID_STATE_TRANSITION)` for nonhashable/wrong/empty attempt IDs instead of leaking ordinary TypeError. Existing valid attempt record/transition semantics unchanged.
+- **Import alias coverage gap confirmed -> closed for literal lexical aliases only:** `from importlib import import_module as ...` and `import importlib as ...` synthetic forbidden dependencies now covered. Shadowing/computed names are not exhaustively statically resolved; no claim of complete Python import-security proof.
+- **Established contracts directly verified, no novel requirement introduced:** immutable attempts, canonical scalar/tree identity, v1 Settings isolation, PlanStore publication/epoch/eviction, semantic content exclusion.
+- Total tests **177 -> 204, +27** across seven focused stages. Main code delta is two lines in `application/execution_status.py` plus test-only architecture resolver enhancements and new test files; canonical hash grammar and physical mode unchanged.
+- **Still spec-change-required:** complete Settings v2 semantic schema, acceptance of Proposed ADR-0066 and normative canonical handoff/audit restamp. **Requires-further-evidence:** exact Orca postprocess snapshot/attempt binding and supported Port signatures, embedded Orca Python/NumPy and actual fixture.
+- **NOT CONFIGURED / NOT PERFORMED:** Ruff/mypy/pyright, wheel/package build, independent blind implementation review, live Orca G-code, source mesh optimizer, physical printer tests. No green CI run authorizes printing or merging.
+- Rollback: revert the narrow attempt ID guard and delete test/evidence-only changes; it would restore raw exception exposure for malformed IDs but does not alter G-code output because no production injector exists. Physical Injection remains explicitly prohibited.
+
+**Task 47 CI and task 48 PR/manifest verification must be completed after this documentation commit. Stop after task 48.**
