@@ -23,6 +23,8 @@ class InjectionAttemptStore:
     def begin(self, plan_hash: str | None, source_working_file_identity: str) -> InjectionAttemptRecord:
         with self._lock:
             record = InjectionAttemptRecord(uuid4().hex, plan_hash, source_working_file_identity, AttemptState.STARTED)
+            if record.attempt_id in self._records:
+                raise ContractError(ReasonCode.INVALID_STATE_TRANSITION, "duplicate attempt identity")
             self._records[record.attempt_id] = record
             return record
 
