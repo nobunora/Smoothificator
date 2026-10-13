@@ -52,3 +52,11 @@ Status: PRIMARY REVIEW and scoped implementation of **existing Accepted contract
 - **10:** every SKIPPED/FAILED/FATAL requires `ReasonCode`; nonterminal states forbid terminal reasons.
 - **11:** frozen enum `AttemptState` cannot be replaced with string aliases or mutated post-construction. Four test methods in `tests/unit/test_attempt_record_contract_matrix_v2.py`, commit `b61be4c4fb2c1e1ab73d27775d84fb99e87233e2`.
 - **12:** Python3.12 GitHub Actions [38409581549](https://github.com/nobunora/Smoothificator/actions/runs/38409581549) complete: `python -m compileall -q adaptive_subedge orca_plugin tests` PASS; `python -m unittest discover -s tests -p 'test_*.py' -v` **184/184 PASS**.
+
+## Checkpoint 3 — tasks 13–18 COMPLETE
+- **13:** rechecked Accepted ADR-0049/0062 and exact v1 typed identity root schema.
+- **14:** independently verified UTF-8 **byte** length for ASCII, multibyte, combining forms, emoji and embedded NUL strings.
+- **15:** independently verified map key ordering by Unicode code points irrespective of insertion order.
+- **16:** verified -0.0/+0.0 normalized float identity, with bool/int/float remaining distinct tagged scalars.
+- **17:** verified exact four-field root reject-extra/missing/cross-domain/unknown versions plus independent full SHA256 preimage vector. File `tests/unit/test_canonical_unicode_scalar_edges.py`, 4 tests, commit `6948e2502cbc319c435234b25f3d1fa12e3371be`.
+- **18:** Python3.12 GitHub Actions [38409806274](https://github.com/nobunora/Smoothificator/actions/runs/38409806274): compileall PASS, **188/188 unittest PASS**, 0 failures/errors.
