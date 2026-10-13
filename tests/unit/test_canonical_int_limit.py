@@ -15,7 +15,7 @@ class CanonicalIntegerLimitTests(unittest.TestCase):
             huge = 10 ** 1500 + (10 ** 999 - 1)
             expected = b"i1" + b"0" * 501 + b"9" * 999 + b";"
             self.assertEqual(canonical_bytes(huge), expected)
-            self.assertEqual(canonical_bytes(-huge), b"i-1" + expected[1:])
+            self.assertEqual(canonical_bytes(-huge), b"i-" + expected[1:])
         finally:
             sys.set_int_max_str_digits(original)
 
