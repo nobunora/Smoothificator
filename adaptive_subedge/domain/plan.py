@@ -163,5 +163,5 @@ class SubEdgePlan:
     plan_id: str
 
     def __post_init__(self) -> None:
-        if not isinstance(self.content, PlanSemanticContent) or type(self.plan_hash) is not str or self.plan_id != self.plan_hash or len(self.plan_hash) != 64 or any(c not in "0123456789abcdef" for c in self.plan_hash):
+        if type(self.content) is not PlanSemanticContent or type(self.plan_hash) is not str or type(self.plan_id) is not str or self.plan_id != self.plan_hash or len(self.plan_hash) != 64 or any(c not in "0123456789abcdef" for c in self.plan_hash):
             raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "invalid plan identity")
