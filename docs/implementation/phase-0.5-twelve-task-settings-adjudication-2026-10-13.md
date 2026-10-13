@@ -111,3 +111,41 @@ Additional bounded test-gap review against ADR-0049/0062/0064:
 - Runtime-only generation/attempt records must not silently change the Plan hash. Existing core objects exclude those by design; a direct lifecycle regression test is useful.
 
 These are **test coverage gaps**, not confirmed source defects. Add focused regression vectors without changing canonical bytes, v1 settings schema, or state ownership. No authority to treat Proposed ADR-0066 as Accepted.
+
+## 2026-10-13, following twelve-task tranche — final task 12
+
+### Task ledger
+
+| # | Bounded purpose | Verified result |
+| --- | --- | --- |
+| 1 | Read AGENTS / PR metadata, establish exact implementation head | PR #2 `291df539e424b64a6c9e6eacbfa088563fe3aa71`; PR #3 both Draft |
+| 2 | Check accepted ADR/Specification and manifest/Settings coverage | 81/81 manifest pinned blobs, v2 complete field list unresolved |
+| 3 | Produce primary design-review field provenance matrix | `docs/implementation/settings-v2-schema-adjudication-review-2026-10-13.md`, design commit `f343d9565455949e7d3487376f0c971ff4e80d74` |
+| 4 | Refine Proposed ADR-0066 version-root versus DTO marker | Design commit `438969b7cee9d0c246d007a1d82b421952472782`; not Accepted |
+| 5 | Review ADR-0037/0065 in-flight export and v1/v2 migration cases | `docs/implementation/settings-v2-migration-revalidation-cases-2026-10-13.md`, design commit `131c350ca1da75dbde97e1260e7ca87b987d6b60` |
+| 6 | Link migration review to draft proposal and verify design-only diff | Design commit `5743c86177d653d4e61362a0cf8b09735d00b996`; 3 Markdown files, PR #3 Draft |
+| 7 | Review strict canonical label type mismatch | Implementation primary finding recorded in this file, commit `293caef8aff0495c74efd323fc525cc1e1e0e203` |
+| 8 | Correct exact string-type validation for root and array schema labels; add regression tests | Source/tests commit `65f7e2f6c8d36f610556e40c0934417df7511a43`, +2 tests |
+| 9 | Verify Python 3.12 CI for label corrections | GitHub Actions [38350966114](https://github.com/nobunora/Smoothificator/actions/runs/38350966114): compileall PASS, **71 tests PASS** |
+| 10 | Audit independent canonical Unicode, scalar/zero-array and runtime identity exclusion test gaps | Recorded in this file, commit `94bfd9881693828b0bb70be5ecc428f8f6debd8f` |
+| 11 | Add four independently computed byte/identity lifecycle regressions | `tests/unit/test_identity_boundary_vectors.py`, commit `0dca14dea14cb2cce542d75152a11d1a9bd56b5e` |
+| 12 | Final source CI, PR diff, disposition, report; stop | GitHub Actions [38351088498](https://github.com/nobunora/Smoothificator/actions/runs/38351088498): compileall PASS, **75 tests PASS**, zero failures/errors |
+
+### Bounded technical result and disposition
+
+- Current v1 canonical-byte grammar/domain tags and plugin-settings identity were **not changed**. Strict invalid inputs, such as an exact-string-looking subclass used as an array dtype or root schema version, now fail closed with `ContractError`. Accepted ADR-0062 strict scalar/schema type behavior is reinforced.
+- Tests explicitly cover Unicode exact-codepoint distinction, i64 zero-sized and 0D array rank/shape digest framing, runtime generation/attempt status/epoch hash exclusion, and typed plugin-reference rejection.
+- Starting 69/69 -> ending **75/75** Python 3.12 tests. This is +6 tests total in this tranche; no installed Orca runtime, actual NumPy ndarray handling or printer-test coverage is implied.
+- F-STRICT-TOKEN: **confirmed -> resolved** for bounded schema-label canonical input; F-IDENTITY-VECTORS: missing test cases now **covered**; F-SCHEMA-v2: **spec-change-required / unresolved**; F-PORTS: **requires-further-evidence**, exact signatures not approved. A Proposed ADR is not an implementation contract.
+- Final compared implementation branch changes relative to `291df539e424b64a6c9e6eacbfa088563fe3aa71`: `application/serialization.py`, `tests/unit/test_canonical.py`, `tests/unit/test_identity_boundary_vectors.py` and this evidence record. **No** legacy `Smoothificator.py` / `Smoothificator_Adaptive.py`, package entrypoint, Orca live adapter, G-code parser/injector or physical printer path changed.
+- Design proposal PR #3 differs from audited design base by exactly three Markdown files: Proposed ADR-0066 and its two primary review/migration evidence packets. No Accepted ADR, SPECIFICATION or audit manifest changed. Both PR #2 and PR #3 verified `draft=true`, `state=open`, unmerged.
+- Commands actually run in GitHub Actions: `python -m compileall -q adaptive_subedge orca_plugin tests` and `python -m unittest discover -s tests -p 'test_*.py' -v`. Lint/static type analyzers and wheel packaging are **NOT CONFIGURED**; actual Windows Orca embedded Python/NumPy and fixture-based printer safety remain **NOT VERIFIED**.
+- Independent blind review **not performed**; no READY_TO_MERGE, no v2 production settings, no Physical Injection permission. Data/surface/port/fixture policy still awaits separate specification adjudication and runtime evidence.
+
+### Rollback, release and next gate
+
+The implementation change can be reverted without printer-output changes, but strict input-type validation would revert as well. The design proposal is fully separate and may be closed without touching PR #2.
+
+Next: complete the field-by-field v2 Settings schema with owner, units, validation and evidence; receive actual review/Accepted status; update canonical normative docs/audit manifest/handoff; revalidate repository before implementing v2. Collect actual Port consumer and Orca adapter evidence rather than inventing method signatures.
+
+**Stop after exactly 12 bounded tasks.**
