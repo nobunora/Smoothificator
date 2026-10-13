@@ -39,3 +39,9 @@ Only stdlib Python 3.12 GitHub Actions:
 `python -m unittest discover -s tests -p 'test_*.py' -v`.
 
 No broad dependency upgrade, new adapter, printer/G-code work, physical default or merge. At completion disclose precise CI/SHA and outstanding independent review/Orca/Settings/Ports gates.
+
+## Tasks 4–6 — typed canonical validators, regression CI
+
+- Task 4: exact builtin string-key validation added to `validate_root` and `validate_array_token`, commit `d705aa62cc39160c489a47fe43b2ff6533a258bd`. Valid canonical byte framing, domain tags and v1 Settings hash unchanged.
+- Task 5: two negative/positive tests verify that equal-looking `str`-subclass dictionary keys are rejected immediately by the typed validators while valid exact roots and array tokens remain accepted; commit `1f75df0b8643c0d11bc2bb0a0556e0db6cadd2c7`.
+- Task 6: Python 3.12 GitHub Actions [38357681532](https://github.com/nobunora/Smoothificator/actions/runs/38357681532) on `1f75df0b8643c0d11bc2bb0a0556e0db6cadd2c7`: `python -m compileall -q adaptive_subedge orca_plugin tests` **PASS**, `python -m unittest discover -s tests -p 'test_*.py' -v` **77/77 PASS**, 0 failures/errors. K-01/K-02 disposition **confirmed -> resolved** for typed boundary checking.
