@@ -81,6 +81,10 @@ Accepted ADR-0065 already requires each invocation to atomically snapshot eligib
 
 A direct inspection of the previously audited Orca source commit `7d44b60ae4042b4de8c3844eb9dd2671c2d2d873` is documented in [the pinned postprocess invocation review](../implementation/phase05-orca-postprocess-invocation-review-2026-10-14.md). `PostProcessor.cpp` constructs `SlicingPipelineContext` and calls `cap->execute(ctx)` for each selected plugin capability. The context exposes a working `gcode_path` and resolved config fallback but no native unique invocation ID. An application-generated unique attempt ID at each supported hook entry is therefore source-consistent, without fabricating a native Orca session identifier. **The application-level atomic snapshot/attempt API and its lock/error rollback design remain unapproved and unimplemented**; installed-target runtime fixture evidence is still missing.
 
+### Pure-process implementation progress (does not accept this ADR)
+
+Draft implementation PR #2 now includes the narrow, already-Accepted ADR-0065 primitive `PlanStore.begin_postprocess_attempt(attempt_store, source_working_file_identity)` at commit `e437c85bed70a828ebdfe4bad3694457b9cc9e58`, with six in-memory rollback/concurrency tests and [Python 3.12 CI 210/210 PASS](https://github.com/nobunora/Smoothificator/actions/runs/38421826772). Under the PlanStore lock it issues only eligible current-epoch candidates alongside a newly created attempt record. This does **not** wire an actual Orca export invocation, determine a real filesystem identity/commit lock, or resolve the richer attempt validation evidence DTO schema. Those D3/D4 points remain **Proposed** and need a separate accepted contract before further implementation.
+
 ### D5. Clarify architectural file-tree milestone boundary
 
 ARCHITECTURE §2 lists the eventual engine, ports, adapters, preview and G-code modules. The Phase 0.5 handoff expressly **forbids implementing** source mesh, optimizer, Orca live bindings and G-code parser/emitter.
