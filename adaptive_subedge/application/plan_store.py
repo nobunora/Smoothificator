@@ -7,6 +7,8 @@ from weakref import WeakSet
 
 from adaptive_subedge.domain.errors import ContractError, ReasonCode
 from adaptive_subedge.domain.plan import SubEdgePlan
+from adaptive_subedge.domain.status import InjectionAttemptRecord
+from .execution_status import InjectionAttemptStore
 from .hashing import verify_plan
 
 
@@ -59,6 +61,32 @@ class PlanStore:
             snapshot = PlanSnapshot(self._epoch, tuple(self._plans.values()))
             self._issued_snapshots.add(snapshot)
             return snapshot
+
+    def begin_postprocess_attempt(
+        self, attempt_store: InjectionAttemptStore, source_working_file_identity: str
+    ) -> tuple[PlanSnapshot, InjectionAttemptRecord]:
+        """ADR-0065: one lock issues an eligible snapshot with a unique attempt.
+
+        Only in-process immutable intent and status are created. The caller must
+        separately verify Orca config, source identity and structural matching.
+        """
+        if type(attempt_store) is not InjectionAttemptStore:
+            raise ContractError(ReasonCode.INVALID_STATE_TRANSITION, "attempt store required")
+        with self._lock:
+            snapshot = PlanSnapshot(
+                self._epoch,
+                tuple(entry for entry in self._plans.values()
+                      if entry.plan.content.injectable is True),
+            )
+            self._issued_snapshots.add(snapshot)
+            try:
+                attempt = attempt_store.begin(None, source_working_file_identity)
+            except Exception:
+                # Failure atomicity: this snapshot was never exposed to a caller.
+                # Do not retain issuance if attempt creation was rejected.
+                self._issued_snapshots.discard(snapshot)
+                raise
+            return snapshot, attempt
 
     def reset(self) -> str:
         with self._lock:
