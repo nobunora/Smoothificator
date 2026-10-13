@@ -58,3 +58,39 @@ Run using existing GitHub Actions on the actual pushed SHA and record PASS/FAIL 
 - Finding P-01 (Medium, CI coverage): current `_import_forbidden` treats `adaptive_subedge.ports` as unconstrained. It also only forbids engine imports from Orca, but not engine imports from the higher-level `adaptive_subedge.application`; and it does not prohibit Orca adapters from importing UI. These are architectural **test gaps**, not evidenced current production violations.
 - `adaptive_subedge/ports/` currently contains only `__init__.py`; no actual mesh_section_provider, plan_repository, or cancellation interfaces. The repository spells representative operation names but not complete signatures; implementing speculative ports now would violate the file/architecture boundary discipline. Record as **requires-further-evidence** until first real adapter/engine call surface exists.
 - Decision: add CI import-regression constraints for ports/engine/adapters only. Do not add Port protocol implementations, plugin settings v2 schema, production machinery or Orca runtime code.
+
+## Results: tasks 10–12 — Port/import architecture and final evidence
+
+- Task 10: reviewed `docs/ARCHITECTURE.md` dependency direction, the representative Port interface names, and `tests/architecture/test_boundaries.py`. Confirmed import-test coverage gap P-01 for `adaptive_subedge.ports`, engine -> application and Orca adapter -> UI imports. Current Port method signatures remain **requires-further-evidence**; no speculative protocol/interface was implemented. Primary review only, not independent blind review.
+- Task 11: strengthened `_import_forbidden` for these inward-only boundaries and added two tests for synthetic forbidden dependencies, valid domain imports and relative-import normalization; no runtime production modules changed. Commit `f3178c04a552aec2560333c6ea1f73bced3391ae`.
+- Task 12: Python 3.12 GitHub Actions [38340339069](https://github.com/nobunora/Smoothificator/actions/runs/38340339069) at source head `f3178c04a552aec2560333c6ea1f73bced3391ae` ran `python -m compileall -q adaptive_subedge orca_plugin tests` **PASS** and `python -m unittest discover -s tests -p 'test_*.py' -v` **69/69 PASS**, zero errors/failures; test runner reported 0.062 s.
+- Implementation diff from initial head `fd05c0d1cc03ce464b4d4a523fa642d9fc6d7a2d`: exactly four file paths before final record update (this report, two architecture tests, one focused golden fingerprint unit file); existing `Smoothificator.py`/`Smoothificator_Adaptive.py` and production domain/application modules unchanged.
+- Design proposal diff: exactly one Proposed ADR-0066 Markdown file, separate new Draft [PR #3](https://github.com/nobunora/Smoothificator/pull/3) against design branch; no existing Accepted ADRs touched.
+- Both PR #2 and PR #3 independently checked: `draft=true`, `merged=false`. PR #3 has not been adjudicated and cannot be taken as an Accepted ADR.
+- Findings: F-SCHEMA **spec-change-required**, unresolved pending complete normative v2 field schema and review; F-PORTS **requires-further-evidence**, no unsupported interface implemented; P-01 test gap **confirmed -> resolved** at architecture-test level. No claim of independent review, Orca embedded Python/NumPy ABI, wheel build, G-code execution/optimizer, fixture safety or physical printing.
+- Earlier audited 81-blob/65-ADR bundle is unchanged by the implementation PR. The separate Proposed ADR-0066 is intentionally NOT in that manifest and requires re-audit/restamp upon eventual acceptance. Neither branch is ready to merge for production.
+
+## Task-by-task completed ledger
+
+| Task | Action | Outcome |
+| --- | --- | --- |
+| 1 | Verified existing branch/PR, audited manifest and 65 ADR list | 81/81 exact blob matches |
+| 2 | Bounded ownership/schema review of Settings and Ports | F-SCHEMA / F-PORTS isolated |
+| 3 | Created 12-task report/test contract | Completed |
+| 4 | Created separate design branch from audited source | Completed |
+| 5 | Drafted proposed ADR-0066 | Proposed ONLY |
+| 6 | Cross-checked ADR and opened separate Draft PR #3 | Completed; no Accepted change |
+| 7 | Added independent v1 fingerprint golden reference and sensitivity tests | 4 tests |
+| 8 | Tested v1/v2 root isolation and strict schema behavior | 2 tests |
+| 9 | Verified CI and recorded checkpoint | 67/67 PASS |
+| 10 | Reviewed Port/engine/adapter dependency policy coverage | P-01 confirmed |
+| 11 | Strengthened import-boundary CI tests | 2 tests |
+| 12 | Verified 69-test CI, both PRs/diff and wrote final dispositions | PASS |
+
+## Rollback and next gate
+
+This iteration changed only test and process-document files on implementation PR #2, plus a single **Proposed** design ADR on a separate draft PR. Reverting those commits restores previous behavior with no printer or G-code effect.
+
+Next required scope: independent design review and *field-by-field* ADR-0066 adjudication; after Accepted approval, update normative documents, manifest and handoff then rerun repository review before implementing full Settings fingerprint. Evidence-backed Port signatures are a separate blocker; do not create generic placeholder interfaces. No printer/G-code injection may be enabled from either Draft PR.
+
+**Stop after these 12 completed tasks.**
