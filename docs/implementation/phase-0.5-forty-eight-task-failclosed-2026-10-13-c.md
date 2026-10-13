@@ -39,3 +39,8 @@ Status: PRIMARY REVIEW and scoped implementation of **existing Accepted contract
 - GitHub Actions Python 3.12: `python -m compileall -q adaptive_subedge orca_plugin tests`; `python -m unittest discover -s tests -p 'test_*.py' -v`. Record run ID/conclusion/log.
 - No Ruff/mypy or wheel build configured; actual embedded Orca Python/NumPy and independent review unverified.
 - Do not claim another step completed merely for writing a plan; every specific test/source check must actually run and be identified in logs.
+
+## Checkpoint 1 — tasks 4–6 COMPLETE
+- **4:** `application/execution_status.py` validates that `attempt_id` is an exact nonempty builtin string *before* the record dictionary lookup. This closes the unhashable-ID raw `TypeError` while preserving existing state machine progression. Commit `8ff28a2b5782e13415922fd3db47746303400e54`.
+- **5:** Three focused regression tests `tests/unit/test_attempt_id_boundary.py`, commit `6b3cf56dc48facb5222bf2318c88a489c8ec956c`. Wrong/nonhashable IDs (list/dict/set, subclass string, bytes, None, etc.) and unknown nonempty IDs raise `ContractError(INVALID_STATE_TRANSITION)` without mutation; exact ID still progresses normally.
+- **6:** Python 3.12 GitHub Actions [38409368194](https://github.com/nobunora/Smoothificator/actions/runs/38409368194) completed successfully; compileall and `python -m unittest discover -s tests -p 'test_*.py' -v` **180/180 PASS**. F-01 confirmed -> resolved; no printer/output/new schema behavior.
