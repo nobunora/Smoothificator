@@ -110,6 +110,56 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(sorted(outcomes), ["advanced", "rejected"])
         self.assertEqual(status.snapshot()[0].state, AttemptState.VALIDATED)
 
+    def test_concurrent_snapshots_remain_complete_and_bounded(self):
+        store = PlanStore(5)
+        plans = [plan(i, injectable=True) for i in range(24)]
+        def publish_then_snapshot(candidate):
+            item = store.publish(candidate)
+            snapshot = store.snapshot()
+            self.assertTrue(all(p.plugin_session_epoch == snapshot.plugin_session_epoch
+                                for p in snapshot.candidates))
+            self.assertEqual(len(snapshot.candidates),
+                             len({p.plan.plan_hash for p in snapshot.candidates}))
+            self.assertLessEqual(len(snapshot.candidates), 5)
+            return item, snapshot
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            histories = list(pool.map(publish_then_snapshot, plans))
+        self.assertEqual(len({entry.analysis_generation_id for entry, _ in histories}), 24)
+        self.assertTrue(all(len(snap.candidates) >= 1 for _, snap in histories))
+
+    def test_cross_store_snapshot_cannot_claim_eligibility(self):
+        first = PlanStore(2)
+        second = PlanStore(2)
+        chosen = plan(800, injectable=True)
+        first.publish(chosen)
+        second.publish(chosen)
+        issued = first.snapshot()
+        self.assertEqual(first.eligible(issued), (chosen,))
+        self.assertEqual(second.eligible(issued), ())
+
+    def test_terminal_failure_race_is_single_winner(self):
+        from threading import Barrier
+        status = InjectionAttemptStore()
+        started = status.begin(None, "export-race")
+        gate = Barrier(2)
+        def terminate(state):
+            gate.wait()
+            try:
+                status.transition(started.attempt_id, state, ReasonCode.STALE_PLAN)
+                return "accepted"
+            except ContractError:
+                return "rejected"
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(terminate, (AttemptState.SKIPPED, AttemptState.FAILED)))
+        self.assertEqual(sorted(results), ["accepted", "rejected"])
+        self.assertEqual(len(status.snapshot()), 1)
+        self.assertIn(status.snapshot()[0].state, (AttemptState.SKIPPED, AttemptState.FAILED))
+
+    def test_invalid_plan_store_capacity_is_rejected(self):
+        for capacity in (0, -1, True, 1.5, "two"):
+            with self.subTest(capacity=capacity), self.assertRaises(ContractError):
+                PlanStore(capacity)
+
     def test_parallel_publication_bounded(self):
         store = PlanStore(4)
         plans = [plan(i) for i in range(20)]
