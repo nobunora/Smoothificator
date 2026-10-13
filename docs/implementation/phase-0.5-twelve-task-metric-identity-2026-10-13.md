@@ -32,3 +32,9 @@ GitHub Actions Python 3.12 checks:
 - `python -m unittest discover -s tests -p 'test_*.py' -v`
 
 No Ruff/mypy configured, no wheel/package metadata or actual Orca runtime fixture verified. No independent blind review or merge/physical printer action will be claimed. Production changes remain in Domain DTO invariants only, never change valid canonical byte grammar.
+
+## Tasks 4–6 — metrics coherence repair and first CI checkpoint
+
+- Task 4: `domain/metrics.py::ErrorMetrics` now rejects mathematical impossibilities `e_rms_mm > e_max_mm` and `e_p95_mm > e_max_mm` with `ContractError(INVALID_GEOMETRY)`. The accepted bidirectional summary definitions in SPECIFICATION §16/ADR-0050 guarantee these bounds, without defining estimator algorithms. Commit `7922b9603bb7e73de9840cf164bd734252d3a672`.
+- Task 5: `tests/unit/test_error_metrics_invariants.py` adds four tests for equality/zero valid boundaries and frozen structure, typed rejection of invalid RMS/p95, and plan-hash sensitivity to a valid metric change. Commit `02b49bbecaf05e8947165a1203f19f9d004aa11c`.
+- Task 6: GitHub Actions [38363496088](https://github.com/nobunora/Smoothificator/actions/runs/38363496088): Python 3.12 `python -m compileall -q adaptive_subedge orca_plugin tests` **PASS**; `python -m unittest discover -s tests -p 'test_*.py' -v` **100/100 PASS**, 0 failures/errors, 0.079s test suite reported. M-01 confirmed -> resolved for immutable metric DTO; no printing or numeric estimator integration.
