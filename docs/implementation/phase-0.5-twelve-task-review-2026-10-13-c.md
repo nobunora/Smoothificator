@@ -60,3 +60,11 @@ The separate K-03 concern remains: a store-issued snapshot may be reused by anot
 - Task 8: added four unit tests in `tests/unit/test_stores.py`: eviction **before** a fresh selection excludes an old plan; already-held immutable snapshot survives eviction; re-publication of equal plan hash refreshes bounded retention without duplicating semantic candidates; epoch reset starts a new process-local generation scope; weak issuance registry does not strongly hold abandoned snapshots. Commit `1e074e4741ddca11ceecb12d22397035d42dbe57`.
 - Task 9: Python 3.12 GitHub Actions [38357838220](https://github.com/nobunora/Smoothificator/actions/runs/38357838220): `python -m compileall -q adaptive_subedge orca_plugin tests` **PASS**; `python -m unittest discover -s tests -p 'test_*.py' -v` **81/81 PASS** (0 failures/errors, 0.126 s logged).
 - K-03 remains **requires-further-evidence**: in-flight association must be established by future supported Orca lifecycle and postprocess ID. New snapshots do not resurrect evicted plans; no assertion that a reused old snapshot is a newly valid export.
+
+## Task 10 — serialization ownership/DTO completeness audit
+
+Reviewed `application/serialization.py::_FIELDS`, all `domain` dataclass modules, `domain/status.py`, immutable `SubEdgePlan` and `application/plan_store.py`, with ARCHITECTURE §16A and Accepted ADR-0064.
+
+The current declared canonical payload DTOs are intentionally distinct from derived/runtime value types: `SubEdgePlan` holds `plan_hash/plan_id` and must be excluded as a root payload; `InjectionAttemptRecord`, `PlanSnapshot`, and `PublishedPlan` hold mutable-lifecycle evidence and must never silently become canonical plan content. Existing `_FIELDS` is an explicit registry but only the three new research DTOs are currently checked for complete field declaration. This is a **regression coverage gap**, not evidence of an unknown source DTO.
+
+Next focused task: add a test that all registered DTOs remain exactly field-complete and frozen, rejects derived and runtime status DTOs, and verifies plan content is the sole canonical plan payload owner. Do not add new schema fields, a PlanStore execution adapter, or a generic serialization registry implementation.
