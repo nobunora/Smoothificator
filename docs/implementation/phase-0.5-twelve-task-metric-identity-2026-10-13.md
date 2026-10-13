@@ -50,3 +50,13 @@ Existing `PlanSemanticContent` rejects unknown dependencies, non-earlier executi
 - Task 7: audited ADR-0032 and ADR-0064 against `PlanSemanticContent` and `SubEdgePath`. A valid support dependency/order change must alter plan hash; an invalid same-Z required support must reject. These were test gaps, not verified source defects.
 - Task 8: added four tests in `tests/unit/test_plan_dependencies.py`, commit `d4f74a1cbb38a6b2bf97df683fc283f0243c82a3`: support dependency alters plan hash; execution-order metadata affects plan hash; three-level earlier/lower candidate support is valid; same-Z independent paths are hashable but same-Z required support rejects.
 - Task 9: Python 3.12 GitHub Actions [38363680910](https://github.com/nobunora/Smoothificator/actions/runs/38363680910): `python -m compileall -q adaptive_subedge orca_plugin tests` **PASS**; `python -m unittest discover -s tests -p 'test_*.py' -v` **104/104 PASS**, 0 failures/errors, 0.147s reported. M-02 is covered within Phase 0.5 plan metadata only; geometric support adequacy and actual emitter order are NOT VERIFIED.
+
+## Task 10 — final plan nested-type consistency audit (primary review)
+
+Confirmed **M-03 Medium** against `domain/plan.py::PlanSemanticContent.__post_init__` and `application/serialization.py::semantic_tree`:
+- `reason` uses `isinstance(reason, str)` rather than `type(reason) is str`. A str subclass with identical textual value is accepted as a frozen Plan but rejected by the exact registered canonical serializer.
+- `error_metrics` similarly uses `isinstance(ErrorMetrics)`, accepting a dataclass subclass while canonical serializer registers only the exact `ErrorMetrics`.
+- `source_geometry`, `execution_config`, `plugin_settings` use `isinstance(IdentityReference)`, accepting subclasses that cannot be canonicalized in a registered schema.
+- This is a **typed DTO-to-canonical boundary mismatch**, not evidence that any live Orca adapter is currently supplying these subclasses. The existing approved strict registered-schema contract permits only a minimal fail-closed validation change at the domain Plan DTO boundary; no policy/version/default change is needed.
+
+Repair plan: change only these `isinstance` checks to exact builtin/registered dataclass types; add positive ordinary DTO and malformed subclass negative regression tests, including stable `ContractError` rather than later serializer failure. Plan hash for already-valid exact-type inputs remains unchanged. No subclass normalization or automatic coercion.
