@@ -60,3 +60,9 @@ To be appended after CI/compare; do not label unverified tasks PASS.
 - Task 5: added **three additional** tests `tests/unit/test_support_coverage_boundary.py`, commit `a23198e7636bd69385819a6cd0993d094941cbfe`. Cases cover valid closed endpoints 0/1, frozen DTO, invalid/range/nonfinite/huge-int/bool/list ratios, str-subclass version refusal, and canonical int-vs-float normalized field semantics. These test the existing ratio value DTO, not the ADR-0044 geometric support metric.
 - Task 6: Python 3.12 GitHub Actions [38362393118](https://github.com/nobunora/Smoothificator/actions/runs/38362393118) passed `python -m compileall -q adaptive_subedge orca_plugin tests` and `python -m unittest discover -s tests -p 'test_*.py' -v`, **87/87 PASS**, no errors or failures, 0.141s reported.
 - No production files changed in this block. C-04 disposition **rejected/previously resolved**, not a newly repaired defect.
+
+## Tasks 7–9 — V1 Settings identity field sensitivity and canonical containers
+
+- Task 7: reviewed Accepted ADR-0023/0063 against the *currently declared v1* PluginSettings/ToolClearanceProfile/regularity identity fields; avoided Proposed ADR-0066 additions. Existing golden test covered regularity fields but not every tool-profile field or every top-level v1 parameter.
+- Task 8: added `tests/unit/test_v1_settings_field_sensitivity.py` with **three tests**, commit `11bc3c8aa564e7d39f702cf01a8c803929146129`. Each of seven tool-profile fields independently changes the Settings fingerprint; all three existing top-level settings parameters affect it; canonical logical list/tuple inputs normalize equivalently while ordering remains meaningful.
+- Task 9: GitHub Actions [38362577309](https://github.com/nobunora/Smoothificator/actions/runs/38362577309), Python 3.12 compileall PASS and **90/90 unittest PASS** (0 failures/errors, 0.070s reported). No v2 owner/defaults introduced. Full Settings fingerprint coverage remains **spec-change-required**.
