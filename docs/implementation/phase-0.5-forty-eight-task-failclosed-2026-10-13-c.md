@@ -79,3 +79,11 @@ Status: PRIMARY REVIEW and scoped implementation of **existing Accepted contract
 
 ## Task 31 — architecture helper audit, pending validation
 Current `tests/architecture/test_dynamic_import_boundaries.py::_literal_dynamic_targets` recognizes literal `importlib.import_module(...)` but not the equally explicit `from importlib import import_module as alias; alias(...)` nor `import importlib as alias; alias.import_module(...)`. A forbidden Domain -> Orca imported with those explicit literal aliases may not be covered by the dynamic import gate. This is a test-instrumentation coverage gap, **not** evidence that current production code imports forbidden modules. Resolve only lexical module/function aliases defined by import statements, keep computed names and shadowing limitations explicit, and test synthetic forbidden and allowed cases. No production source/import change.
+
+## Checkpoint 6 — tasks 31–36 COMPLETE
+- **31:** reviewed `tests/architecture/test_dynamic_import_boundaries.py`: literal module names reached through `import importlib as alias` and `from importlib import import_module as alias` were not recognized, allowing an architectural test bypass. This is a **test-instrumentation gap**, not proven production import.
+- **32:** detection of imported function alias from `importlib` and forbidden domain->Orca in a synthetic AST test.
+- **33:** detection of module alias `import importlib as mod` and forbidden Ports->Application.
+- **34:** relative importlib function alias resolves explicit `package` into the forbidden full module.
+- **35:** computed runtime import strings explicitly **NOT DETECTED** and not falsely claimed; scan currently present domain/engine/Ports/application/Orca package source for direct/alias literal dynamic imports. Test helper modified plus four tests in `tests/architecture/test_dynamic_import_aliases.py`, atomic commit `8470666129cb88f46341812a56837b372224de61`.
+- **36:** Python3.12 GitHub Actions [38410560810](https://github.com/nobunora/Smoothificator/actions/runs/38410560810) compileall PASS, **200/200 unittest PASS**, 0 failures/errors. Dynamic import alias detection is a scoped lexical check, not a full Python scope/monkeypatch analysis.
