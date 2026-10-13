@@ -139,19 +139,19 @@ def _canonical_bytes(value: object) -> bytes:
 
 
 def identity_root(identity_type: str, payload: object, *, schema_version: str = "1", canonical_encoding_version: str = "1") -> dict[str, object]:
-    if type(identity_type) is not str or identity_type not in _TYPES or type(schema_version) is not str or schema_version != "1" or canonical_encoding_version != "1":
+    if type(identity_type) is not str or identity_type not in _TYPES or type(schema_version) is not str or schema_version != "1" or type(canonical_encoding_version) is not str or canonical_encoding_version != "1":
         raise ContractError(ReasonCode.UNKNOWN_IDENTITY_SCHEMA, "unrecognized identity root")
     return {"identity_type": identity_type, "schema_version": schema_version, "canonical_encoding_version": canonical_encoding_version, "payload": semantic_tree(payload)}
 
 
 def validate_root(root: object, expected_type: str) -> None:
-    if type(root) is not dict or frozenset(root) != _ROOT_KEYS or type(expected_type) is not str or expected_type not in _TYPES or root["identity_type"] != expected_type or root["schema_version"] != "1" or root["canonical_encoding_version"] != "1":
+    if type(root) is not dict or frozenset(root) != _ROOT_KEYS or type(expected_type) is not str or expected_type not in _TYPES or type(root["identity_type"]) is not str or root["identity_type"] != expected_type or type(root["schema_version"]) is not str or root["schema_version"] != "1" or type(root["canonical_encoding_version"]) is not str or root["canonical_encoding_version"] != "1":
         raise ContractError(ReasonCode.UNKNOWN_IDENTITY_SCHEMA, "invalid typed identity root")
 
 
 def canonical_array_token(dtype: str, shape: tuple[int, ...], values_c_order: tuple[int | float, ...]) -> dict[str, object]:
     """Logical C-order elements explicitly supplied; no raw native ndarray bytes."""
-    if dtype not in ("i64", "f64") or type(shape) is not tuple or len(shape) > 0xFFFFFFFF or any(type(x) is not int or not 0 <= x <= (1 << 64)-1 for x in shape):
+    if type(dtype) is not str or dtype not in ("i64", "f64") or type(shape) is not tuple or len(shape) > 0xFFFFFFFF or any(type(x) is not int or not 0 <= x <= (1 << 64)-1 for x in shape):
         raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "invalid array schema/shape")
     if type(values_c_order) is not tuple or len(values_c_order) != prod(shape):
         raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "shape/value mismatch")
@@ -180,7 +180,7 @@ def canonical_array_token(dtype: str, shape: tuple[int, ...], values_c_order: tu
 
 
 def validate_array_token(token: object) -> None:
-    if type(token) is not dict or frozenset(token) != frozenset(("array_schema_version", "dtype", "shape", "digest_hex")) or token.get("array_schema_version") != "ASE_ARRAY_V1" or token.get("dtype") not in ("i64", "f64"):
+    if type(token) is not dict or frozenset(token) != frozenset(("array_schema_version", "dtype", "shape", "digest_hex")) or type(token.get("array_schema_version")) is not str or token.get("array_schema_version") != "ASE_ARRAY_V1" or type(token.get("dtype")) is not str or token.get("dtype") not in ("i64", "f64"):
         raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "unknown array token")
     dims, digest = token["shape"], token["digest_hex"]
     if type(dims) is not list or len(dims) > 0xFFFFFFFF or any(type(x) is not int or not 0 <= x <= (1 << 64)-1 for x in dims):

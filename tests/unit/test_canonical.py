@@ -169,6 +169,30 @@ class CanonicalTests(unittest.TestCase):
         changed_again = replace(changed, anchors=(InsertionAnchor("insert-2", ("loop-1",), 2, "known"),))
         self.assertNotEqual(create_plan(changed).plan_hash, create_plan(changed_again).plan_hash)
 
+    def test_identity_schema_rejects_equal_but_noncanonical_string_subclasses(self):
+        from adaptive_subedge.application.serialization import validate_root
+        class Label(str):
+            pass
+        valid = identity_root("source-geometry", {"p": 1})
+        for bad_key in ("identity_type", "schema_version", "canonical_encoding_version"):
+            with self.subTest(key=bad_key), self.assertRaises(ContractError):
+                validate_root({**valid, bad_key: Label(valid[bad_key])}, "source-geometry")
+        with self.assertRaises(ContractError):
+            identity_root("source-geometry", {}, canonical_encoding_version=Label("1"))
+        with self.assertRaises(ContractError):
+            identity_root("source-geometry", {}, schema_version=Label("1"))
+
+    def test_array_token_rejects_subclassed_declared_schema_labels(self):
+        class Label(str):
+            pass
+        with self.assertRaises(ContractError):
+            canonical_array_token(Label("f64"), (1,), (1.0,))
+        token = canonical_array_token("f64", (1,), (1.0,))
+        with self.assertRaises(ContractError):
+            validate_array_token({**token, "dtype": Label("f64")})
+        with self.assertRaises(ContractError):
+            validate_array_token({**token, "array_schema_version": Label("ASE_ARRAY_V1")})
+
     def test_fingerprints_no_map_order_and_settings_change(self):
         a = fingerprint_resolved_execution({"z": 1, "a": 0.5})
         b = fingerprint_resolved_execution({"a": 0.5, "z": 1})
