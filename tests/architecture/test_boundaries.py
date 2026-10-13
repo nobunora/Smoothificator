@@ -38,10 +38,17 @@ def _import_forbidden(source_module: str, imported_module: str) -> bool:
         return any(in_prefix(imported_module, x) for x in
                    ("orca_plugin", "adaptive_subedge.engine",
                     "adaptive_subedge.application", "adaptive_subedge.ports"))
+    if in_prefix(source_module, "adaptive_subedge.ports"):
+        return any(in_prefix(imported_module, x) for x in
+                   ("orca_plugin", "adaptive_subedge.application",
+                    "adaptive_subedge.engine"))
     if in_prefix(source_module, "adaptive_subedge.engine"):
-        return in_prefix(imported_module, "orca_plugin")
+        return any(in_prefix(imported_module, x) for x in
+                   ("orca_plugin", "adaptive_subedge.application"))
     if in_prefix(source_module, "adaptive_subedge.application"):
         return in_prefix(imported_module, "orca_plugin")
+    if in_prefix(source_module, "orca_plugin.adapters"):
+        return in_prefix(imported_module, "orca_plugin.ui")
     if in_prefix(source_module, "orca_plugin.gcode"):
         return in_prefix(imported_module, "adaptive_subedge.engine")
     if in_prefix(source_module, "orca_plugin.ui"):
@@ -112,6 +119,39 @@ class BoundaryTests(unittest.TestCase):
                             for target in _import_targets(node, parent))
             self.assertTrue(any(_import_forbidden(module, item) for item in imports),
                             script)
+
+    def test_ports_must_not_import_outer_or_implementation_layers(self):
+        examples = (
+            ("adaptive_subedge.ports.plan_repository", "orca_plugin.adapters.orca_config"),
+            ("adaptive_subedge.ports.cancellation", "adaptive_subedge.application.plan_store"),
+            ("adaptive_subedge.ports.mesh_section_provider", "adaptive_subedge.engine.mesh_section"),
+            ("adaptive_subedge.engine.support", "adaptive_subedge.application.analyzer"),
+            ("orca_plugin.adapters.geometry_snapshot", "orca_plugin.ui.preview_renderer"),
+        )
+        for module, forbidden in examples:
+            with self.subTest(module=module, forbidden=forbidden):
+                self.assertTrue(_import_forbidden(module, forbidden))
+        allowed = (
+            ("adaptive_subedge.ports.plan_repository", "adaptive_subedge.domain.plan"),
+            ("adaptive_subedge.engine.support", "adaptive_subedge.domain.settings"),
+            ("adaptive_subedge.application.plan_store", "adaptive_subedge.domain.plan"),
+        )
+        for module, dep in allowed:
+            self.assertFalse(_import_forbidden(module, dep))
+
+    def test_relative_ports_imports_are_checked(self):
+        package = "adaptive_subedge.ports"
+        module = "adaptive_subedge.ports.plan_repository"
+        examples = (
+            "from ..application import plan_store",
+            "from ..engine import support",
+            "from ... import orca_plugin",
+        )
+        for expression in examples:
+            node = ast.parse(expression).body[0]
+            targets = _import_targets(node, package)
+            self.assertTrue(any(_import_forbidden(module, x) for x in targets),
+                            expression)
 
     def test_module_level_dependency_graph_has_no_cycle(self):
         paths = sorted((ROOT / "adaptive_subedge").rglob("*.py")) + sorted(
