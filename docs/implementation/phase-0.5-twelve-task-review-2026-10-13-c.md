@@ -68,3 +68,36 @@ Reviewed `application/serialization.py::_FIELDS`, all `domain` dataclass modules
 The current declared canonical payload DTOs are intentionally distinct from derived/runtime value types: `SubEdgePlan` holds `plan_hash/plan_id` and must be excluded as a root payload; `InjectionAttemptRecord`, `PlanSnapshot`, and `PublishedPlan` hold mutable-lifecycle evidence and must never silently become canonical plan content. Existing `_FIELDS` is an explicit registry but only the three new research DTOs are currently checked for complete field declaration. This is a **regression coverage gap**, not evidence of an unknown source DTO.
 
 Next focused task: add a test that all registered DTOs remain exactly field-complete and frozen, rejects derived and runtime status DTOs, and verifies plan content is the sole canonical plan payload owner. Do not add new schema fields, a PlanStore execution adapter, or a generic serialization registry implementation.
+
+## Tasks 10–12 — complete DTO registry gate and final result
+
+- Task 10: source audit confirmed the serializer's full DTO field whitelist and deliberate exclusion of derived plan identity `SubEdgePlan`, runtime `InjectionAttemptRecord`, and in-memory `PublishedPlan/PlanSnapshot` are not yet collectively regression-tested. A coverage gap only, not an excuse to change schema/DTO responsibilities.
+- Task 11: added `tests/architecture/test_canonical_dto_ownership.py` with three tests ensuring every registered schema field equals its exact frozen dataclass field list, runtime/derived DTOs are rejected by `semantic_tree`, and `PlanSemanticContent` contains precisely approved fields while excluding derived IDs and runtime metadata. Commit `49d7b128d5bf48cbd652dd98c11a2b15843a011b`.
+- Task 12: Python 3.12 GitHub Actions [38358036873](https://github.com/nobunora/Smoothificator/actions/runs/38358036873) for commit `49d7b128d5bf48cbd652dd98c11a2b15843a011b`: `python -m compileall -q adaptive_subedge orca_plugin tests` **PASS**, `python -m unittest discover -s tests -p 'test_*.py' -v` **84/84 PASS**, zero failures/errors (0.128s reported by job log).
+- Diff compared to starting source commit `34a361753fddded3c6dfa3a9b90fb3473417a616`: exactly five paths: `adaptive_subedge/application/serialization.py`, `tests/unit/test_canonical.py`, `tests/unit/test_stores.py`, `tests/architecture/test_canonical_dto_ownership.py` and this review record; zero legacy script/Orca/G-code/physical printer modules changed.
+- Both PR #2 and Proposed ADR-0066 PR #3 remain open Draft and unmerged. The 81 canonical blobs and Accepted ADR scope have not changed. No package/wheel metadata or new dependencies were introduced.
+
+## Completion and review disposition
+
+| Task | Purpose | Disposition |
+| --- | --- | --- |
+| 1 | Verify initial branch, PRs and manifest baseline | PASS, 81/81 |
+| 2 | Audit canonical exact-key validation and in-memory selection boundaries | K-01/02 confirmed, K-03 unresolved |
+| 3 | Record review scope, tests and risks | COMPLETED |
+| 4 | Enforce exact builtin mapping keys in typed root/array token validators | COMPLETED |
+| 5 | Test noncanonical subtype keys and valid roots/tokens | +2 cases |
+| 6 | CI and checkpoint | 77/77 PASS |
+| 7 | Review PlanStore selection, dedup, generation, eviction | coverage gap; K-03 deferred |
+| 8 | Test fresh-vs-in-flight snapshots, MRU dedup, epochs, weak retention | +4 cases |
+| 9 | CI and checkpoint | 81/81 PASS |
+| 10 | Audit complete DTO whitelist and runtime identity boundary | coverage gap |
+| 11 | Test schema field completeness and exclude derived/runtime DTOs | +3 cases |
+| 12 | Final CI, diff and disposition | 84/84 PASS |
+
+Starting at **75/75** cases and ending at **84/84**: nine new regression tests. K-01/K-02 **confirmed -> resolved**; PlanStore lifecycle test gaps **verified**; K-03 **requires-further-evidence** for binding captured snapshot and unique postprocess invocation. Full Settings v2 is **spec-change-required**, still only a Proposed ADR; exact Ports signatures and Orca runtime/fixture remain **requires-further-evidence**.
+
+No independent blind implementation review, actual Orca embedded Python/NumPy, source mesh/optimization, real G-code parsing/injection, source file TOCTOU, wheel build, or physical printer validation occurred. Ruff/mypy remain NOT CONFIGURED. Production injection stays disabled and PR #2 stays Draft.
+
+Rollback consists of reverting the narrow serializer predicate/tests/evidence; valid v1 canonical identity bytes remain stable, but invalid dictionary-key subtype rejection would revert. No printer output can change because no exporter/injector is implemented.
+
+**Stop after exactly 12 tasks.** Next scope: review K-03 against exact Orca export lifecycle before defining attempt-scoped snapshot API, independently adjudicate the Proposed full Settings v2 schema, and complete approved source DTO/Port contracts with evidence. No guessed binding or numeric physical thresholds.
