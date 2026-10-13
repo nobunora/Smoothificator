@@ -1,0 +1,32 @@
+# Phase 0.5 — Twelve bounded contract verification tasks — 2026-10-13 (continuation 2)
+
+Status: scoped review / implementation. Primary code review, not independent blind review.
+
+## Input contract and baseline
+- Baseline branch head: `0bed44e74aa9a668c5dcaca70579901b1cf67f32`; PR #2 remains Draft against `adaptive-subedge-design`.
+- `AGENTS.md` and `docs/DOCUMENT_CONTRACT.md` read; 2026-10-13 audited manifest blob `ed32f47cc541443a52bc6abed289cc86b31d816b`: **81/81** entries matched current tree; 65 ADR documents.
+- Handoff blob `b9337971fc077f0c39793b87ecf0293b0b6a6c29` references the audited manifest.
+- The legacy scripts must remain unchanged, no Orca live adapter or G-code file mutation, no printer capability, no guessed physical fixtures or package dependencies.
+- Baseline focused CI: Python 3.12, 39 tests PASS on the earlier 2026-10-13 tranche. A passing suite is not global safety validation.
+
+## Twelve work items
+1. Verify repository head, handoff and 81 pinned blobs; identify the review/test boundaries. **Done**.
+2. Focused canonical encoding and value DTO audit: cyclic caller input and invalid version metadata.
+3. Correct confirmed fail-closed gaps, add negative tests, run CI; report 3-task checkpoint.
+4. Review existing PlanStore/InjectionAttemptStore concurrency, publication and terminal-state tests against ADR-0037/0065.
+5. Harden an approved ownership/concurrency edge case and provide deterministic tests, without filesystem or Orca APIs.
+6. Verify tests/CI, consolidate findings and report 6-task checkpoint.
+7. Audit canonical identity and array boundary independent vectors/invalid schema controls against ADR-0049/0062/0064.
+8. Add independently derived positive and negative hash fixtures or smallest permitted correction, without changing canonical grammar.
+9. Verify tests/CI and report 9-task checkpoint.
+10. Audit architecture test coverage of import restrictions and cycles against AGENTS/ARCHITECTURE.
+11. Add focused architecture regression tests and evaluate any uncovered policy violations; no opportunistic refactor.
+12. Verify last commit's CI, diff, source hashes, record dispositions and residual gates; report all and stop.
+
+## Initial focused findings
+- C-01 (Medium): `SupportCoverageMetrics.version` accepts truthy non-string objects despite an immutable/versioned scalar DTO contract. The owner must reject invalid mutable metadata.
+- C-02 (Medium): `canonical_bytes` and `semantic_tree` accept arbitrary caller-controlled lists/mappings but do not convert recursive/cyclic inputs to stable `ContractError`; Python `RecursionError` escapes the expected failure model. Reject without altering canonical bytes of all acyclic values.
+- The current Phase 0.5 package remains partial; no claims about actual Orca runtime, NumPy ndarray C/F parity, broad Settings schema, printer G-code, physical calibration or independent blind review.
+
+## Evidence and final results
+Pending work items 3–12. Report exact commit SHA, commands, CI run ID, test count, and non-executed checks. 
