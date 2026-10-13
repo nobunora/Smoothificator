@@ -60,3 +60,38 @@ Confirmed **M-03 Medium** against `domain/plan.py::PlanSemanticContent.__post_in
 - This is a **typed DTO-to-canonical boundary mismatch**, not evidence that any live Orca adapter is currently supplying these subclasses. The existing approved strict registered-schema contract permits only a minimal fail-closed validation change at the domain Plan DTO boundary; no policy/version/default change is needed.
 
 Repair plan: change only these `isinstance` checks to exact builtin/registered dataclass types; add positive ordinary DTO and malformed subclass negative regression tests, including stable `ContractError` rather than later serializer failure. Plan hash for already-valid exact-type inputs remains unchanged. No subclass normalization or automatic coercion.
+
+## Tasks 10–12 — exact nested type consistency and final verification
+
+- Task 10: primary review confirmed M-03: `PlanSemanticContent.reason` accepted `str` subclasses and nested `IdentityReference`/`ErrorMetrics` accepted dataclass subclasses via `isinstance`, while the authoritative `application/serialization.py::_FIELDS` registry accepts only exact declared types. This produces a frozen-but-not-canonicalizable Plan DTO, violating strict canonical inputs.
+- Task 11: `domain/plan.py` now enforces exact type of the three IdentityReference fields, ErrorMetrics, and reason string. `tests/unit/test_contracts.py` checks valid normal Plan hash and rejects all five malformed subclass field scenarios with `ContractError(INVALID_CANONICAL_VALUE)`. Commit `b17fef78e44148504864f273314d7b8393d2bf4c`.
+- Task 12: Python 3.12 GitHub Actions [38363880187](https://github.com/nobunora/Smoothificator/actions/runs/38363880187) for source `b17fef78e44148504864f273314d7b8393d2bf4c` ran `python -m compileall -q adaptive_subedge orca_plugin tests` **PASS** and `python -m unittest discover -s tests -p 'test_*.py' -v` **105/105 PASS**, no failures/errors (0.146s logged). Pending this evidence-only record commit, re-check latest CI for the exact final SHA. All valid exact-type v1 plan hashes remain unchanged.
+
+## Final twelve-task ledger
+
+| # | Action | Outcome |
+|---|---|---|
+| 1 | Read AGENTS, verify PRs, audited 81-blob state | PASS, 81/81 |
+| 2 | Review mathematical error summary and plan hashing gaps | M-01 confirmed, M-02 coverage |
+| 3 | Commit review-only scope and test plan | done |
+| 4 | Correct impossible ErrorMetrics bounds | source fix |
+| 5 | Add four metric boundary and hash-sensitivity tests | +4 |
+| 6 | GitHub Actions compileall/unittest | 100/100 PASS |
+| 7 | Audit ADR-0032 support/order hash sensitivity | coverage gap only |
+| 8 | Add four candidate support/order identity tests | +4 |
+| 9 | GitHub Actions compileall/unittest | 104/104 PASS |
+| 10 | Audit registered nested Plan DTO type validation | M-03 confirmed |
+| 11 | Strict nested identity/metrics/reason type checks and test | +1 |
+| 12 | Final CI, diff/PR/manifest and record | 105/105 PASS source; final-record CI to be reverified |
+
+## Final primary review dispositions and remaining gates
+
+- M-01 **confirmed -> resolved** in `ErrorMetrics` value DTO. Mathematical consistency only, not the bidirectional converged estimator algorithm.
+- M-02 **coverage gap -> verified** for candidate path support/order as part of identity. Valid same-Z independent paths supported; mandatory same-Z candidate support rejected. No physical support proof.
+- M-03 **confirmed -> resolved** at `PlanSemanticContent` construction; malformed nested subclass objects no longer survive into canonicalization.
+- Starting **96 tests**, ending **105 tests**, +9 focused cases. No new dependencies, runtime plugins, printer/firmware constants, canonical byte syntax or DTO field schemas were added.
+- **Unresolved by design**: Proposed ADR-0066 Settings v2 remains unaccepted, snapshot-to-unique-Orca-postprocess-attempt association has no supported runtime fixture, Port signatures unspecified, independent blind review absent, Orca embedded NumPy, mesh simulation/G-code printer tests absent. No actual physical injection allowed.
+- Build/package/wheel, Ruff/mypy, actual Orca runtime/NumPy and independent blind review: **NOT CONFIGURED / NOT VERIFIED** as applicable; do not interpret CI pass as physical release readiness.
+- Rollback would remove mathematical DTO inconsistency checks, exact-subclass rejection, the regression tests and this review record. It cannot affect generated printer G-code because no production injector is implemented.
+
+**Stop after the twelve bounded tasks and keep Draft PR #2 / Proposed ADR Draft PR #3 open, unmerged.**
