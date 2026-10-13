@@ -38,6 +38,8 @@ A field-level provenance matrix, unresolved mandatory caps/weights/coverage poli
 
 The v1 canonical root currently uses `schema_version="1"`, and its payload includes a separate `PluginSettings.schema_version="1"`. Candidate decision **for review**: a completed v2 must use a typed `plugin-settings` root with `schema_version="2"` and an unambiguous v2 DTO schema marker also equal to `"2"`. The root encoder's `canonical_encoding_version="1"` remains unchanged unless the actual tagged-byte grammar changes. Mismatched root/DTO versions must fail closed. This is a **proposal**, not authorization to modify the currently registered `identity_root` allowed versions.
 
+The in-flight snapshot / settings-TOCTOU / eviction and epoch transition cases are captured separately in [the proposed migration scenario review](../implementation/settings-v2-migration-revalidation-cases-2026-10-13.md). It is a review packet, **not** a new transition requirement or physical release authorization.
+
 ## Required remaining decisions before Acceptance
 
 - Name every missing settings field and fix its domain type, range, unit and required-vs-optional status using canonical `SPECIFICATION` and `IMPLEMENTATION` without ambiguous unions.
