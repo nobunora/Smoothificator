@@ -38,3 +38,9 @@ Proposed ADR-0066 Settings v2 is not Accepted and may not alter existing `Plugin
 `python -m unittest discover -s tests -p 'test_*.py' -v`
 
 Record exact CI run/commit/log and whether tooling is NOT CONFIGURED rather than asserting execution.
+
+## Tasks 4–6: signed mean invariant and CI
+
+- Task 4: minimal `ErrorMetrics` validation added `abs(signed_mean_mm) <= e_max_mm` to existing RMS/p95 maximum constraint. Commit `3d1b574abfdb79190dc3d280e7a356eebed708e1`, no change in canonical grammar or error-estimator algorithm.
+- Task 5: three unit tests added in `tests/unit/test_error_metrics_invariants.py`, commit `630914021b54b619f5337a0f0fc540e2bed80d58`. Positive/negative overflow reject with `INVALID_GEOMETRY`, signed ±E_max and zero remain valid, signed-mean change affects the semantic plan hash.
+- Task 6: GitHub Actions Python 3.12 [38377264645](https://github.com/nobunora/Smoothificator/actions/runs/38377264645), SHA `630914021b54b619f5337a0f0fc540e2bed80d58`: `python -m compileall -q adaptive_subedge orca_plugin tests` PASS; `python -m unittest discover -s tests -p 'test_*.py' -v` **108/108 PASS**, 0 errors/failures (0.102 s test-suite log). B-01 confirmed -> resolved for the value DTO only.
