@@ -193,6 +193,37 @@ class CanonicalTests(unittest.TestCase):
         with self.assertRaises(ContractError):
             validate_array_token({**token, "array_schema_version": Label("ASE_ARRAY_V1")})
 
+    def test_canonical_root_rejects_subclassed_mapping_keys(self):
+        from adaptive_subedge.application.serialization import validate_root
+        class EqualKey(str):
+            pass
+        root = identity_root("subedge-plan", {"some": [1, 2]})
+        self.assertEqual(set(root), {"identity_type", "schema_version",
+                                     "canonical_encoding_version", "payload"})
+        replaced = {EqualKey("payload"): root["payload"],
+                    "identity_type": root["identity_type"],
+                    "schema_version": root["schema_version"],
+                    "canonical_encoding_version": root["canonical_encoding_version"]}
+        self.assertEqual(set(replaced), set(root))
+        with self.assertRaises(ContractError):
+            validate_root(replaced, "subedge-plan")
+        with self.assertRaises(ContractError):
+            canonical_bytes(replaced)
+        validate_root(root, "subedge-plan")
+
+    def test_array_token_rejects_subclassed_mapping_keys(self):
+        class EqualKey(str):
+            pass
+        token = canonical_array_token("i64", (2,), (1, 2))
+        subclassed = {EqualKey("shape"): token["shape"],
+                      "array_schema_version": token["array_schema_version"],
+                      "dtype": token["dtype"],
+                      "digest_hex": token["digest_hex"]}
+        self.assertEqual(set(subclassed), set(token))
+        with self.assertRaises(ContractError):
+            validate_array_token(subclassed)
+        validate_array_token(token)
+
     def test_fingerprints_no_map_order_and_settings_change(self):
         a = fingerprint_resolved_execution({"z": 1, "a": 0.5})
         b = fingerprint_resolved_execution({"a": 0.5, "z": 1})
