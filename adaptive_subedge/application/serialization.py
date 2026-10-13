@@ -98,15 +98,17 @@ def _decimal_int_bytes(value: int) -> bytes:
     try:
         return str(value).encode("ascii")
     except ValueError:
-        # Python 3.11+ limits int-to-str digits by environment. The ADR does
-        # not cap canonical integers; encode in bounded 1000-digit chunks.
+        # Python 3.11+ permits the decimal-digit cap as low as 640.
+        # Use sub-640 chunks so fallback conversions remain legal under
+        # the strictest permitted cap, without altering canonical bytes.
         negative = value < 0
         remaining = abs(value)
-        chunk_base = 10 ** 1000
+        digits_per_chunk = 100
+        chunk_base = 10 ** digits_per_chunk
         chunks = []
         while remaining >= chunk_base:
             remaining, lower = divmod(remaining, chunk_base)
-            chunks.append(str(lower).zfill(1000))
+            chunks.append(str(lower).zfill(digits_per_chunk))
         token = ("-" if negative else "") + str(remaining) + "".join(reversed(chunks))
         return token.encode("ascii")
 
