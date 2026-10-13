@@ -60,3 +60,15 @@ The user requested Phase 0.5 completion. This review cannot truthfully switch to
 - Verification: check the exact post-implementation code SHA, narrow diff, architecture/identity goldens, CI, no unresolved Critical/High Phase-0.5 findings, and normal implementation review. Maintain Draft until all criteria pass.
 
 **Revised disposition remains: SPEC-CHANGE-REQUIRED / NOT READY.** This does not undo the 204 validated pure-Python tests; it prevents misrepresenting that evidence as completion of the requirements.
+
+## 2026-10-14 narrow implementation resolution after the source-review gate
+
+Accepted ADR-0065's **in-process** `(eligible PlanSnapshot, unique InjectionAttemptId)` issuance is no longer wholly unimplemented:
+
+- A fresh scoped review with the `validated` disposition for this *bounded* primitive is at [phase05-attempt-snapshot-inprocess-review-2026-10-14.md](phase05-attempt-snapshot-inprocess-review-2026-10-14.md); the review was written **before** source edits.
+- `adaptive_subedge/application/plan_store.py::begin_postprocess_attempt` now coordinates an immutable eligible-only PlanSnapshot with an independent AttemptStore.STARTED record under one PlanStore RLock. Lock order is PlanStore -> AttemptStore; no long G-code processing occurs under the lock. An invalid working-file identity triggers a typed failure and drops unexposed issuance. The status record remains owned by InjectionAttemptStore.
+- Source commit `e437c85bed70a828ebdfe4bad3694457b9cc9e58`, focused six-test commit `7308b6811b7dbd45262567f74e5dc25fcc52893f`, Python 3.12 CI [38421826772](https://github.com/nobunora/Smoothificator/actions/runs/38421826772): compileall PASS and **210/210 tests PASS**. This is more than baseline 204 and closes the *pure-process* part of the snapshot/attempt association.
+- Pinned Orca postprocess source evidence is recorded in [the PR #4 source review](https://github.com/nobunora/Smoothificator/blob/proposed-phase05-dto-attempt-20261014/docs/implementation/phase05-orca-postprocess-invocation-review-2026-10-14.md): each `cap->execute(ctx)` is an invocation boundary, there is no native Orca invocation ID, and `ctx.gcode_path` identifies a mutable **working copy**. The executable fixture and later source-file/G-code commit lock remain untested.
+- **Still NOT CLOSED:** the exact verified Orca callback adapter does not yet invoke this operation; source-file identity and final G-code safety gates are deferred to later phases. Richer attempt evidence types required by ADR-0037, missing domain DTO semantics including SurfaceBand, and complete PluginSettings v2 fingerprint fields remain subject to unapproved ADR-0067 (Draft PR #4) and ADR-0066 (Draft PR #3).
+
+The original acceptance table above is a historical review at commit `e345b9a9850e0203f1b441d6eb3f2692faa921c3`. Its row saying two stores are separate applies to **that** baseline, not to the newly added paired in-process method. The final Phase 0.5 status remains **NOT READY / SPEC-CHANGE-REQUIRED** pending the other missing accepted semantic contracts and reviewer decisions. No physical injection, G-code mutation or legacy scripts were added.
