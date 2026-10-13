@@ -53,3 +53,10 @@ Only registered DTO validation and tests/review records may change. Reverting af
 ## Completion evidence
 
 To be appended after CI/compare; do not label unverified tasks PASS.
+
+## Tasks 4–6 — Existing fix confirmed, extra boundary coverage
+
+- Task 4: rejected the stale C-04 claim after reading `domain/metrics.py` and `test_coverage_version_requires_immutable_text`; exact typed version checks **already existed**. Review-correction commit `81832e112b00d883de2e5781ed0a0bb7d7d69943`.
+- Task 5: added **three additional** tests `tests/unit/test_support_coverage_boundary.py`, commit `a23198e7636bd69385819a6cd0993d094941cbfe`. Cases cover valid closed endpoints 0/1, frozen DTO, invalid/range/nonfinite/huge-int/bool/list ratios, str-subclass version refusal, and canonical int-vs-float normalized field semantics. These test the existing ratio value DTO, not the ADR-0044 geometric support metric.
+- Task 6: Python 3.12 GitHub Actions [38362393118](https://github.com/nobunora/Smoothificator/actions/runs/38362393118) passed `python -m compileall -q adaptive_subedge orca_plugin tests` and `python -m unittest discover -s tests -p 'test_*.py' -v`, **87/87 PASS**, no errors or failures, 0.141s reported.
+- No production files changed in this block. C-04 disposition **rejected/previously resolved**, not a newly repaired defect.
