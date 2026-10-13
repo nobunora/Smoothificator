@@ -62,6 +62,26 @@ class CandidateSegmentRegularityPolicy:
 
 
 @dataclass(frozen=True, slots=True)
+class CandidateBeadBounds:
+    """ADR-0043 research-only width/height envelope, not printable authorization."""
+
+    min_candidate_height_mm: float
+    max_candidate_height_mm: float
+    min_candidate_width_mm: float
+    max_candidate_width_mm: float
+
+    def __post_init__(self) -> None:
+        for field in (
+            "min_candidate_height_mm", "max_candidate_height_mm",
+            "min_candidate_width_mm", "max_candidate_width_mm",
+        ):
+            _nonnegative_finite(getattr(self, field), field, positive=True)
+        if (self.min_candidate_height_mm > self.max_candidate_height_mm
+                or self.min_candidate_width_mm > self.max_candidate_width_mm):
+            raise ContractError(ReasonCode.INVALID_SETTING, "candidate bead bounds are inverted")
+
+
+@dataclass(frozen=True, slots=True)
 class SurfaceCorrespondencePolicy:
     """ADR-0050 research-only, versioned correspondence constraints.
 
