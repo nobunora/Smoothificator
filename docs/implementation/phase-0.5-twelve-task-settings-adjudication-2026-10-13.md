@@ -94,3 +94,9 @@ This iteration changed only test and process-document files on implementation PR
 Next required scope: independent design review and *field-by-field* ADR-0066 adjudication; after Accepted approval, update normative documents, manifest and handoff then rerun repository review before implementing full Settings fingerprint. Evidence-backed Port signatures are a separate blocker; do not create generic placeholder interfaces. No printer/G-code injection may be enabled from either Draft PR.
 
 **Stop after these 12 completed tasks.**
+
+## Continuation (2026-10-13) — independent v1-to-v2 adjudication review
+
+A separately proposed Settings v2 schema cannot be integrated under the current validated implementation scope. Primary design-review packets were added to **Draft PR #3**, not to this PR: `docs/implementation/settings-v2-schema-adjudication-review-2026-10-13.md` (normative coverage matrix, missing fields) and `docs/implementation/settings-v2-migration-revalidation-cases-2026-10-13.md` (ADR-0037/0065 selection, precommit TOCTOU and epoch/eviction scenarios). `docs/adr/0066-...` remains **Proposed only**. These are not independent blind reviews or new accepted contracts.
+
+Implementation branch remains scoped to the established v1 fingerprint and versioned research DTOs. Additional focused review found a separate ADR-0062 type-normalization issue: subclassed string identity/version/dtype labels can compare equal to registered schema strings and pass boundary guards even though canonical scalar serializer accepts only exact builtin strings. Remedy only exact type validation; never change canonical byte values of valid inputs.
