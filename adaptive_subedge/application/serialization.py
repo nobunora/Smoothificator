@@ -14,7 +14,7 @@ from adaptive_subedge.domain.plan import (
     FinalSurfaceEnvelope, ChronologicalSupportEnvelope, PlanSemanticContent,
 )
 from adaptive_subedge.domain.settings import (ToolRadialKeepOut, ToolClearanceProfile, CandidateSegmentRegularityPolicy, PluginSettings,
-    SurfaceCorrespondencePolicy, ErrorEstimatorConfig, MeshSectionPolicy, CandidateBeadBounds)
+    SurfaceCorrespondencePolicy, ErrorEstimatorConfig, MeshSectionPolicy, CandidateBeadBounds, SupportCoverageThresholds)
 
 _FIELDS = {
     PrintPoint2: ("x_mm", "y_mm"),
@@ -40,6 +40,7 @@ _FIELDS = {
     ErrorEstimatorConfig: ("version", "initial_error_sample_spacing_mm", "error_refinement_factor",
         "error_metric_convergence_mm", "max_error_refinement_levels",
         "closest_point_sign_numeric_tolerance_version", "surface_correspondence_policy"),
+    SupportCoverageThresholds: ("min_support_area_fraction", "min_support_contact_width_mm"),
     CandidateBeadBounds: ("min_candidate_height_mm", "max_candidate_height_mm",
         "min_candidate_width_mm", "max_candidate_width_mm"),
     MeshSectionPolicy: ("version", "section_predicate_epsilon_mm", "coplanar_section_epsilon_mm",
