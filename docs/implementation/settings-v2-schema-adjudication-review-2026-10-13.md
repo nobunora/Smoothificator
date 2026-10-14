@@ -90,3 +90,17 @@ Direct Accepted ADR source review (2026-10-14) establishes more precise facts th
 4. **Now implemented only as standalone research DTO:** the exact ADR-0043 bound fields in `CandidateBeadBounds` are registered in `adaptive_subedge/domain/settings.py`/`application/serialization.py` on implementation Draft PR #2; [Python 3.12 CI 221 tests PASS](https://github.com/nobunora/Smoothificator/actions/runs/38476672618). They have **not** been included in PluginSettings schema v1 and do not authorize physical operation. Final v2 inclusion still requires acceptance and versioned fingerprint tests.
 
 The remaining reviewer decision is **the complete composition and versioning** of v2 Settings and unknown external/physical policy fields, not re-inventing these already Accepted source-defined names. This correction itself is primary design review, not accepted ADR-0066.
+
+## 2026-10-14 ADR-0044/0058 separated settings versus measurement contract
+
+The implementation Draft PR #2 now carries **three separate immutable support research DTO fragments** all using fields explicitly fixed by Accepted ADR-0044/0058:
+
+| DTO name (standalone; not v1 Settings) | Precisely accepted field group | What it DOES NOT prove |
+| --- | --- | --- |
+| `SupportCoverageThresholds` | `min_support_area_fraction`, `min_support_contact_width_mm` from ADR-0044 | No supported footprint metric or physical threshold calibration |
+| `SupportRefinementPolicy` | `initial_support_cell_size_mm`, `support_refinement_factor`, `support_metric_convergence_fraction`, `support_width_convergence_mm`, `max_support_refinement_levels`, `minimum_support_cell_size_mm` from ADR-0058 | No adaptive cell classification, no convergence or fixture approval |
+| `ConservativeSupportBounds` | `supported_area_fraction_lower_bound`, `minimum_contiguous_support_width_lower_bound_mm`, `minimum_effective_height_lower_bound_mm`, `maximum_effective_height_upper_bound_mm` from ADR-0058 | No proof the bounds were generated conservatively or are sufficient for acceptance |
+
+These names group already-accepted field meanings into independently testable frozen value types; the **complete** v2 Settings policy still requires an exact authoritative support-query numeric tolerance/version name and owner. The result `ConservativeSupportBounds` is an engine result DTO and MUST **NOT** be fingerprinted as a plugin setting. `SupportCoverageMetrics(required_coverage_ratio, measured_coverage_ratio)` remains a research diagnostic and must never be mistaken for the conservative hard-acceptance output of ADR-0058.
+
+Source+golden tests on the implementation branch reached [236/236 PASS](https://github.com/nobunora/Smoothificator/actions/runs/38520143725) in Python 3.12. All three are intentionally **excluded from PluginSettings v1**; physical injection remains forbidden. Reviewers of Proposed ADR-0066 must decide the v2 grouping and support-query tolerance/version before the complete fingerprint can be implemented, without inventing safety thresholds or bypassing support convergence.
