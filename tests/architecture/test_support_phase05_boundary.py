@@ -29,8 +29,10 @@ class Phase05SupportOwnership(unittest.TestCase):
                "regularity_policy","tool_clearance_profile","physical_injection_requested")
         self.assertEqual(tuple(f.name for f in fields(PluginSettings)),exact)
         self.assertEqual(_FIELDS[PluginSettings],exact)
-        self.assertTrue(all(v not in fields(PluginSettings) for v in (
-           SupportCoverageThresholds,SupportRefinementPolicy,ConservativeSupportBounds)))
+        new_field_names={f.name for cls in
+            (SupportCoverageThresholds,SupportRefinementPolicy,ConservativeSupportBounds,CandidateBeadBounds)
+            for f in fields(cls)}
+        self.assertTrue(new_field_names.isdisjoint(exact))
 
     def test_import_edges_of_domain_settings_and_metrics_are_inward(self):
         for name in ("settings.py","metrics.py"):
