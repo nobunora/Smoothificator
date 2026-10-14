@@ -76,3 +76,82 @@ Accepted ADR-0037/0065 require atomic per-invocation immutable candidate issuanc
 - 34: rejected Attempt creation does not retain an externally accessible issued snapshot, change earlier attempt records or invalidate held plans.
 - 35: same semantic plan republished under a later generation does not change previously issued Attempt/Plan identity; four tests `tests/unit/test_support_attempt_epoch_matrix.py` commit `0050f0731aef7b8417bcb96d62ef8cb23d16733c`.
 - 36: GitHub Actions [38520520186](https://github.com/nobunora/Smoothificator/actions/runs/38520520186), Python 3.12 compileall PASS, **244/244 unittest PASS**. Distinct runtime hook/source-file pairing and G-code precommit checks remain deferred.
+
+## Checkpoint 7 — tasks 37–42, architecture and no premature execution
+- 37: re-reviewed AGENTS hard dependency rules, `docs/ARCHITECTURE.md` and the closed `_FIELDS` canonical DTO registry against the new research-only support schema.
+- 38: checked standalone support threshold/refinement and conservative bounds DTOs plus CandidateBeadBounds all belong to `adaptive_subedge.domain`, remain frozen and have exact fields in `application/serialization.py`.
+- 39: verified no support fields silently enter the existing seven-field `PluginSettings(schema_version="1")` identity.
+- 40: AST/import graph checks show no forbidden `domain.settings`/`domain.metrics` outbound imports, including literal dynamic module lookups.
+- 41: Phase 0.5 source contains no premature `orca_plugin/gcode`, `orca_plugin/capabilities`, live `orca_plugin/adapters` or optimizer/analyzer implementation from the later phase. Four new tests in `tests/architecture/test_support_phase05_boundary.py`, final corrected commit `5841ba5610c4beaaeede76a8828e87333ec6a485` (initial test created at `7a56b772275aa0197cfbb05e35b1054b6b41b83a`, then repaired a weak assertion).
+- 42: Python 3.12 GitHub Actions [38520721561](https://github.com/nobunora/Smoothificator/actions/runs/38520721561): compileall PASS and **248/248 unittest PASS**, 0 errors/failures.
+
+## Checkpoint 8 — tasks 43–48, final audited closure
+- 43: read actual pre-final Git source tree, **81/81** canonical manifest Git blobs unchanged, tree not truncated, original legacy script blobs `91dd3c1b322a5876f144412f6414ebe86ea3fdce` and `5e26ecffaa41e95bb381fc68ad012ffa690d0565`.
+- 44: independently retrieved PR metadata: implementation [PR #2](https://github.com/nobunora/Smoothificator/pull/2), Settings v2 [PR #3](https://github.com/nobunora/Smoothificator/pull/3), DTO/attempt [PR #4](https://github.com/nobunora/Smoothificator/pull/4) all Draft, open, unmerged. Neither Proposed ADR-0066 nor Proposed ADR-0067 has become Accepted.
+- 45: compared implementation HEAD against starting `130660cfbf0cdff9327c931121b272f9e4dc356c`: ten paths: **three production** `domain/settings.py`, `domain/metrics.py`, `application/serialization.py`; **six tests**; this evidence record. No legacy, Orca adapter, G-code processor, dependency, v1 Settings/schema/Plan identity change.
+- 46: completed this detailed review ledger, preserving source-verified proofs and open source/fixture decisions. No false claim that a DTO means working support estimator or that all Phase 0.5 acceptance criteria are satisfied.
+- 47: verify a new GitHub Actions run at the exact **final evidence-record commit** (not only preceding code SHA); record the actual result in final report.
+- 48: reconfirm exact last SHA, tree, 81/81 blobs and all three PR states after that terminal run; then stop.
+
+## All 48 distinct work items and disposition
+
+| # | Completed substantive action |
+|---|---|
+| 1 | Read AGENTS rules first |
+| 2 | PR #2/3/4 baseline state and changed-path review |
+| 3 | 81/81 pinned source blobs and two legacy hashes |
+| 4 | Compare Accepted ADR-0044/0058 and existing Settings/metric owners |
+| 5 | Commit narrow review-only implementation disposition |
+| 6 | Implement frozen SupportCoverageThresholds (ADR-0044) |
+| 7 | Register exact canonical threshold fields |
+| 8 | Test normalized area threshold inclusive boundary |
+| 9 | Test contact-width and wrong scalar failure reasons |
+| 10 | Test deterministic canonical projection/frozen DTO |
+| 11 | Test v1 Settings exclusion and missing-value failure |
+| 12 | CI 226/226 PASS |
+| 13 | Review six exact ADR-0058 adaptive refinement settings |
+| 14 | Implement immutable SupportRefinementPolicy |
+| 15 | Register exact six-field canonical projection |
+| 16 | Test numeric refinements, budget, finite and cell-size bounds |
+| 17 | Test canonical sensitivity and v1 rejection |
+| 18 | CI 231/231 PASS |
+| 19 | Review conservative result semantics vs legacy diagnostic metric |
+| 20 | Implement frozen ConservativeSupportBounds |
+| 21 | Register exact four-field result DTO |
+| 22 | Test normalized lower bounds, min/max, immutability and semantic sensitivity |
+| 23 | Update Proposed ADR-0066 review packet with Settings/result separation |
+| 24 | CI 236/236 PASS |
+| 25 | Review original seven-field v1 identity scope |
+| 26 | Regression check all standalone DTO field registries |
+| 27 | Test conservative result vs legacy ratio diagnostic separation |
+| 28 | Test original v1 fingerprint remains unchanged |
+| 29 | Test favorable research-only support values do not enable physical injection |
+| 30 | CI 240/240 PASS |
+| 31 | Review bounded PlanStore/AttemptStore publication consistency |
+| 32 | Test preview-only/empty issuance vs later publication |
+| 33 | Test concurrent publication waits on atomic attempt issuance |
+| 34 | Test attempt creation rollback does not affect prior records |
+| 35 | Test repeated plan hash generation cannot mutate in-flight snapshot |
+| 36 | CI 244/244 PASS |
+| 37 | Review architecture and canonical registry ownership |
+| 38 | Test all new DTOs immutable, explicitly registered and domain-owned |
+| 39 | Test v1 Settings fields remain closed |
+| 40 | Test forbidden import/literal dynamic import edges |
+| 41 | Test no premature Orca/G-code execution modules |
+| 42 | CI 248/248 PASS |
+| 43 | Revalidate pinned manifest/legacy blobs |
+| 44 | Recheck three Draft proposal/implementation PRs |
+| 45 | Check exact Git diff and production scope |
+| 46 | This final evidence record |
+| 47 | Verify exact-final-commit GitHub Actions |
+| 48 | Reconfirm exact final state and STOP |
+
+## Technical outcome and limits
+- **Standalone DTOs implemented:** ADR-0044 two-field `SupportCoverageThresholds`, ADR-0058 six-field `SupportRefinementPolicy` and four-field `ConservativeSupportBounds`, with exact canonical serializer field registration. They add no default hardware settings, geometry algorithm, candidate support estimator, acceptance predicate, existing Plan fields or Settings v1 schema changes.
+- **Tests:** starting 221, ending 248, **27 new tests** in six new focused modules. All documented CI checkpoints passed Python 3.12 compileall/unittest, but no installed Orca or NumPy ABI was tested.
+- **Proposed design PR #3 updated:** the review packet now identifies the three approved-source support DTO groups while noting the **required but unresolved** exact support-query numeric tolerance/version field name, v2 grouping and fixture-dependent safety thresholds. Proposal remains NOT ACCEPTED.
+- **Remaining Phase 0.5 blockers:** complete PluginSettings v2 policy/identity schema and fingerprint (Proposed ADR-0066), missing `SurfaceBand`/expanded Plan/Attempt validation DTO semantics and accepted schema versions (Proposed ADR-0067), remaining actual invocation/port ownership review and a complete specification-to-implementation review. This tranche does not declare Phase 0.5 complete.
+- **Not performed/not configured:** no external physical calibration, Orca plugin callback runtime test, G-code mutation, optimizer, hardware injection, wheel packaging, Ruff/mypy/pyright or independent blind review. Passing a DTO-only test cannot prove conservative geometric support acceptance.
+- **Rollback:** revert isolated DTO and serializer additions and the six new test files; prior v1 fingerprints stay identical throughout the change. Original scripts remain untouched.
+
+**Physical Injection prohibited. Keep PR #2, #3, #4 Draft/unmerged; no merge or physical-print enablement.**
