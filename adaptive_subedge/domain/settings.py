@@ -82,6 +82,20 @@ class CandidateBeadBounds:
 
 
 @dataclass(frozen=True, slots=True)
+class SupportCoverageThresholds:
+    """ADR-0044 research-only settings fragment, not physical support proof."""
+
+    min_support_area_fraction: float
+    min_support_contact_width_mm: float
+
+    def __post_init__(self) -> None:
+        if (not finite_binary64(self.min_support_area_fraction)
+                or not 0 <= self.min_support_area_fraction <= 1):
+            raise ContractError(ReasonCode.INVALID_SETTING, "support area fraction outside [0,1]")
+        _nonnegative_finite(self.min_support_contact_width_mm, "support contact width")
+
+
+@dataclass(frozen=True, slots=True)
 class SurfaceCorrespondencePolicy:
     """ADR-0050 research-only, versioned correspondence constraints.
 
