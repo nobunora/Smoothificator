@@ -68,3 +68,11 @@ Field validation may check finite, nonnegative magnitudes, normalized area [0,1]
 
 ## Task 31 scoped primary review — in-process attempt/PlanStore risks
 Accepted ADR-0037/0065 require atomic per-invocation immutable candidate issuance and unique Attempt ID, bounded store/epoch validity and failure rollback. Source `application/plan_store.py::begin_postprocess_attempt` already handles these under PlanStore->AttemptStore lock order. Existing tests cover preview exclusion, eviction/reset, duplicate UUID refusal and 8-worker issuance; remaining bounded test gap: coordination under **simultaneous publication and issuance**, failed initiation followed by normal initiation without state/epoch corruption, and old-generation retention during concurrent newer publish. Do not change public API or infer actual Orca postprocess association from these pure-process tests.
+
+## Checkpoint 6 — tasks 31–36: retained-plan and issue-pair interleavings
+- 31: reviewed PlanStore/InjectionAttemptStore source under Accepted ADR-0037/0065; the in-process atomic pair is under one PlanStore lock, not yet wired to an actual Orca callback.
+- 32: new test asserts a preview-only/candidate-free issued snapshot is not retroactively filled when a later injectable plan is published.
+- 33: adversarial Event/ThreadPool scheduling tests that `publish` cannot enter PlanStore lock while attempt record creation is paused; previously issued snapshot remains old generation.
+- 34: rejected Attempt creation does not retain an externally accessible issued snapshot, change earlier attempt records or invalidate held plans.
+- 35: same semantic plan republished under a later generation does not change previously issued Attempt/Plan identity; four tests `tests/unit/test_support_attempt_epoch_matrix.py` commit `0050f0731aef7b8417bcb96d62ef8cb23d16733c`.
+- 36: GitHub Actions [38520520186](https://github.com/nobunora/Smoothificator/actions/runs/38520520186), Python 3.12 compileall PASS, **244/244 unittest PASS**. Distinct runtime hook/source-file pairing and G-code precommit checks remain deferred.
