@@ -8,7 +8,7 @@ from struct import pack
 
 from adaptive_subedge.domain.errors import ContractError, ReasonCode
 from adaptive_subedge.domain.geometry import PrintPoint2, PrintPoint3, StructuralPathSegment, StructuralLoopReference
-from adaptive_subedge.domain.metrics import ErrorMetrics, SupportCoverageMetrics
+from adaptive_subedge.domain.metrics import ErrorMetrics, SupportCoverageMetrics, ConservativeSupportBounds
 from adaptive_subedge.domain.plan import (
     IdentityReference, SubEdgeSegment, SubEdgePath, InsertionAnchor,
     FinalSurfaceEnvelope, ChronologicalSupportEnvelope, PlanSemanticContent,
@@ -23,6 +23,10 @@ _FIELDS = {
     StructuralLoopReference: ("loop_id", "points", "seam_gap_allowance_mm", "canonical_shape_hash"),
     ErrorMetrics: ("e_max_mm", "e_rms_mm", "e_p95_mm", "signed_mean_mm"),
     SupportCoverageMetrics: ("version", "required_coverage_ratio", "measured_coverage_ratio"),
+    ConservativeSupportBounds: ("supported_area_fraction_lower_bound",
+        "minimum_contiguous_support_width_lower_bound_mm",
+        "minimum_effective_height_lower_bound_mm",
+        "maximum_effective_height_upper_bound_mm"),
     IdentityReference: ("identity_type", "schema_version", "canonical_encoding_version", "digest_hex"),
     SubEdgeSegment: ("start_xy", "end_xy", "command_z_mm", "local_support_z_mm", "effective_bead_height_mm", "width_mm", "geometric_mm3_per_mm", "commanded_mm3_per_mm", "requested_speed_mm_s"),
     SubEdgePath: ("path_id", "interval_id", "command_z_mm", "planned_seam_gap_mm", "execution_order", "segments", "support_dependency_path_ids"),
