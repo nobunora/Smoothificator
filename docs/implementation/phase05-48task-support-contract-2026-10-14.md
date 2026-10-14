@@ -31,3 +31,21 @@ Date: 2026-10-14. **Status: in progress — primary source review; no independen
 
 ## Checkpoint results
 To be appended with exact commits and CI logs, including any failure.
+
+## Checkpoints 1–3 — tasks 1–18, accepted support policy fragments
+- 1–5: source hierarchy, 81 pinned blob SHA matches, Accepted ADR-0044/0058 and existing value-type ownership reviewed; recorded **validated narrowly** for standalone Settings fragments only.
+- 6: implemented frozen `SupportCoverageThresholds` from exactly two ADR-0044 named settings in `domain/settings.py`, commit `397b49b7a719173aceb2ccbb3dd7de880f404737`.
+- 7: explicit two-field canonical `_FIELDS` registry, commit `4925e76cd1739bb002df17061a935d71491ce9dc`.
+- 8–11: 5 tests in `tests/unit/test_support_thresholds_adr44.py` for [0,1], contact width, invalid types, frozen canonical bytes and v1 fingerprint isolation, commit `655bee5957208df44d22a1db28b5c99dd510e10a`.
+- 12: GitHub Actions [38519678974](https://github.com/nobunora/Smoothificator/actions/runs/38519678974), Python 3.12 compileall PASS and **226/226 tests PASS**.
+- 13: revalidated exact six new field names in Accepted ADR-0058; no magic support-query tolerance/version identifier invented.
+- 14: implemented frozen standalone `SupportRefinementPolicy` without physical defaults, commit `68b895b4e8b8e59e6123213f585d3dc30655983f`.
+- 15: exact six-field canonical DTO registry, commit `7757085545fac61c709088b128f4e659cb3165c1`.
+- 16–17: five regression tests in `tests/unit/test_support_refinement_adr58.py` for numerical, integer-level, frozen, bytes, v1 Settings isolation; commit `6a833bdd31a7fa9245842b8fe6e8ffc741ea4a4a`.
+- 18: GitHub Actions [38519935496](https://github.com/nobunora/Smoothificator/actions/runs/38519935496), Python3.12 compileall PASS, **231/231 tests PASS**.
+
+## Task 19 — next review-only disposition: support result bounds
+
+Accepted ADR-0058 directly names four conservative result fields: `supported_area_fraction_lower_bound` (normalized fraction), `minimum_contiguous_support_width_lower_bound_mm`, `minimum_effective_height_lower_bound_mm`, `maximum_effective_height_upper_bound_mm` (millimeters). Existing `SupportCoverageMetrics(version, required_coverage_ratio, measured_coverage_ratio)` is a *research diagnostic*, not those hard acceptance lower/upper proofs. A standalone immutable `ConservativeSupportBounds` **result vocabulary** is narrowly validated as an explicit container for the four already-named values; it shall never itself make a support decision or claim provenance/convergence, which requires future engine and numeric policy. Any tolerance/version or engine algorithm remains outside this scope.
+
+Field validation may check finite, nonnegative magnitudes, normalized area [0,1] and effective min<=effective max; do not infer a physical contact threshold. Register all fields without touching PluginSettings v1 or plan root semantic bytes. New result DTO must not be used as a full Settings fingerprint.
