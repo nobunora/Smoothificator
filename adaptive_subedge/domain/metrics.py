@@ -31,3 +31,27 @@ class SupportCoverageMetrics:
     def __post_init__(self) -> None:
         if type(self.version) is not str or not self.version.strip() or any(not finite_binary64(v) or not (0 <= v <= 1) for v in (self.required_coverage_ratio, self.measured_coverage_ratio)):
             raise ContractError(ReasonCode.INVALID_GEOMETRY, "invalid normalized coverage")
+
+
+@dataclass(frozen=True, slots=True)
+class ConservativeSupportBounds:
+    """ADR-0058 lower/upper support evidence only; no pass/fail decision."""
+
+    supported_area_fraction_lower_bound: float
+    minimum_contiguous_support_width_lower_bound_mm: float
+    minimum_effective_height_lower_bound_mm: float
+    maximum_effective_height_upper_bound_mm: float
+
+    def __post_init__(self) -> None:
+        fraction = self.supported_area_fraction_lower_bound
+        if not finite_binary64(fraction) or not 0 <= fraction <= 1:
+            raise ContractError(ReasonCode.INVALID_GEOMETRY, "invalid conservative support area")
+        values = (
+            self.minimum_contiguous_support_width_lower_bound_mm,
+            self.minimum_effective_height_lower_bound_mm,
+            self.maximum_effective_height_upper_bound_mm,
+        )
+        if any(not finite_binary64(v) or v < 0 for v in values):
+            raise ContractError(ReasonCode.INVALID_GEOMETRY, "invalid conservative support dimensions")
+        if self.minimum_effective_height_lower_bound_mm > self.maximum_effective_height_upper_bound_mm:
+            raise ContractError(ReasonCode.INVALID_GEOMETRY, "inverted conservative support height bounds")
