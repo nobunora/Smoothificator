@@ -96,6 +96,41 @@ class SupportCoverageThresholds:
 
 
 @dataclass(frozen=True, slots=True)
+class SupportRefinementPolicy:
+    """ADR-0058 conservative adaptive support Settings fragment.
+
+    This DTO does not evaluate geometry, assign fixture values or authorize
+    physical support acceptance.
+    """
+
+    initial_support_cell_size_mm: float
+    support_refinement_factor: float
+    support_metric_convergence_fraction: float
+    support_width_convergence_mm: float
+    max_support_refinement_levels: int
+    minimum_support_cell_size_mm: float
+
+    def __post_init__(self) -> None:
+        _nonnegative_finite(self.initial_support_cell_size_mm,
+                            "initial support cell size", positive=True)
+        _nonnegative_finite(self.minimum_support_cell_size_mm,
+                            "minimum support cell size", positive=True)
+        if self.minimum_support_cell_size_mm > self.initial_support_cell_size_mm:
+            raise ContractError(ReasonCode.INVALID_SETTING, "support cell size bounds inverted")
+        if (not finite_binary64(self.support_refinement_factor)
+                or self.support_refinement_factor <= 1):
+            raise ContractError(ReasonCode.INVALID_SETTING, "support refinement factor must exceed one")
+        if (not finite_binary64(self.support_metric_convergence_fraction)
+                or not 0 <= self.support_metric_convergence_fraction <= 1):
+            raise ContractError(ReasonCode.INVALID_SETTING, "invalid support-area convergence fraction")
+        _nonnegative_finite(self.support_width_convergence_mm,
+                            "support width convergence")
+        if (type(self.max_support_refinement_levels) is not int
+                or self.max_support_refinement_levels < 1):
+            raise ContractError(ReasonCode.INVALID_SETTING, "positive support refinement budget required")
+
+
+@dataclass(frozen=True, slots=True)
 class SurfaceCorrespondencePolicy:
     """ADR-0050 research-only, versioned correspondence constraints.
 
