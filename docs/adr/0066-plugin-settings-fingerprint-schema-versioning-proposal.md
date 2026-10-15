@@ -5,6 +5,12 @@ Date: 2026-10-13
 Scope: `PluginSettings` identity schema and future Phase 0.5 Settings DTO integration only.
 Reconciliation required against Accepted ADR-0045/0049/0050/0059/0062/0063/0064/0065, `docs/SPECIFICATION.md`, `docs/IMPLEMENTATION.md` and installed Orca runtime evidence.
 
+## Current proposed disposition at integrated PR #5 (2026-10-15)
+
+Requester approved all S1–S9 **policy directions**, including S6 hard quality/safety gates followed by strict lexicographic complexity, estimated added time and commanded added volume. The earlier "S6 changes requested" paragraph below records **superseded history**, not the current decision. S5 directional weights affect only the proposed bounded **candidate exploration priority**, never S6 final ranking or hard accept/reject. Missing machine-time evidence yields research-only RANKING_INCOMPLETE, not zero time or printable success. See `docs/implementation/phase05-unified-contract-review-2026-10-15.md`.
+
+This is a consolidated Draft proposal with ADR-0067 on PR #5. Formal accepted field/model definitions, independent specification review and validated repository review are **still missing**. Only the user's design direction is approved; status remains Proposed.
+
 ## Problem / existing evidence
 
 The current PR #2 implementation defines seven fields in a research-only `PluginSettings(schema_version="1")`, whose `PluginSettingsFingerprint` is computed from the full closed v1 DTO. That v1 DTO does **not** include the already-approved `ErrorEstimatorConfig`, `SurfaceCorrespondencePolicy`, `MeshSectionPolicy` and other required plugin-owned settings groups.
