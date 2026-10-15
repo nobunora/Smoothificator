@@ -95,3 +95,26 @@ Baseline (verified GitHub metadata): implementation PR #2 head `5dc15d122c2180a5
 Specification owner/reviewer: record an explicit disposition for S1–S3 and D1–D5 (accepted exact contract / changes requested / evidence missing), with accepted ADR text and revised canonical docs. Implementation owner: **only after** `validated` repository review, implement the smallest approved DTO/Settings/Attempt schema changes with independent v1/v2 golden vectors and reject-path tests. Verification owner: run compileall and entire unittest suite at exact resulting SHA, compare diff/manifest, perform normal implementation review and document any unresolved Critical/High. This is a dependency order; neither extra test count nor this primary triage constitutes approval.
 
 **Stop rule:** no speculative v2 serializer root, Plan schema alteration, physical injection, Orca callback, G-code mutation, or PR merge based on this document alone. Maintain SPEC-CHANGE-REQUIRED until formal decisions are recorded.
+## 2026-10-15 requester dispositions, pending normative integration
+
+The requester approved all ADR-0067 direction items D1–D10, and ADR-0066 directions S1–S5, S7–S9; requested redesign of S6. This approval selects design direction only: the proposed documents remain Draft and exact typed layouts, field semantics, validations and accepted review procedures are not yet completed.
+
+### ADR-0067 approved directions
+
+- D1: SurfaceBand owns typed identities referencing separately owned immutable geometry; validate reference integrity and print-space frame.
+- D2: distinct target material boundary, residual-error region, temporal support and acyclic nesting concepts; forbid cyclic/future-material support.
+- D3: structural loop preserves immutable canonical shape, bounds/length/orientation, material-side identity, noncollinear anchors in PrintObject print-space with mm units.
+- D4: typed InsertionAnchor signature/tolerance, plan-fixed order/dependency metadata; runtime validation evidence excluded from immutable Plan identity.
+- D5: existing Plan v1 bytes preserved; meaning-changing Plan fields require a distinct schema/root and independent vectors.
+- D6: attempt evidence distinguishes UNKNOWN, VALIDATED and REJECTED with stable reasons/provenance; never infer validation from existence of an attempt.
+- D7: single AttemptStore owner, monotonic status and immutable record history/snapshots.
+- D8: preserve existing atomic PlanStore/AttemptStore issue operation; bind immutable issued-snapshot provenance, no invented Orca invocation UUID.
+- D9: distinguish analysis generation from PluginSessionEpoch; an intervening analysis alone does not void retained snapshots; reject old-epoch selection after reset.
+- D10: Phase 0.5 implements reviewed domain/application/required ports; final Orca/G-code/optimizer tree is a future target, no empty placeholders.
+
+### Dependencies remaining after requester response
+
+1. Proposed ADR-0067 must convert directions into an exact normative schema: reference identity types, coordinates, residual region semantics, canonical shape algorithm, signature/tolerance policy, attempt-evidence state transitions and snapshot provenance; decide exact Plan schema version/typed fields. No guessed choices.
+2. Proposed ADR-0066 must resolve S6 and precise numeric policy/cost/jerk/tolerance types; separate user-approved high-level direction from complete implementation contract.
+3. Specification owner/reviewer must reconcile Accepted ADRs, SPECIFICATION, ARCHITECTURE, IMPLEMENTATION and handoff; obtain formal review/record, restamp manifest and validate repository assumptions before implementation.
+4. Keep both design PRs Draft and Physical Injection off until the prescribed gates. The requester response is not an independent PR review and does not claim tests ran.
