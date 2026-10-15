@@ -1,6 +1,6 @@
-# ADR-0067 (PROPOSED): Complete Phase 0.5 DTO contracts and process-local attempt/snapshot association
+# ADR-0067 (SPECIFICATION OWNER APPROVED): Complete Phase 0.5 DTO contracts and process-local attempt/snapshot association
 
-**Status: Proposed — NOT ACCEPTED, NOT IMPLEMENTATION AUTHORITY**
+Status: **Specification-owner approved on Draft PR #5; independent review and SPEC_VALIDATED pending; physical injection prohibited**
 Date: 2026-10-14
 Design branch: `proposed-phase05-dto-attempt-20261014`
 Related: Accepted ADR-0037, 0049, 0061, 0062, 0064, 0065; separate **Proposed** ADR-0066 (Settings v2).
@@ -11,6 +11,13 @@ Scope: Phase 0.5 contracts ONLY — no Orca adapter, G-code execution or physica
 Requester approved D1–D10 **design directions**, not final typed contract sign-off. The early baseline passage below saying atomic PlanStore snapshot/attempt issuance is absent is **historical**: implementation PR #2 now implements and tests `PlanStore.begin_postprocess_attempt` under Accepted ADR-0065. This proposal adds only unapproved immutable provenance, richer validation evidence, v2 directional quality metrics and tagged time-availability semantics. See `docs/implementation/phase05-unified-contract-review-2026-10-15.md`.
 
 The previously separate Settings v2 PR #3 and DTO/Attempt PR #4 shared canonical-document edits; Draft PR #5 is their integrated specification review. No old Plan/Settings v1 bytes are changed; no Orca adapter, G-code mutation or physical injection is authorized. Status remains Proposed until source/fixture issues are resolved and reviewed.
+
+
+## Current specification-owner approval — controlling scope
+
+**Approved by delegated specification owner on 2026-10-15:** the schema-level Domain/Attempt decisions in [phase05-delegated-specification-decisions-2026-10-15.md](../implementation/phase05-delegated-specification-decisions-2026-10-15.md), including typed immutable SurfaceBand references, Plan v2 identity and directional evidence, tagged available/unavailable time, attempt validation UNKNOWN/VALIDATED/REJECTED, bounded revision history, and runtime-only atomic issued-snapshot provenance. **This approval controls over old conflicting "not approved" or "not yet implemented" historical paragraphs below**; the existing ADR-0065 PlanStore atomic issuance is already implemented. Accepted ADR-0037/0047/0062/0064/0065 remain authoritative.
+
+**Separate verification status:** approved as a design/typed schema decision **on this Draft PR only**, not an independent review, proven topology/Orca matcher, implementation or physical printer authority. The final v2 DTO projection, canonical test vectors and source validation remain required in the regular specification/repository review workflow before production edits. Keep legacy v1 canonical bytes unchanged.
 
 ## Context
 
