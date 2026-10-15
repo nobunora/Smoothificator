@@ -8,7 +8,7 @@ from struct import pack
 
 from adaptive_subedge.domain.errors import ContractError, ReasonCode
 from adaptive_subedge.domain.geometry import PrintPoint2, PrintPoint3, StructuralPathSegment, StructuralLoopReference
-from adaptive_subedge.domain.metrics import ErrorMetrics, SupportCoverageMetrics, ConservativeSupportBounds
+from adaptive_subedge.domain.metrics import ErrorMetrics, SupportCoverageMetrics, ConservativeSupportBounds, BidirectionalSurfaceErrorMetrics
 from adaptive_subedge.domain.plan import (
     IdentityReference, SubEdgeSegment, SubEdgePath, InsertionAnchor,
     FinalSurfaceEnvelope, ChronologicalSupportEnvelope, PlanSemanticContent,
@@ -23,6 +23,7 @@ _FIELDS = {
     StructuralLoopReference: ("loop_id", "points", "seam_gap_allowance_mm", "canonical_shape_hash"),
     ErrorMetrics: ("e_max_mm", "e_rms_mm", "e_p95_mm", "signed_mean_mm"),
     SupportCoverageMetrics: ("version", "required_coverage_ratio", "measured_coverage_ratio"),
+    BidirectionalSurfaceErrorMetrics: ("e_max_pred_to_src_mm", "e_max_src_to_pred_mm", "e_p95_pred_to_src_mm", "e_p95_src_to_pred_mm", "e_rms_pred_to_src_mm", "e_rms_src_to_pred_mm"),
     ConservativeSupportBounds: ("supported_area_fraction_lower_bound",
         "minimum_contiguous_support_width_lower_bound_mm",
         "minimum_effective_height_lower_bound_mm",
