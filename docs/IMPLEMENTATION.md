@@ -346,6 +346,10 @@ ADR-0063's five minimum/adjacent segment-regularity settings and physical-fixtur
 Candidate required v2 DTO composition, type/units, dialect-tagged motion model, conservative support-query tolerance and lexicographic ranking/exception contract are specified **for review only** in Proposed ADR-0066, after its 2026-10-15 candidate schema section. No v2 payload can be accepted through existing \`identity_root\`/canonical \`PluginSettings\` v1; version mismatch must fail closed. Before implementation, resolve X1 (directional weights' role under S6), X2 (Plan v2 directional error/time evidence), X3 (time/complexity/volume model), X4 (plugin cap vs resolved Orca config), then refresh canonical audit manifest/handoff and obtain validated repository review. Do not add speculative runtime adapters or physical defaults.
 PlanStore invalidation is useful but does not replace the final equality checks.
 
+### Proposed domain/attempt v2 implementation boundary (ADR-0067, SPEC_REVIEW only)
+
+The 2026-10-15 proposed ADR-0067 section owns exact candidate DTO field/type/range suggestions and cross-source conflicts: \`SurfaceBand\` uses references to closed immutable geometry, loops/anchors carry versioned material-side and matcher information, Plan v2 separately reports converged **directional** errors and typed time availability, and Attempt evidence cannot be VALIDATED without real subject/policy/proof. Atomic PlanSnapshot/Attempt issuance already exists in PR #2; preserve it and review only provenance/history extensions. **No change to v1 classes or hashes is approved by this proposed text.** Exact shape/reference validation, canonical identity, unknown-time result and external evidence still require adjudication before source edits.
+
 ## 13. Immutable domain DTOs
 
 Use frozen dataclasses or equivalent immutable typed structures.
