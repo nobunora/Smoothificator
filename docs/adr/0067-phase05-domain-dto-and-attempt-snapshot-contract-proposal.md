@@ -183,3 +183,10 @@ Keep current implemented \`PlanStore.begin_postprocess_attempt\` lock order **Pl
 - Concurrent publish/reset/eviction vs issuance must not create eligible stale attempts. All rollback failures and malformed inputs are tested; no Orca runtime or G-code executed.
 
 **SPEC_REVIEW disposition:** approved requester **directions**, candidate exact schemas presented here, but independent review and cross-ADR conflict resolution are still outstanding. Do not mark ADR-0067 Accepted or start production v2 Plan/Attempt schema implementation until a reviewed canonical revision, audited manifest, revised handoff, and REPOSITORY_REVIEW \`validated\` exist.
+
+
+## 2026-10-15 unified specification resolution of X2 (candidate, SPEC_REVIEW)
+
+The cross-ADR reviewed approach for the old mandatory `PlanSemanticContent.estimated_added_time_s` is a separate v2 `AddedTimeEvidence` **tagged union**: `AVAILABLE` has finite nonnegative seconds with time predictor version, exact typed resolved execution-config identity and immutable provenance; `UNAVAILABLE` has an explicit stable reason and missing dependency identifiers. Never use `0`, NaN, Inf, an Optional bare float or a guessed speed-only constant to stand for unavailable. Keep v1 bytes unchanged. See `docs/implementation/phase05-unified-contract-review-2026-10-15.md` for complete proposed state transitions/exception matrix.
+
+Unknown time does not imply invalid geometry: it may produce a research-only analysis, but it cannot be ranked across all feasible candidate plans or become printable under user-approved S6. Separate the geometry-feasible and full-rankable sets, and flag RANKING_INCOMPLETE whenever any relevant geometric candidate cannot be ranked. New directional converged error evidence remains mandatory for a v2 hard bidirectional check. Source-file and Attempt evidence continue to be runtime-only and cannot contaminate Plan identity. The exact v2 placement is not yet Accepted; independent review remains required.
