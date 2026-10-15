@@ -1,0 +1,106 @@
+name: Phase 0.5 isolated venv and research source bundle
+
+on:
+  push:
+    branches: [phase-0.5-skeleton-20261013]
+  pull_request:
+    branches: [adaptive-subedge-design]
+
+permissions:
+  contents: read
+
+jobs:
+  venv-research-only:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Create isolated Python environment and verify imports
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m venv "$RUNNER_TEMP/smoothificator-phase05-venv"
+          PY="$RUNNER_TEMP/smoothificator-phase05-venv/bin/python"
+          "$PY" -c 'import sys; assert sys.prefix != sys.base_prefix; print(sys.version); print("venv:", sys.prefix)'
+          "$PY" -c 'import adaptive_subedge, orca_plugin; print("Research namespaces import successfully")'
+      - name: Compile source inside venv
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/smoothificator-phase05-venv/bin/python" -m compileall -q adaptive_subedge orca_plugin tests
+      - name: Run all contract and architecture tests inside venv
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/smoothificator-phase05-venv/bin/python" -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Verify physical injection and Orca capabilities are absent
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/smoothificator-phase05-venv/bin/python" -c 'from pathlib import Path; import orca_plugin; assert sorted(p.name for p in Path("orca_plugin").rglob("*.py")) == ["__init__.py"], "Orca runnable modules must be separately reviewed"; print("Phase 0.5 is not an installable Orca plugin")'
+      - name: Build clearly labeled non-installable research snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/smoothificator-phase05-venv/bin/python" - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile, ZIP_DEFLATED
+          from os import environ
+          out = Path("dist/phase05-research-only.zip")
+          out.parent.mkdir(exist_ok=True)
+          message = ("Smoothificator Phase 0.5 research source snapshot\n"
+                     "NOT an installable OrcaSlicer plugin.\n"
+                     "NO slicer callback, G-code injector, physical printing, or release authorization.\n"
+                     f"Source commit: {environ['GITHUB_SHA']}\n")
+          with ZipFile(out, "w", ZIP_DEFLATED) as archive:
+              archive.writestr("RESEARCH-ONLY.txt", message)
+              for root in (Path("adaptive_subedge"), Path("orca_plugin")):
+                  for file in sorted(root.rglob("*.py")):
+                      archive.write(file, file.as_posix())
+          print(out, out.stat().st_size)
+          PY
+      - name: Clean extracted-bundle import and ZIP integrity smoke check
+        shell: bash
+        run: |
+          set -euo pipefail
+          export RESEARCH_EXTRACT="$RUNNER_TEMP/smoothificator-extracted"
+          "$RUNNER_TEMP/smoothificator-phase05-venv/bin/python" -I - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          from os import environ
+          from sys import path
+          from importlib import import_module
+          archive = Path("dist/phase05-research-only.zip").resolve()
+          destination = Path(environ["RESEARCH_EXTRACT"])
+          with ZipFile(archive) as z:
+              assert z.testzip() is None, "ZIP CRC mismatch"
+              names = z.namelist()
+              assert names and len(names) == len(set(names)), "duplicate archive paths"
+              assert "RESEARCH-ONLY.txt" in names
+              assert all(name == "RESEARCH-ONLY.txt" or
+                         (name.endswith(".py") and name.startswith(("adaptive_subedge/", "orca_plugin/")))
+                         for name in names), "unexpected executable/file content"
+              assert "orca_plugin/__init__.py" in names
+              assert not any(name.startswith("orca_plugin/") and
+                             name != "orca_plugin/__init__.py" for name in names), "unexpected live Orca capability"
+              for name in names:
+                  if name == "RESEARCH-ONLY.txt":
+                      continue
+                  assert z.read(name) == Path(name).read_bytes(), f"source differs: {name}"
+              z.extractall(destination)
+          import os
+          os.chdir(destination)
+          path.insert(0, str(destination))
+          for name in ("adaptive_subedge", "orca_plugin", "adaptive_subedge.domain.metrics",
+                       "adaptive_subedge.application.serialization"):
+              module = import_module(name)
+              assert Path(module.__file__).resolve().is_relative_to(destination.resolve()), name
+          print("Clean extracted-bundle import and ZIP integrity: PASS")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phase05-research-only-${{ github.sha }}
+          path: dist/phase05-research-only.zip
+          retention-days: 7

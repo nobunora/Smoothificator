@@ -1,0 +1,97 @@
+# Phase 0.5 — Twelve-task metric, dependency and typed outcome review (2026-10-13)
+
+## Preflight (task 1)
+- Read AGENTS first, then branch metadata/diff and DOCUMENT_CONTRACT/handoff and relevant accepted ADRs.
+- Baseline implementation branch `4b2571c521ae252dc691f3153387d1b0c9a71e54`, PR #2 Draft/unmerged, separate Proposed ADR-0066 PR #3 Draft/unmerged.
+- Canonical blob manifest `ed32f47cc541443a52bc6abed289cc86b31d816b`: **81/81 exact Git blob matches**, no legacy script changes.
+- Latest prior Python 3.12 focused test run: **96/96 PASS**. This is not full Phase 0.5 readiness or physical safety.
+
+## Task 2 — primary source review findings before edits
+- **M-01 Medium, confirmed:** `domain/metrics.py::ErrorMetrics` accepts a finite nonnegative but mathematically impossible `e_rms_mm > e_max_mm` or `e_p95_mm > e_max_mm`. SPECIFICATION §16 and ADR-0050 define E_max as directional maximum, E_p95 as percentile and equal-weight direction RMS; no summary percentile or RMS can exceed the maximum. This is a value-DTO consistency gate, NOT estimator execution or a change to surface sampling.
+- **M-02 coverage:** Current `PlanSemanticContent` validates that candidate support points strictly backward in order and down in Z, but no focused positive hash-sensitivity tests assert that candidate order/support dependency changes modify the authoritative plan identity. Add deterministic fixtures only; do not invent geometry constraints or optimizer.
+- **M-03 planned later audit:** `PlanSemanticContent.reason` uses `isinstance(reason, str)`, while the registered serializer permits exact builtin string only. A `str` subclass can enter a frozen Plan but fail at canonical hash construction. Confirm against code/ADR-0062 and apply a minimal type fix if still true.
+- **Open and unchanged:** Settings v2 ADR-0066 remains Proposed, full execution-config schema/Ports/export snapshot attempt binding need adjudication/Orca fixtures. No v2 schema, Orca live adapter, actual G-code, optimizer or physical injection.
+
+## Twelve-task ledger and focused checks
+1. Inspect actual current HEAD/PR status and 81-blob manifest — complete.
+2. Audit ErrorMetrics numerical invariants and plan identity coverage — complete.
+3. Commit this review-only finding record before production edits.
+4. Implement minimal mathematical ErrorMetrics summary consistency checks using existing typed reason codes.
+5. Add positive/boundary/negative metric tests and identity regression, not physical estimator.
+6. Verify compileall, unittest and record first checkpoint.
+7. Audit candidate support/order hash coverage against ADR-0032/0064.
+8. Add positive and malformed support/order content hash fixtures, without altering Plan semantics.
+9. CI checkpoint and reviewed dispositions.
+10. Confirm PlanSemanticContent reason strict-type problem and affected boundary.
+11. Minimal fix + regression tests only if confirmed, leave source schema untouched.
+12. Final CI/diff/PR status; record exact evidence and stop.
+
+## Quality gates
+GitHub Actions Python 3.12 checks:
+- `python -m compileall -q adaptive_subedge orca_plugin tests`
+- `python -m unittest discover -s tests -p 'test_*.py' -v`
+
+No Ruff/mypy configured, no wheel/package metadata or actual Orca runtime fixture verified. No independent blind review or merge/physical printer action will be claimed. Production changes remain in Domain DTO invariants only, never change valid canonical byte grammar.
+
+## Tasks 4–6 — metrics coherence repair and first CI checkpoint
+
+- Task 4: `domain/metrics.py::ErrorMetrics` now rejects mathematical impossibilities `e_rms_mm > e_max_mm` and `e_p95_mm > e_max_mm` with `ContractError(INVALID_GEOMETRY)`. The accepted bidirectional summary definitions in SPECIFICATION §16/ADR-0050 guarantee these bounds, without defining estimator algorithms. Commit `7922b9603bb7e73de9840cf164bd734252d3a672`.
+- Task 5: `tests/unit/test_error_metrics_invariants.py` adds four tests for equality/zero valid boundaries and frozen structure, typed rejection of invalid RMS/p95, and plan-hash sensitivity to a valid metric change. Commit `02b49bbecaf05e8947165a1203f19f9d004aa11c`.
+- Task 6: GitHub Actions [38363496088](https://github.com/nobunora/Smoothificator/actions/runs/38363496088): Python 3.12 `python -m compileall -q adaptive_subedge orca_plugin tests` **PASS**; `python -m unittest discover -s tests -p 'test_*.py' -v` **100/100 PASS**, 0 failures/errors, 0.079s test suite reported. M-01 confirmed -> resolved for immutable metric DTO; no printing or numeric estimator integration.
+
+## Task 7 — candidate temporal graph / hash review
+
+Read ADR-0032 execution-order and same-Z required-support prohibitions, ADR-0064 semantic identity projection, and `tests/unit/test_plan_dependencies.py`.
+
+Existing `PlanSemanticContent` rejects unknown dependencies, non-earlier execution order, and required same-Z candidate support; `SubEdgePath` preserves explicit immutable order and dependency IDs in canonical payload. Existing tests primarily exercise rejection and one valid lower-Z dependency; they do not prove that a *valid change* to explicit support dependency or execution order changes the SHA-256 plan identity. That is a **coverage gap**, not a new authorized geometry algorithm or source defect. Add positive transitive graph and same-Z non-support cases, and identity-mutation fixtures; no production plan/order semantics change.
+
+## Tasks 7–9 — support-graph and candidate identity coverage
+
+- Task 7: audited ADR-0032 and ADR-0064 against `PlanSemanticContent` and `SubEdgePath`. A valid support dependency/order change must alter plan hash; an invalid same-Z required support must reject. These were test gaps, not verified source defects.
+- Task 8: added four tests in `tests/unit/test_plan_dependencies.py`, commit `d4f74a1cbb38a6b2bf97df683fc283f0243c82a3`: support dependency alters plan hash; execution-order metadata affects plan hash; three-level earlier/lower candidate support is valid; same-Z independent paths are hashable but same-Z required support rejects.
+- Task 9: Python 3.12 GitHub Actions [38363680910](https://github.com/nobunora/Smoothificator/actions/runs/38363680910): `python -m compileall -q adaptive_subedge orca_plugin tests` **PASS**; `python -m unittest discover -s tests -p 'test_*.py' -v` **104/104 PASS**, 0 failures/errors, 0.147s reported. M-02 is covered within Phase 0.5 plan metadata only; geometric support adequacy and actual emitter order are NOT VERIFIED.
+
+## Task 10 — final plan nested-type consistency audit (primary review)
+
+Confirmed **M-03 Medium** against `domain/plan.py::PlanSemanticContent.__post_init__` and `application/serialization.py::semantic_tree`:
+- `reason` uses `isinstance(reason, str)` rather than `type(reason) is str`. A str subclass with identical textual value is accepted as a frozen Plan but rejected by the exact registered canonical serializer.
+- `error_metrics` similarly uses `isinstance(ErrorMetrics)`, accepting a dataclass subclass while canonical serializer registers only the exact `ErrorMetrics`.
+- `source_geometry`, `execution_config`, `plugin_settings` use `isinstance(IdentityReference)`, accepting subclasses that cannot be canonicalized in a registered schema.
+- This is a **typed DTO-to-canonical boundary mismatch**, not evidence that any live Orca adapter is currently supplying these subclasses. The existing approved strict registered-schema contract permits only a minimal fail-closed validation change at the domain Plan DTO boundary; no policy/version/default change is needed.
+
+Repair plan: change only these `isinstance` checks to exact builtin/registered dataclass types; add positive ordinary DTO and malformed subclass negative regression tests, including stable `ContractError` rather than later serializer failure. Plan hash for already-valid exact-type inputs remains unchanged. No subclass normalization or automatic coercion.
+
+## Tasks 10–12 — exact nested type consistency and final verification
+
+- Task 10: primary review confirmed M-03: `PlanSemanticContent.reason` accepted `str` subclasses and nested `IdentityReference`/`ErrorMetrics` accepted dataclass subclasses via `isinstance`, while the authoritative `application/serialization.py::_FIELDS` registry accepts only exact declared types. This produces a frozen-but-not-canonicalizable Plan DTO, violating strict canonical inputs.
+- Task 11: `domain/plan.py` now enforces exact type of the three IdentityReference fields, ErrorMetrics, and reason string. `tests/unit/test_contracts.py` checks valid normal Plan hash and rejects all five malformed subclass field scenarios with `ContractError(INVALID_CANONICAL_VALUE)`. Commit `b17fef78e44148504864f273314d7b8393d2bf4c`.
+- Task 12: Python 3.12 GitHub Actions [38363880187](https://github.com/nobunora/Smoothificator/actions/runs/38363880187) for source `b17fef78e44148504864f273314d7b8393d2bf4c` ran `python -m compileall -q adaptive_subedge orca_plugin tests` **PASS** and `python -m unittest discover -s tests -p 'test_*.py' -v` **105/105 PASS**, no failures/errors (0.146s logged). Pending this evidence-only record commit, re-check latest CI for the exact final SHA. All valid exact-type v1 plan hashes remain unchanged.
+
+## Final twelve-task ledger
+
+| # | Action | Outcome |
+|---|---|---|
+| 1 | Read AGENTS, verify PRs, audited 81-blob state | PASS, 81/81 |
+| 2 | Review mathematical error summary and plan hashing gaps | M-01 confirmed, M-02 coverage |
+| 3 | Commit review-only scope and test plan | done |
+| 4 | Correct impossible ErrorMetrics bounds | source fix |
+| 5 | Add four metric boundary and hash-sensitivity tests | +4 |
+| 6 | GitHub Actions compileall/unittest | 100/100 PASS |
+| 7 | Audit ADR-0032 support/order hash sensitivity | coverage gap only |
+| 8 | Add four candidate support/order identity tests | +4 |
+| 9 | GitHub Actions compileall/unittest | 104/104 PASS |
+| 10 | Audit registered nested Plan DTO type validation | M-03 confirmed |
+| 11 | Strict nested identity/metrics/reason type checks and test | +1 |
+| 12 | Final CI, diff/PR/manifest and record | 105/105 PASS source; final-record CI to be reverified |
+
+## Final primary review dispositions and remaining gates
+
+- M-01 **confirmed -> resolved** in `ErrorMetrics` value DTO. Mathematical consistency only, not the bidirectional converged estimator algorithm.
+- M-02 **coverage gap -> verified** for candidate path support/order as part of identity. Valid same-Z independent paths supported; mandatory same-Z candidate support rejected. No physical support proof.
+- M-03 **confirmed -> resolved** at `PlanSemanticContent` construction; malformed nested subclass objects no longer survive into canonicalization.
+- Starting **96 tests**, ending **105 tests**, +9 focused cases. No new dependencies, runtime plugins, printer/firmware constants, canonical byte syntax or DTO field schemas were added.
+- **Unresolved by design**: Proposed ADR-0066 Settings v2 remains unaccepted, snapshot-to-unique-Orca-postprocess-attempt association has no supported runtime fixture, Port signatures unspecified, independent blind review absent, Orca embedded NumPy, mesh simulation/G-code printer tests absent. No actual physical injection allowed.
+- Build/package/wheel, Ruff/mypy, actual Orca runtime/NumPy and independent blind review: **NOT CONFIGURED / NOT VERIFIED** as applicable; do not interpret CI pass as physical release readiness.
+- Rollback would remove mathematical DTO inconsistency checks, exact-subclass rejection, the regression tests and this review record. It cannot affect generated printer G-code because no production injector is implemented.
+
+**Stop after the twelve bounded tasks and keep Draft PR #2 / Proposed ADR Draft PR #3 open, unmerged.**
