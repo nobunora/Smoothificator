@@ -113,3 +113,9 @@ An explicit six-decision approval sequence integrating this proposal with Propos
 5. Keep physical injection disabled until actual runtime fixtures, a complete execution config, working-file commit-lock proof and independent blind review pass the later safety gates.
 
 **Final status: PROPOSED.** No changed versioned schema, Python implementation or print capability is authorized by this ADR. Reviewer acceptance and source-backed Orca integration are still required.
+
+## 2026-10-15 requester-approved design directions (not normative field schema)
+
+The requester approved D1–D10: SurfaceBand typed immutable geometry references, separate target/residual/support/nesting relationships, loop canonical geometry/matching anchors in PrintObject coordinates, typed insertion signatures and immutable candidate dependency/order data, distinct Plan schema version for semantic additions preserving v1 bytes, attempt validation UNKNOWN/VALIDATED/REJECTED evidence, immutable monotonic attempt snapshots, already implemented process-local atomic snapshot+attempt issuance with immutable provenance, epoch versus generation separation, and Phase 0.5 source-tree limited to reviewed modules without speculative Orca/G-code/optimizer stubs.
+
+Full decision detail and remaining field-level gate are recorded in `docs/implementation/phase05-spec-approval-checklist-2026-10-14.md` on this branch (commit `b7de60621b8b34ca7513319ec5e9e958d235b584`). In particular, exact references/geometry types, validation transitions, coordinate normalization and schema root still require formal source-of-truth definitions before implementation. Existing process-local issuance is not new work. ADR-0067 remains Proposed, not independently reviewed/Accepted; no live plugin, G-code or physical injection is authorized.
