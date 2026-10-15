@@ -326,7 +326,7 @@ Exact raw-key mapping and override precedence are pinned in compatibility tests.
 During analysis:
 1. build a versioned ExecutionConfigFingerprint from resolved Orca semantics;
 2. validate Adaptive Sub-Edge Settings;
-3. build a versioned PluginSettingsFingerprint from every plugin-owned value that can affect geometry, optimization, candidate seam/gap, ToolClearanceProfile, margins, speed cap, max_subedge_acceleration_mm_s2, max_subedge_jerk_mm_s, candidate bead width/height bounds, support-coverage metric thresholds/tolerances, error-estimator sampling/refinement/convergence, or execution policy.
+3. build a versioned PluginSettingsFingerprint from every plugin-owned value that can affect geometry, optimization, candidate seam/gap, ToolClearanceProfile, margins, speed and acceleration caps, firmware-dialect-tagged jerk/cornering limits, candidate bead width/height bounds, support-coverage metric thresholds/tolerances, error-estimator sampling/refinement/convergence, or execution policy.
 
 At psGCodePostProcess:
 - rebuild ExecutionConfigFingerprint with ctx.config_value();
@@ -620,7 +620,7 @@ Inputs:
 - support envelope;
 - candidate physical bounds;
 - error tolerance;
-- cost weights;
+- the versioned lexicographic objective and independently versioned directional exploration-priority weights;
 - speed/volumetric constraints.
 
 For each candidate set:
