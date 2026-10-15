@@ -1,7 +1,8 @@
 # Windows implementation and runtime results
 
-Overall: **INCONCLUSIVE — diagnostic source/build/CI PASS, real plugin load and
-callbacks NOT VERIFIED. No usable analysis-plugin or Release claim.**
+Overall: **Read-only diagnostic source/build/CI and real Orca load/export callback
+PASS. Full analysis-plugin completion remains INCONCLUSIVE behind specification
+and implementation review gates. No Release claim.** Updated 2026-10-16 JST.
 
 ## Repository and environment
 
@@ -37,9 +38,11 @@ Commands below ran through `.venv/Scripts/python.exe` on Windows:
 | `tools/generate_probe_fixture.py` | PASS: synthetic closed 10 x 10 x 2 mm STL |
 | `git diff --check` | PASS |
 | lint/type analyzers | NOT CONFIGURED under Phase 0.5 contract |
-| real Plugin Manager registration / enable-disable / Script callback | NOT VERIFIED |
-| real slicing/postprocess callback / offline slice | NOT VERIFIED |
-| real G-code before/after SHA-256 | NOT VERIFIED; synthetic mock preservation only |
+| real Plugin Manager registration / capability toggles / Script callback | PASS, actual dialog and native log |
+| offline slice / postprocess callback | PASS, synthetic cube, one READ_ONLY_UNCHANGED callback |
+| real G-code before/after SHA-256 | PASS, 96,306 bytes, equal internal hashes and final exported hash |
+| repeat save / save with pipeline disabled | PASS file equality; no additional callbacks observed |
+| fresh re-slice while disabled, re-enable, malformed settings, cancellation in Orca | NOT VERIFIED; corresponding failure paths have mock tests only |
 
 Windows CI [run 38753110917](https://github.com/nobunora/Smoothificator/actions/runs/38753110917)
 completed successfully with **headSha exactly equal to source commit
@@ -63,12 +66,12 @@ Official release URLs:
 | executable signature | NotSigned; verified official distribution digest, no security warning bypass |
 | PE file/product version | empty; not inferred from the directory name |
 | actual startup log version | `2.5.0-dev build 86905a8a` |
-| bundled external interpreter check | Python 3.12.13; NumPy absent (not an in-process plugin import test) |
+| actual in-process Script diagnostic | Python 3.12.13; NumPy absent; runtime_verified=true |
 | isolated profile | explicit `--datadir artifacts/orca-profile`; user completed first-run wizard |
 
 Stable v2.4.2 source lacks the Python SlicingPipeline seam; it is NOT SUPPORTED.
-Nightly has the source-verified seam and `.py`/`.whl` loader; actual capability
-load remains UNKNOWN. The old audited source is not treated as the installed build.
+Nightly has the source-verified seam and `.py`/`.whl` loader; both actual capabilities
+loaded successfully. The old audited source is not treated as the installed build.
 An initial `--help` process terminated with Windows event 1000 / c0000409;
 the later isolated normal GUI launch succeeded. CLI support is not certified.
 
@@ -83,8 +86,38 @@ the later isolated normal GUI launch succeeded. CLI support is not certified.
 
 The CI research ZIP matches the local ZIP. The diagnostic checkout line endings
 explain its distinct hashes; each manifest records the actual distributed bytes.
-Neither research ZIP is an installable plugin. The standalone `.py` has verified
-package syntax but must not be called a successfully loaded plugin yet.
+Neither research ZIP is an installable plugin. The standalone `.py` was installed
+through Plugin Manager and successfully executed in the pinned runtime.
+
+## Actual offline runtime evidence
+
+The user explicitly authorized alternative desktop automation. Existing
+pywinauto/Win32 mouse input and Pillow ImageGrab worked on Windows 10. No new
+dependency or security-setting change was needed. The task-local controller is
+restricted to the dedicated Orca PID; it is not part of the plugin distribution.
+
+The offline Bambu A1 mini 0.4 / PLA Basic / 0.20mm Standard preset sliced the
+synthetic 12-triangle cube into 10 layers. Plugin Manager activation alone did
+not dispatch the pipeline. Source `PluginHooks.cpp` showed selection via
+`slicing_pipeline_plugin`; selecting the capability in Expert > Others then
+exporting produced the actual callback. No Send/Print action was used.
+
+The callback observed `print=None`, `object=None`, a callable `config_value`,
+96,306 bytes and equal before/after SHA-256:
+`384a3caf195a75241ef767b3b4d9b31ba6b3bf37e33f66e597d6c2464f5a41f3`.
+The final files `probe-selected-1.gcode`, `probe-selected-2.gcode` and
+`probe-disabled.gcode` all match that hash and byte count. Repeated save and
+disabled save added no callback records; this does not establish fresh-slice
+disable/re-enable behavior. The first pre-selection export was 96,132 bytes with
+hash `3720da64d840edbfd76c35904e0ec20d882aec0bb371e966f81a1c9aa9fbb122`;
+its different configuration makes it unsuitable as a byte-identical baseline.
+
+Local evidence is preserved under ignored `artifacts/`: `probe-runtime-loaded.png`,
+`probe-runtime-export.png`, `probe-runtime-disabled.png`, `fixtures/*.gcode` and
+`orca-profile/log/python_Thu_Oct_15_23_27_51_26436.log`.
+Both capabilities were disabled at completion. The package remains installed in
+the isolated profile. This evidence proves diagnostic integration only, not
+geometry analysis, Plan validity, injection or physical printer safety.
 
 ## GUI tool failure and attempted recovery
 
@@ -106,18 +139,18 @@ Microsoft documents IsBorderRequired as introduced in build 20348; this host is
 Matching upstream report remains open:
 https://github.com/openai/codex/issues/25178
 This is an API compatibility failure, not evidence that antivirus/UAC must be
-disabled. No security setting was changed. GUI tool recovery is **not complete**.
+disabled. No security setting was changed. The standard GUI tool remains broken;
+the explicitly authorized alternative completed the offline GUI workflow.
 
 ## Remaining gates and smallest next action
 
-1. Restore supported Computer Use capture/input (vendor fix or compatible host),
-   then use Plugin Manager to install the built diagnostic `.py` and execute
-   `diagnostics/README.md`'s offline callback procedure. No plugin registration
-   was left behind by this task; the isolated app/profile and artifacts remain.
+1. Extend the diagnostic matrix with fresh-slice disable/re-enable and actual
+   cancellation/settings cases; repeated cached exports do not prove those paths.
 2. Complete PR #5 independent specification review, canonical reconciliation,
    manifest/handoff and repository validation before v2 production code.
-3. Complete real callback, cancellation/disable and file-invariance evidence,
-   followed by implementation review before any analysis-plugin release claim.
+3. Complete analysis-plugin implementation and independent review before any
+   usable analysis-plugin release claim. Diagnostic callback success does not
+   bypass the specification handoff gate.
 
 No printer connection/upload/print was initiated by this task. No G-code mutation
 was enabled. No files on non-C drives were deleted. No Release or merge performed.

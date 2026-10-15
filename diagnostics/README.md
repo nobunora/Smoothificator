@@ -18,15 +18,19 @@ The probe uses standard library only. NumPy availability is reported, not requir
 2. In Plugins, install `smoothificator_readonly_probe.py` from this directory or
    `dist/`. This is the actual source-verified `.py` package format. Do not install
    `phase05-research-only.zip` in Orca.
-3. Run **Smoothificator runtime diagnostics**. It shows version/build/Python and
+3. Enable both capabilities in Plugin Manager. Run **Smoothificator runtime diagnostics**. It shows version/build/Python and
    arms read-only observation only on the exact target. Each reload starts unarmed.
-4. Slice a synthetic model with an offline profile. Export to a disposable local
+4. In process settings, select Expert mode, then Others > Slicing Pipeline Plugin
+   > Add plugin > **Smoothificator offline export probe**. Plugin Manager activation
+   alone does not select the capability for a slicing job. Slice a synthetic model
+   with an offline profile. Export to a disposable local
    file. Never use Send/Print/Upload. The pipeline returns Skipped and reads the
    working G-code twice, bounded to 64 MiB. It never opens any file for writing.
 5. Run runtime diagnostics again. Require `READ_ONLY_UNCHANGED`, equal SHA-256
    before/after and byte count. Record the final exported file hash separately;
    an application operation after the hook is not covered by its internal hashes.
-6. Repeat export. Disable the pipeline capability in Plugin Manager and confirm
+6. Repeat export. A repeated save of an already processed result may not dispatch
+   another callback; distinguish file equality from callback count. Disable the pipeline capability in Plugin Manager and confirm
    no new observation occurs. Re-enable and confirm it occurs again. Configure
    `{"enabled":false}` to test the probe's own disabled path separately.
 7. Disable both probe capabilities at completion. Keep the isolated profile for
