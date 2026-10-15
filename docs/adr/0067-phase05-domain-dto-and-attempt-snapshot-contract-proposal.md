@@ -119,3 +119,67 @@ An explicit six-decision approval sequence integrating this proposal with Propos
 The requester approved D1–D10: SurfaceBand typed immutable geometry references, separate target/residual/support/nesting relationships, loop canonical geometry/matching anchors in PrintObject coordinates, typed insertion signatures and immutable candidate dependency/order data, distinct Plan schema version for semantic additions preserving v1 bytes, attempt validation UNKNOWN/VALIDATED/REJECTED evidence, immutable monotonic attempt snapshots, already implemented process-local atomic snapshot+attempt issuance with immutable provenance, epoch versus generation separation, and Phase 0.5 source-tree limited to reviewed modules without speculative Orca/G-code/optimizer stubs.
 
 Full decision detail and remaining field-level gate are recorded in `docs/implementation/phase05-spec-approval-checklist-2026-10-14.md` on this branch (commit `b7de60621b8b34ca7513319ec5e9e958d235b584`). In particular, exact references/geometry types, validation transitions, coordinate normalization and schema root still require formal source-of-truth definitions before implementation. Existing process-local issuance is not new work. ADR-0067 remains Proposed, not independently reviewed/Accepted; no live plugin, G-code or physical injection is authorized.
+
+## 2026-10-15 field-level candidate DTO contracts for SPEC_REVIEW (not Accepted)
+
+This candidate typed schema implements **design direction only** for requester-approved D1–D10, preserving the accepted v1 Plan/Settings bytes and ADR-0037/0062/0064/0065 process separation. Every *new* identifier below is **Proposed** until exact field-level review; existing names/semantics in the current code are labeled existing. No actual geometry algorithm, Orca adapter, G-code injector or physical mode is authorized.
+
+### D1–D2: immutable SurfaceBand references (proposed v2 domain vocabulary)
+
+\`SurfaceBand\` is a frozen, slots-enabled value, **referencing** other immutable objects, not embedding mutable Orca/mesh objects:
+- \`surface_band_id: str\`: nonempty, unique in containing analysis; no reliance on Python object ID;
+- \`source_geometry: IdentityReference\`: typed immutable source-geometry identity, exact known version;
+- \`target_boundary_ref: SurfaceBoundaryReference\`: typed identity of immutable, *closed* target boundary/contour set in the centered PrintObject print-space frame (mm);
+- \`residual_error_region_ref: ResidualErrorRegionReference\`: typed immutable reference to the affected region (must identify a finite, closed domain; optional holes/topological components explicitly versioned);
+- \`chronological_support_reference_ids: tuple[str, ...]\`: ordered/canonical ids of pre-existing support contributors, never future/same-Z candidates;
+- \`nesting_parent_band_id: str | None\`: optional strict parent. Validate referential integrity and acyclicity at the **containing analysis** boundary, not just in one dataclass's __post_init__.
+
+\`SurfaceBoundaryReference\` and \`ResidualErrorRegionReference\` are candidate distinct discriminated reference classes with \`identity_type\`, \`schema_version\`, \`digest_hex\`, and explicit centered print-space frame ID, no arbitrary string-only pointer. Reference validation needs a closed-world registry of immutable referenced geometry at the analysis boundary. Existence of a reference **does not certify** that the underlying polygon/mesh is closed, manifold or supported: those are separate engine checks. Geometry ownership, holes, material-side and source normal conventions must reconcile Accepted ADR-0050/0059 before this is final.
+
+### D3–D4: loop, anchor, path and segment typed augmentation (new Plan root required)
+
+Existing \`StructuralLoopReference(loop_id, points, seam_gap_allowance_mm, canonical_shape_hash)\` stays untouched in v1. The v2 candidate adds (all proposal):
+- \`loop_length_mm: float\` finite >0; \`bounds_print_space_mm: (xmin,xmax,ymin,ymax,zmin,zmax)\` six finite binary64 with ordered axis extrema;
+- \`winding_orientation: enum\` with validated material-side convention/version; orientation cannot be guessed from raw mesh normals;
+- \`matching_anchor_points_print_space_mm: tuple[PrintPoint3, ...]\` length >=3, non-collinear under a specified versioned geometric predicate/tolerance; canonical shape signature and anchor selection must be deterministic for equivalent contours;
+- \`shape_canonicalization_version: str\` and full 64-lowercase-hex \`canonical_shape_hash\` (the v1 nonempty unvalidated string cannot stand in as proof).
+
+Existing \`SubEdgePath\` retains its open constant-command-Z segments, execution_order and support_dependency_path_ids. A v2 candidate adds explicitly typed preplanned travel/restart **intent** and a \`support_provenance_id\`/support validation reference to path or segment as required by the accepted chronological metric; it must not store the *later* postprocess validation PASS or final machine E. In particular, path splits must be canonicalized before optimizer complexity counts; planner metadata must not permit fake segment coalescing for ranking.
+
+Existing \`InsertionAnchor(anchor_id, structural_loop_ids, layer_index, boundary_signature)\` stays untouched in v1. V2 candidate adds \`target_structural_interval_id: str\`, \`boundary_signature_schema_version: str\`, \`matching_tolerance_mm: float\` finite >0, \`matching_profile_id: str\` with source/fixture provenance. The *meaning* of the G-code matcher profile is a later phase, so no fabricated physical matcher PASS. All anchor loop ids must exist in the exact selected source geometry and the v2 semantic Plan.
+
+### D5: type-versioned Plan without silent v1 mutation
+
+Any added \`SurfaceBand\` references, loop/anchor/path metadata, directional error metrics, time-evidence semantics or score grammar that enter \`PlanSemanticContent\` require a distinct typed \`subedge-plan\` root schema (candidate \`"2"\`) and explicit v2 DTO projection. This is **independent** of the \`plugin-settings\` root version proposal in ADR-0066. Retain the ADR-0062 byte-grammar \`canonical_encoding_version="1"\` unless its actual grammar changes. A Settings v2 digest may be referenced by a Plan v2; do not change the existing v1 Plan root and byte vectors. \`plan_id == plan_hash\` remains derived from a hash-free projection (ADR-0064). No timestamp, PluginSessionEpoch, generation, mutable attempt evidence, machine coordinates, or final emitted E in Plan identity.
+
+**Mandatory cross-source conflict (High):** current \`ErrorMetrics\` on Plan v1 contains only summary \`e_max_mm\`, \`e_rms_mm\`, \`e_p95_mm\`, \`signed_mean_mm\`. It cannot independently prove the two directional hard maxima required in SPECIFICATION §16 / ADR-0047; introduce a separate v2 **directional converged error result** (at least both maxima, both RMS and p95, signed bias diagnostics, method/convergence evidence reference), or require a referenced immutable authoritative estimator result. Do not silently reinterpret existing summary fields. Existing v1 \`estimated_added_time_s: float\` similarly cannot represent unresolved machine prediction: propose a discriminated v2 time-evidence value \`TimeEstimateAvailable(estimated_added_time_s >=0, model_version, resolved_config_identity)\` versus \`TimeEstimateUnavailable(reason_code)\`, never NaN/Inf/0 as an unknown sentinel. Unavailable time must not result in a claimed time-ranked optimal printable Plan. Exact inclusion/exclusion of research-only outcomes in Plan identity must be decided before acceptance.
+
+### D6–D7: independent immutable attempt validation evidence
+
+Proposed \`ValidationEvidence\` is a frozen discriminated value:
+- \`state: UNKNOWN | VALIDATED | REJECTED\`;
+- \`validated_subject: IdentityReference | None\` (typed subject and schema, not an arbitrary digest alone);
+- \`validation_policy_version: str\` nonempty/recognized;
+- \`reason: ReasonCode | None\`, explicitly typed;
+- \`evidence_reference: str | None\` (not proof by mere nonempty string; validated status requires actual validation at the owning boundary).
+
+\`UNKNOWN\` may have no validated subject, must NOT be conflated with success; \`REJECTED\` requires a stable failure reason; \`VALIDATED\` requires an actual subject, policy version and reproducible evidence established **at the validation boundary**. Do not accept \`VALIDATED\` from user-supplied string alone. Attempt records carry separate evidence for compatibility descriptor, plugin settings, execution config and source working-file identity. The existing \`AttemptState\` monotonically transitions STARTED -> VALIDATED -> EMITTED_TEMP -> SANITY_PASS -> COMMITTED, with terminal SKIPPED/FAILED/FATAL where existing rules allow; never mark \`AttemptState.VALIDATED\` solely because the evidence DTO was constructed. A proposed monotonically increasing \`record_revision: int >=0\` and immutable snapshot history must be specified if historical evidence is required; the current store retains only latest immutable snapshots, so historical history storage is a **new responsibility with bounded retention rules** to review. No mutable status field is added to \`SubEdgePlan\`.
+
+### D8–D9: issuance provenance, reset and generation
+
+Keep current implemented \`PlanStore.begin_postprocess_attempt\` lock order **PlanStore then AttemptStore** and its rollback/duplicate-UUID rejection. An issued in-process snapshot and attempt record are a pair, not independent snapshots stitched later. Propose a \`snapshot_issue_id\` (opaque, process-local, unique, minted atomically) carried in a typed immutable issuance envelope and referenced by the attempt's history. This token is **runtime-only**, never in the Plan semantic hash. Validate it against the store-owned actual issued snapshot identity, not just a caller-supplied string. An empty eligible set is explicitly non-injectable/terminal Skipped upon later selection, not an excuse to resurrect evicted plans. A newer AnalysisGenerationId alone does not revoke already-held valid snapshot; PluginSessionEpoch reset invalidates old eligibility. Do not invent an Orca-supplied invocation UUID; pinned source exposes \`execute(ctx)\` only. The exact wrapper and lifecycle require implementation-level review (do not replace the working in-process pairing merely for naming).
+
+### D10: explicit Phase 0.5 package boundary
+
+\`ARCHITECTURE §2\` names **final target modules**; Phase 0.5 acceptance requires only meaningful reviewed frozen Domain DTOs, Application identity/store and necessary Ports/interfaces plus mechanically enforced imports. No empty \`orca_plugin/gcode\`, adapter, optimizer, numerical SurfaceBand estimator or executable fixture tests are introduced to satisfy a directory checklist. No legacy script edits, Physical Injection or G-code mutation.
+
+### Proposed validation matrix before production implementation
+
+- Immutable typed DTO/frozen nested shape; nonempty/duplicate/foreign IDs, cycle/self-nesting, closed geometry reference mismatch, non-collinear anchors, invalid bounds/winding, machine-vs-centered coordinate confusion -> typed fail-closed.
+- Both directional converged maxima must independently satisfy quality bound; summary \`ErrorMetrics.e_max_mm\` alone never authorizes a candidate.
+- V1 Plan bytes and plugin-settings root remain byte-identical; a v2 Plan semantic change alters v2 hash only; unsupported version or unknown required field rejects.
+- Unavailable time cannot be represented as a fabricated positive or zero duration; no printable lexicographic selection without the required ranking model.
+- Attempt evidence UNKNOWN must not be VALIDATED; reject missing subject/policy/evidence for claimed success; preserve monotonic existing AttemptState; reject stale session/snapshot issue token; duplicate UUID fails without overwriting prior attempts.
+- Concurrent publish/reset/eviction vs issuance must not create eligible stale attempts. All rollback failures and malformed inputs are tested; no Orca runtime or G-code executed.
+
+**SPEC_REVIEW disposition:** approved requester **directions**, candidate exact schemas presented here, but independent review and cross-ADR conflict resolution are still outstanding. Do not mark ADR-0067 Accepted or start production v2 Plan/Attempt schema implementation until a reviewed canonical revision, audited manifest, revised handoff, and REPOSITORY_REVIEW \`validated\` exist.
