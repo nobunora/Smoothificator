@@ -342,6 +342,11 @@ ADR-0063's five minimum/adjacent segment-regularity settings and physical-fixtur
 
 PlanStore invalidation is useful but does not replace the final equality checks.
 
+
+### Proposed domain/attempt v2 implementation boundary (ADR-0067, SPEC_REVIEW only)
+
+The 2026-10-15 proposed ADR-0067 section owns exact candidate DTO field/type/range suggestions and cross-source conflicts: \`SurfaceBand\` uses references to closed immutable geometry, loops/anchors carry versioned material-side and matcher information, Plan v2 separately reports converged **directional** errors and typed time availability, and Attempt evidence cannot be VALIDATED without real subject/policy/proof. Atomic PlanSnapshot/Attempt issuance already exists in PR #2; preserve it and review only provenance/history extensions. **No change to v1 classes or hashes is approved by this proposed text.** Exact shape/reference validation, canonical identity, unknown-time result and external evidence still require adjudication before source edits.
+
 ## 13. Immutable domain DTOs
 
 Use frozen dataclasses or equivalent immutable typed structures.
