@@ -1,0 +1,339 @@
+{
+  "schema_version": 1,
+  "scope": "Phase 0.5 Settings v2 schema-only review; Plan v2 remains blocked",
+  "review_status": "integrity_only_not_implementation_authority",
+  "blobs": [
+    {
+      "path": "AGENTS.md",
+      "git_blob": "dac97cb887b6e5765c067a901be70154a0850385"
+    },
+    {
+      "path": "docs/DOCUMENT_CONTRACT.md",
+      "git_blob": "1ab5e9b8780875e0d13311af08b35d85b5e165e9"
+    },
+    {
+      "path": "docs/ADR_PROCESS.md",
+      "git_blob": "587fd4c7b0971c4e927482b5016c645e74c4e070"
+    },
+    {
+      "path": ".codex/repository-review.md",
+      "git_blob": "c2574b93299e25752b696c5f71e438ff4988d6ed"
+    },
+    {
+      "path": "docs/SPECIFICATION.md",
+      "git_blob": "ad4867d0921d434cedc40ce096a35ebb85ba98ee"
+    },
+    {
+      "path": "docs/ARCHITECTURE.md",
+      "git_blob": "f2b66f659eafc0cc26636da1e5996991936e3d4b"
+    },
+    {
+      "path": "docs/IMPLEMENTATION.md",
+      "git_blob": "464892d0fd92aeb5a4784517cc69bf06b2a6fcf0"
+    },
+    {
+      "path": "docs/PLUGIN_REQUIREMENTS.md",
+      "git_blob": "0892a59dec04ca87dd9cb4ddab7df39ca7118bcd"
+    },
+    {
+      "path": "docs/ERROR_MODEL.md",
+      "git_blob": "6a892dfd333974007982ede5f91a5a5e24b7e338"
+    },
+    {
+      "path": "docs/ZAA_INTEGRATION.md",
+      "git_blob": "67eccf4d49644806c9d0f076d7f7c15eb74b1ded"
+    },
+    {
+      "path": "docs/TEST_STRATEGY.md",
+      "git_blob": "3eef3c9a94f2c09a869dbeb5f2e1eecabffce488"
+    },
+    {
+      "path": "docs/QUALITY_GATES.md",
+      "git_blob": "ea88a8cc85d167b11868217cda7e7ce3194927fd"
+    },
+    {
+      "path": "docs/REVIEW_PROCESS.md",
+      "git_blob": "00b1658a1f25956f6fedf3b4583cce352499d680"
+    },
+    {
+      "path": "docs/ROADMAP.md",
+      "git_blob": "1241c6052a8babdc3d562d5e7d9596bf7c0c5ed3"
+    },
+    {
+      "path": "docs/FULL_CONSISTENCY_AUDIT_2026-10-08.md",
+      "git_blob": "ef8403036a91f0954fef455ec0e5fa5703405583"
+    },
+    {
+      "path": "docs/FOLLOWUP_AUDIT_2026-10-08.md",
+      "git_blob": "5eaed1bc49d2c74237028ca4382b4c3462eec70b"
+    },
+    {
+      "path": "docs/adr/0001-analyzer-hook-after-path-simplification.md",
+      "git_blob": "21af5233ef2710fdf2afa8a74986683e42717710"
+    },
+    {
+      "path": "docs/adr/0002-v1-supported-geometry-and-plugin-environment.md",
+      "git_blob": "e66ea1a183de6713d9d19b0cff9efcd89f2c172d"
+    },
+    {
+      "path": "docs/adr/0003-subedge-flow-and-final-surface-model.md",
+      "git_blob": "f325e91a3a66e2d8d62d47e5e1659d2d2d2f255c"
+    },
+    {
+      "path": "docs/adr/0004-bead-height-not-neighbor-z-spacing.md",
+      "git_blob": "ec43f9d97120226d3927b87ed2c7d39be6b1f4f3"
+    },
+    {
+      "path": "docs/adr/0005-surface-band-centerline-and-nesting.md",
+      "git_blob": "636af83c9729a08c2061e0473b986e004e97864f"
+    },
+    {
+      "path": "docs/adr/0006-orca-zaa-z-semantics-and-flow.md",
+      "git_blob": "69eb5b68c436ad5ff0d1d5d126311e964516eb9e"
+    },
+    {
+      "path": "docs/adr/0007-bambu-layer-boundary-injection.md",
+      "git_blob": "3668bbec10d4f15a377d2ed67ccf9035f6cfa19a"
+    },
+    {
+      "path": "docs/adr/0008-v1-relative-e-bambu-profile.md",
+      "git_blob": "cc615640a7ac3db117cd0c6939c038b89790a201"
+    },
+    {
+      "path": "docs/adr/0009-gcode-execution-frame-translation.md",
+      "git_blob": "51f7b2f4529da846ae2688a1143cda384800b676"
+    },
+    {
+      "path": "docs/adr/0010-orca-filament-flow-ratio-e-conversion.md",
+      "git_blob": "444bb3ccca72bee3a030e47eb9d02b2024291dce"
+    },
+    {
+      "path": "docs/adr/0011-export-config-fingerprint.md",
+      "git_blob": "a6b84f93dfd597b7205a0d3a1f791c341a0248e5"
+    },
+    {
+      "path": "docs/adr/0012-reconstruct-orca-centered-slice-frame.md",
+      "git_blob": "40d8be3d3d287a6495477baa1d569d8c64e9a38a"
+    },
+    {
+      "path": "docs/adr/0013-restore-actual-emitted-machine-state.md",
+      "git_blob": "c25cb8256ceca79f0fdf3becc0d0c2a0066e51a7"
+    },
+    {
+      "path": "docs/adr/0014-segment-local-subedge-extrusion-contract.md",
+      "git_blob": "17dbb25569b927692fd31b8b4479776bfd254a90"
+    },
+    {
+      "path": "docs/adr/0015-match-orca-effective-external-wall-flow.md",
+      "git_blob": "521da752e17f257cc3a79888f9ccf0d8e889275e"
+    },
+    {
+      "path": "docs/adr/0016-seam-invariant-structural-path-matching.md",
+      "git_blob": "cf8fb2143c5d6e0a2d4e0fd9d35386f39f7ead8e"
+    },
+    {
+      "path": "docs/adr/0017-orca-gcode-quantization-parity.md",
+      "git_blob": "a4c16408fe2183ec1a45eb79f3648e7c2b42ddef"
+    },
+    {
+      "path": "docs/adr/0018-preserve-relative-e-retraction-state.md",
+      "git_blob": "0a652791397687cc31b1867e249f20fee456f839"
+    },
+    {
+      "path": "docs/adr/0019-plugin-result-fail-closed-policy.md",
+      "git_blob": "39d341fdd29190676e74292b0ac0073a2a74351d"
+    },
+    {
+      "path": "docs/adr/0020-v1-motion-and-extrusion-safety-envelope.md",
+      "git_blob": "726664188a42f9fcb9f8f19fe61ef3cfaa87132a"
+    },
+    {
+      "path": "docs/adr/0021-derived-emitted-e-after-quantization.md",
+      "git_blob": "f76fe2748183ece39eb5c34a24733b68631bd605"
+    },
+    {
+      "path": "docs/adr/0022-separate-geometric-and-commanded-volume.md",
+      "git_blob": "6b17835603f7277fb4379445b7e4e6997fd49c56"
+    },
+    {
+      "path": "docs/adr/0023-plugin-settings-fingerprint.md",
+      "git_blob": "b5afef3e2adb8ebfac7a0a768f857215391e766b"
+    },
+    {
+      "path": "docs/adr/0024-exclude-first-layer-v1.md",
+      "git_blob": "4b236d2b39477a9fdf530af5279a0dbbf17ef1ae"
+    },
+    {
+      "path": "docs/adr/0025-downstream-original-motion-clearance.md",
+      "git_blob": "f9dfe4a05532dbe973e25a179c8013e94a933fcf"
+    },
+    {
+      "path": "docs/adr/0026-v1-subedge-paths-are-planar-constant-z.md",
+      "git_blob": "7dec7e133f1fd5baebd2da82458ecc0e6ae91cc0"
+    },
+    {
+      "path": "docs/adr/0027-require-manifold-finite-source-mesh-v1.md",
+      "git_blob": "b96f52efb4625a594f78e37a9be1d087fc08ac73"
+    },
+    {
+      "path": "docs/adr/0028-disable-unreplicated-dynamic-extrusion-features-v1.md",
+      "git_blob": "380cd51c811ae884d32113e088af00e0dae71213"
+    },
+    {
+      "path": "docs/adr/0029-plan-candidate-seams-before-gcode-emission.md",
+      "git_blob": "ae0a28ef48465729ce3c0d583c933d9ae6075efb"
+    },
+    {
+      "path": "docs/adr/0030-validate-source-orientation-material-side.md",
+      "git_blob": "8f40ca1613935ab27c9eb693adf0d3ef2db35fd9"
+    },
+    {
+      "path": "docs/adr/0031-byte-preserving-streaming-gcode.md",
+      "git_blob": "c4b2fbd54130dd399810fbdfb628d2723b5fc18f"
+    },
+    {
+      "path": "docs/adr/0032-chronological-material-state-and-support-order.md",
+      "git_blob": "81599b3a48ef52f300a987db3f12e4436f55b661"
+    },
+    {
+      "path": "docs/adr/0033-unified-final-tool-clearance-validation.md",
+      "git_blob": "f3c491f661cca9202cd747d243f4b82d263eb0ec"
+    },
+    {
+      "path": "docs/adr/0034-v1-require-mm-units-and-absolute-xyz.md",
+      "git_blob": "14fefd9e24769e9c9c77bc7c377f127fb8f8279d"
+    },
+    {
+      "path": "docs/adr/0035-v1-gcode-modal-and-runtime-override-envelope.md",
+      "git_blob": "715706c24bda2ba8566aa36c5ca759176a0ac140"
+    },
+    {
+      "path": "docs/adr/0036-v1-require-unity-firmware-feed-flow-overrides.md",
+      "git_blob": "82995925a99130f4777a969a26b916a54fe7ace0"
+    },
+    {
+      "path": "docs/adr/0037-attempt-scoped-state-and-precommit-revalidation.md",
+      "git_blob": "1c111f8303f8bed71c40a554341d084e92ec561e"
+    },
+    {
+      "path": "docs/adr/0038-v1-simple-connected-topology.md",
+      "git_blob": "f9949e56396b17e06a4029a14e26e3d08e924579"
+    },
+    {
+      "path": "docs/adr/0039-disable-unreplicated-extrusion-rate-smoothing-v1.md",
+      "git_blob": "b2fd7c31513c66b52a3ce845dd892863ba3e3636"
+    },
+    {
+      "path": "docs/adr/0040-v1-inherited-acceleration-gate.md",
+      "git_blob": "8da6cd8f331200c058ab20d55a2520dce638589b"
+    },
+    {
+      "path": "docs/adr/0041-postprocess-metadata-and-progress-limitation.md",
+      "git_blob": "d7d89517ffb2642e61532a144247066538a687a8"
+    },
+    {
+      "path": "docs/adr/0042-disable-mixed-filament-sublayers-v1.md",
+      "git_blob": "459de51a869799a574100a106d3018368a779ca9"
+    },
+    {
+      "path": "docs/adr/0043-candidate-bead-geometry-bounds.md",
+      "git_blob": "f6322896e404a82b3e708388d2ef01befd4be33a"
+    },
+    {
+      "path": "docs/adr/0044-versioned-support-coverage-metric.md",
+      "git_blob": "5d069597dc426a6e7a218e70e568852cd1b99679"
+    },
+    {
+      "path": "docs/adr/0045-converged-error-estimation-contract.md",
+      "git_blob": "6dc799f71ff8c003c0f0061967ad54ffc3358261"
+    },
+    {
+      "path": "docs/adr/0046-inherited-jerk-gate.md",
+      "git_blob": "288b355ef22ef3820ff10bb459e0e66ed36ce8c5"
+    },
+    {
+      "path": "docs/adr/0047-bidirectional-surface-error-and-coverage.md",
+      "git_blob": "ec8075af4122b30621eee97b40e77182473077c2"
+    },
+    {
+      "path": "docs/adr/0048-versioned-nominal-bead-solid.md",
+      "git_blob": "56ee4413e536dfa3d3e24da07c808d64a9595473"
+    },
+    {
+      "path": "docs/adr/0049-canonical-serialization-and-hashing.md",
+      "git_blob": "af60a9979223bfff43d6d53d5f4b6477e54ead6a"
+    },
+    {
+      "path": "docs/adr/0050-local-surface-correspondence-policy.md",
+      "git_blob": "437fc444fae43ec55d5cfe716cb09f8d14f9692f"
+    },
+    {
+      "path": "docs/adr/0051-gate-orca-slice-geometry-modifiers.md",
+      "git_blob": "e4241b1a404a3f3da353fab67c31c94f8862a61f"
+    },
+    {
+      "path": "docs/adr/0052-gcode-feedrate-unit-contract.md",
+      "git_blob": "21e273c75a4d12c7c4362d8560789f4cb5f7aada"
+    },
+    {
+      "path": "docs/adr/0053-robust-mesh-plane-section-policy.md",
+      "git_blob": "be019549faa153dea04b8e5c17a940efe52dd6ad"
+    },
+    {
+      "path": "docs/adr/0054-final-structural-deposition-revalidation.md",
+      "git_blob": "102a593e5bb1aef55781d1a8b8efb49f0fe719e3"
+    },
+    {
+      "path": "docs/adr/0055-v1-simple-target-loop-only.md",
+      "git_blob": "c70b604fafe612f01ba41a5fe675019651f955bb"
+    },
+    {
+      "path": "docs/adr/0056-v1-timelapse-wrapping-and-object-cancellation-gates.md",
+      "git_blob": "085a1f78c1a14a7d0bc398aa4ca5951647904327"
+    },
+    {
+      "path": "docs/adr/0057-postprocess-time-cooling-metadata-limitations.md",
+      "git_blob": "b6190dbbc6a982735efcc7a82dc9908ab890e8cc"
+    },
+    {
+      "path": "docs/adr/0058-conservative-converged-support-coverage.md",
+      "git_blob": "e8aa90e054f881402fd74fd527c753da1343cb3b"
+    },
+    {
+      "path": "docs/adr/0059-topology-aware-mesh-section.md",
+      "git_blob": "ed8741401e6a58bc1a8b5737f5381624055d69bf"
+    },
+    {
+      "path": "docs/adr/0060-closed-candidate-influence-error-domain.md",
+      "git_blob": "48e8052a76cc0ff6c951fa81a5aa5cea08e5dc16"
+    },
+    {
+      "path": "docs/adr/0061-working-file-commit-lock.md",
+      "git_blob": "879ae9cca66e15210c4087b0bbc1f5a6859f2cc6"
+    },
+    {
+      "path": "docs/adr/0062-canonical-bytes-and-hash-domain-separation.md",
+      "git_blob": "38aba5f3b2c84dd1de1462d03314eb60c0b0e851"
+    },
+    {
+      "path": "docs/adr/0063-candidate-segment-regularity.md",
+      "git_blob": "9594b50023b3a765f0d31dc11fb360e4e7cc8b89"
+    },
+    {
+      "path": "docs/adr/0064-canonical-plan-identity-construction.md",
+      "git_blob": "589322d5ddb22f9a5c997078942f09d4ea6b808e"
+    },
+    {
+      "path": "docs/adr/0065-planstore-session-and-generation-selection.md",
+      "git_blob": "a4bf46263c17269a96e1d96a65b147da0e4ac212"
+    },
+    {
+      "path": "docs/adr/0066-plugin-settings-fingerprint-schema-versioning-proposal.md",
+      "git_blob": "3d31b226dcf881fa032282375cadcb04bf265f6e"
+    },
+    {
+      "path": "docs/adr/0067-phase05-domain-dto-and-attempt-snapshot-contract-proposal.md",
+      "git_blob": "f61ee33a80bc8adeafe517baf050e50f118ea3e3"
+    }
+  ]
+}
