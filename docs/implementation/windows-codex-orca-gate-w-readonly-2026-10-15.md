@@ -1,3 +1,13 @@
+# Historical read-only handoff — superseded
+
+**This document is retained for historical audit only.** The user has authorized trusted Windows/OrcaSlicer installation, test-only writes, UAC elevation, isolated plugin integration and end-to-end runtime testing. Use the current full-access Codex instructions instead:
+
+[Windows Codex full install and runtime test](windows-codex-orca-full-install-and-runtime-test-2026-10-15.md)
+
+This earlier read-only limitation is no longer the active instruction. No new permission for real printing or unvalidated G-code injection is implied.
+
+---
+
 # Windows Codex handoff — OrcaSlicer runtime and plugin Gate W (READ-ONLY)
 
 Date: 2026-10-15  
