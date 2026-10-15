@@ -1,9 +1,9 @@
 name: Windows diagnostic and contract checks
 on:
   pull_request:
-    branches: [phase-0.5-skeleton-20261013, adaptive-subedge-design]
+    branches: [phase-0.5-skeleton-20261013, adaptive-subedge-design, codex/windows-runtime-validation]
   push:
-    branches: [codex/windows-runtime-validation]
+    branches: [codex/windows-runtime-validation, codex/settings-v2]
   workflow_dispatch:
 permissions:
   contents: read
@@ -29,6 +29,8 @@ jobs:
           ./.venv/Scripts/python -m unittest discover -s tests/architecture -p 'test_*.py' -v
       - name: Contract and mock probe tests (no installed Orca)
         run: ./.venv/Scripts/python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Canonical manifest integrity (not review approval)
+        run: ./.venv/Scripts/python tools/check_canonical_manifest.py
       - name: Build and clean extracted import verification
         run: ./.venv/Scripts/python tools/build_validation_artifacts.py
       - uses: actions/upload-artifact@v4

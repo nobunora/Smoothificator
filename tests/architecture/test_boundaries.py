@@ -173,7 +173,7 @@ class BoundaryTests(unittest.TestCase):
         names = list((ROOT / "docs" / "adr").glob("[0-9][0-9][0-9][0-9]-*.md"))
         numbers = [int(p.name[:4]) for p in names]
         self.assertEqual(len(numbers), len(set(numbers)))
-        self.assertEqual(sorted(numbers), list(range(1, 66)))
+        self.assertEqual(sorted(numbers), list(range(1, 68)))
         legacy = (ROOT / "docs" / "adr" / "0010-orca-filament-flow-ratio-e-conversion.md").read_text(encoding="utf-8")
         self.assertIn("Status: Superseded", legacy)
 

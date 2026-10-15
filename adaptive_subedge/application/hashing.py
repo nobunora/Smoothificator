@@ -6,7 +6,8 @@ import hmac
 from adaptive_subedge.domain.errors import ContractError, ReasonCode
 from adaptive_subedge.domain.plan import IdentityReference, PlanSemanticContent, SubEdgePlan
 from adaptive_subedge.domain.settings import PluginSettings
-from .serialization import canonical_bytes, identity_root, validate_root
+from adaptive_subedge.domain.settings_v2 import PluginSettingsV2
+from .serialization import canonical_bytes, identity_root, validate_root, identity_schema_supported
 
 _MAGIC = b"AdaptiveSubEdgeCanonicalV1"
 _DOMAIN = {"subedge-plan": "plan", "execution-config": "execution-config",
@@ -42,21 +43,24 @@ def typed_identities_equal(expected_type: str, left: IdentityReference, right: I
         raise ContractError(ReasonCode.UNKNOWN_IDENTITY_SCHEMA, "unknown identity comparison class")
     for ref in (left, right):
         if (type(ref) is not IdentityReference or ref.identity_type != expected_type
-                or ref.schema_version != "1" or ref.canonical_encoding_version != "1"):
+                or not identity_schema_supported(expected_type, ref.schema_version) or ref.canonical_encoding_version != "1"):
             raise ContractError(ReasonCode.UNKNOWN_IDENTITY_SCHEMA, "mismatched typed identity class/schema")
+    if left.schema_version != right.schema_version:
+        raise ContractError(ReasonCode.UNKNOWN_IDENTITY_SCHEMA, "mixed identity schemas")
     return hmac.compare_digest(left.digest_hex, right.digest_hex)
 
 
 def typed_identity(identity_type: str, semantic_payload: object) -> IdentityReference:
     if type(identity_type) is not str or identity_type not in _DOMAIN:
         raise ContractError(ReasonCode.UNKNOWN_IDENTITY_SCHEMA, "unrecognized identity type")
-    root = identity_root(identity_type, semantic_payload)
+    schema_version = "2" if type(semantic_payload) is PluginSettingsV2 else "1"
+    root = identity_root(identity_type, semantic_payload, schema_version=schema_version)
     validate_root(root, identity_type)
-    return IdentityReference(identity_type, "1", "1", domain_digest(_DOMAIN[identity_type], canonical_bytes(root)))
+    return IdentityReference(identity_type, schema_version, "1", domain_digest(_DOMAIN[identity_type], canonical_bytes(root)))
 
 
-def fingerprint_plugin_settings(settings: PluginSettings) -> IdentityReference:
-    if type(settings) is not PluginSettings:
+def fingerprint_plugin_settings(settings: PluginSettings | PluginSettingsV2) -> IdentityReference:
+    if type(settings) not in (PluginSettings, PluginSettingsV2):
         raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "validated settings required")
     return typed_identity("plugin-settings", settings)
 
