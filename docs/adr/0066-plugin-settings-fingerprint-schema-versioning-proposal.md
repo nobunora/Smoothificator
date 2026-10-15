@@ -69,3 +69,11 @@ The in-flight snapshot / settings-TOCTOU / eviction and epoch transition cases a
 ## Status / next action
 
 **PROPOSED only.** Review this ADR and settle its open field-schema and migration decisions on a dedicated design PR. Do not mark Accepted automatically or merge into the current audited implementation baseline. No production code change is authorized solely by this proposal.
+
+## 2026-10-15 requester review disposition (direction-level approval only)
+
+Requester approves S1–S5 and S7–S9 as documented in `docs/implementation/settings-v2-schema-adjudication-review-2026-10-13.md` on this design branch, including preserving v1 identity, complete typed plugin-owned policy coverage, versioned numeric support query, dialect-aware motion limits, two-direction error weights, explicit execution policy, analysis-only with missing calibration evidence, and no inferred v1-to-v2 migration.
+
+**S6 changes requested, NOT approved.** A geometric error-only optimizer was proposed by the requester on grounds that time/material/path complexity may be functions of error. This is not generally an exact functional dependency; different path lengths, order, accelerations and bead widths may yield equal error but different cost. Reviewer must adjudicate error-first lexicographic optimization vs quality-threshold-constrained secondary execution-time/material cost. Exact error function, tie tolerance, secondary-cost measurements and deterministic ordering remain open. See the referenced review packet for bounded alternatives.
+
+Requester direction is not independent ADR acceptance or complete mathematical specification. Status remains Proposed. Do not implement schema-v2 or alter v1 bytes until remaining field/type decisions and formal review are complete.
