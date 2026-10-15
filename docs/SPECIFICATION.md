@@ -355,12 +355,13 @@ Surface correspondence is local and normal-aware per ADR-0050, but the local dom
 
 These are deterministic numerically converged estimator results per ADR-0045. Sample spacing/refinement/convergence/correspondence settings are versioned plugin Settings and participate in PluginSettingsFingerprint. A hard tolerance decision is invalid if the estimator does not converge within the configured refinement budget.
 
-Among feasible candidate sets minimize a documented cost including:
-- residual error;
-- candidate path length;
-- added commanded material;
-- estimated time;
-- complexity/risk.
+### Proposed S6 optimizer amendment — 2026-10-15, pending ADR-0066 specification review
+
+This paragraph is a **draft normative change for review on the proposed Settings-v2 branch**, not yet an Accepted requirement of the canonical base. A candidate's error is a **hard configured quality bound** rather than an unbounded weighted cost. The bidirectional converged maximum errors each MUST be <= configured surface_error_tolerance_mm. Other accepted geometric, support, collision, motion and safety gates remain hard constraints. Within the finite feasible set, the proposed optimization is lexicographic: minimize structural path complexity first, estimated added execution time second, then commanded added material volume third. No weighted combination may trade a failed quality or safety gate for cost. All three scores and an exact deterministic final tie-break are versioned plugin settings/algorithm contracts and must be validated against the optimizer's actual candidate vocabulary before acceptance.
+
+Candidate complexity is a property of the immutable proposed execution plan, not a synonym for estimated time or residual error. The proposed primitive complexity order is (added path count, added segment count, count of independent travel/restart transitions), compared as a tuple of nonnegative integers; this definition is subject to review for distinguishing mandatory geometric seams, splitting artifacts and parameterization. Time is an estimate dependent on path length, permitted speed and machine acceleration/jerk model; material uses **commanded** volume, not just geometric bead volume. Unavailable or non-finite ranking metrics must not silently map to zero or PASS. No universal machine constants, objective weights or numerical thresholds are introduced here.
+
+If no candidate satisfies converged quality and hard gates, return a typed analysis-only infeasible/no-solution result: do not select the minimum-error invalid candidate as injectable. If any hard metric cannot converge/resolve, reject that candidate. Identical ranked values use a stable canonical semantic candidate key as final tie-break; neither runtime timestamps nor machine-dependent status are hashed. Exact comparator, candidate enumeration coverage, metric versioning and estimator provenance must be accepted before production optimizer implementation.
 
 Optimization MUST be deterministic for identical canonical inputs/settings.
 
