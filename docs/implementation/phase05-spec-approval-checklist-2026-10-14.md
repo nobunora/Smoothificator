@@ -3,6 +3,12 @@
 **Status: REQUEST FOR SPECIFICATION REVIEW, not a sign-off.**
 Date: 2026-10-14. This pack is intended to make the minimum remaining decisions explicit, based on Accepted ADR-0037/0049/0062/0064/0065, SPECIFICATION §§16–18, ARCHITECTURE §§2–5, IMPLEMENTATION §§12–13, the handoff acceptance criteria, and pinned Orca source. No identity or executable behavior should be implemented from this pack before approval.
 
+## CURRENT DISPOSITION — 2026-10-15
+
+The user has **explicitly delegated and granted specification-owner approval** to the schema-level resolutions for all S1–S9 and D1–D10 design decisions, including X1–X4. The controlling decision record is [phase05-delegated-specification-decisions-2026-10-15.md](phase05-delegated-specification-decisions-2026-10-15.md). Older paragraphs below saying "reviewer needs to approve the S/D direction" are **historical and superseded for those decisions**. They do not mean the requester must make another choice.
+
+Remaining gates are evidence/process, NOT missing user policy: reconcile to one source-of-truth revision, audit canonical manifest/handoff, obtain required independent review / REPOSITORY_REVIEW validated, implement and run exact-SHA tests, then Implementation Review. Machine time prediction, conservative support proofs, Orca hardware fixture and physical print safety are intentionally not "approved" by the policy sign-off. PR #5 remains Draft and physical injection is disabled.
+
 ## Dependency order
 
 `D6 Settings v2 (Proposed ADR-0066 in Draft PR #3)` and `D7 Phase-0.5 DTO/attempt contract (Proposed ADR-0067 in Draft PR #4)` require one coherent specification revision. Only after those decisions are Accepted, the team must update the canonical docs and audited manifest, run fresh REPOSITORY_REVIEW, then complete implementation and normal implementation review.
