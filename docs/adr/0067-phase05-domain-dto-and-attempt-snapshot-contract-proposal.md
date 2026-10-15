@@ -6,6 +6,12 @@ Design branch: `proposed-phase05-dto-attempt-20261014`
 Related: Accepted ADR-0037, 0049, 0061, 0062, 0064, 0065; separate **Proposed** ADR-0066 (Settings v2).
 Scope: Phase 0.5 contracts ONLY — no Orca adapter, G-code execution or physical printer authorization.
 
+## Current proposed disposition at integrated PR #5 (2026-10-15)
+
+Requester approved D1–D10 **design directions**, not final typed contract sign-off. The early baseline passage below saying atomic PlanStore snapshot/attempt issuance is absent is **historical**: implementation PR #2 now implements and tests `PlanStore.begin_postprocess_attempt` under Accepted ADR-0065. This proposal adds only unapproved immutable provenance, richer validation evidence, v2 directional quality metrics and tagged time-availability semantics. See `docs/implementation/phase05-unified-contract-review-2026-10-15.md`.
+
+The previously separate Settings v2 PR #3 and DTO/Attempt PR #4 shared canonical-document edits; Draft PR #5 is their integrated specification review. No old Plan/Settings v1 bytes are changed; no Orca adapter, G-code mutation or physical injection is authorized. Status remains Proposed until source/fixture issues are resolved and reviewed.
+
 ## Context
 
 The initial Phase 0.5 code on Draft PR #2 contains deterministic immutable Plan DTOs, typed canonical identities, a bounded process-local PlanStore and independent InjectionAttemptStore (204 Python 3.12 tests PASS at source commit `e345b9a9850e0203f1b441d6eb3f2692faa921c3`). It does not yet match all domain/attempt fields listed in ARCHITECTURE §3 / IMPLEMENTATION §13 / ADR-0037, and its separately invoked `PlanStore.snapshot()` and `InjectionAttemptStore.begin()` do not establish one atomic selection-attempt association required by Accepted ADR-0065.
