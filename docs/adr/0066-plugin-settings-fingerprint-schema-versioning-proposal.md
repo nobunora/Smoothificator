@@ -118,3 +118,64 @@ The requester explicitly approved the balance of the proposed S6 strategy after 
 The specification proposal on this branch (`docs/SPECIFICATION.md`, `docs/IMPLEMENTATION.md`) contains the staged requirement. Do not introduce an objective with a free trade-off between quality bound and execution cost. The three-part complexity tuple (added paths, segments, independent transitions) is the current candidate **definition to validate**, not independently established equivalence to physical complexity. Require a deterministic canonical counting grammar that resists representation tricks, and a validated, versioned time estimator. Exact comparator types, unknown-time analysis-only behavior, numerical ties and model provenance remain technical acceptance checks. `min` over a bounded candidate search means optimal **within explored eligible candidates**, not proof of global optimality; record search budget and completeness assumptions.
 
 This requester approval does **not** make ADR-0066 Accepted: the full v2 schema, numeric support-query tolerance, dialect-specific motion policy, predictor ownership and independent specification/repository reviews remain required. No code, v1 hash, G-code or printer behavior is authorized by this policy alone.
+
+## 2026-10-15 field-complete *candidate* contract for SPEC_REVIEW (not Accepted)
+
+This section translates user-approved S1–S9 **directions** into a reviewable v2 type/validation proposal. It adds **no** defaults, Python classes, authoritative root changes or printer permissions. Existing Accepted ADR field names and research DTOs take precedence. Each line is either **A** (an already-accepted field/meaning), **P** (new exact candidate to approve), or **E** (needs a specific external or algorithmic evidence gate). "A" does not mean the proposed v2 DTO composition is already Accepted.
+
+### V2 typed root (P)
+
+\`PluginSettingsV2\` is a frozen, slots-enabled, *closed* dataclass (no dict/extra fields), with exactly the following proposed top-level fields:
+
+| Field | Type, status, provenance |
+| --- | --- |
+| \`schema_version\` | exact str \`"2"\`, required (P); must equal plugin-settings root schema version; canonical encoder remains version \`"1"\` |
+| \`surface_error_tolerance_mm\` | finite binary64 >0, required (A for v1 meaning, P for v2 composition) |
+| \`minimum_effective_bead_height_mm\` | finite binary64 >0, required (A) |
+| \`candidate_seam_gap_mm\` | finite binary64 >=0, required (A); a separate maximum is not invented |
+| \`regularity_policy\` | exact \`CandidateSegmentRegularityPolicy\`, required (A ADR-0063); preserve existing field name rather than rename merely for style |
+| \`tool_clearance_profile\` | exact \`ToolClearanceProfile | None\` (P); None only in research/non-injectable mode, never evidence of clearance |
+| \`candidate_bead_bounds\` | exact \`CandidateBeadBounds\`, required (A ADR-0043 fields, P inclusion) |
+| \`support_coverage_thresholds\` | exact \`SupportCoverageThresholds\`, required (A ADR-0044 fields, P inclusion) |
+| \`support_refinement_policy\` | exact \`SupportRefinementPolicy\`, required (A ADR-0058 fields, P inclusion) |
+| \`support_query_numeric_policy\` | proposed exact \`SupportQueryNumericPolicy\`, required (P); see below |
+| \`error_estimator_config\` | exact \`ErrorEstimatorConfig\`, required (A ADR-0045), already contains the *sole* \`SurfaceCorrespondencePolicy\` (A ADR-0050) |
+| \`mesh_section_policy\` | exact \`MeshSectionPolicy\`, required (A ADR-0059) |
+| \`candidate_motion_limits\` | proposed discriminated motion-limit type, required (P/E) |
+| \`directional_error_weights\` | proposed \`DirectionalErrorWeights\`, required only if an approved search/scoring use is defined (P; **blocker X1**) |
+| \`optimizer_cost_policy\` | proposed \`OptimizerCostPolicy\`, required (P) |
+| \`candidate_execution_policy\` | proposed \`CandidateExecutionPolicy\`, required (P) |
+| \`physical_injection_requested\` | exact bool, **false in Phase 0.5**, required (A for v1 guard, P inclusion) |
+
+Every field is part of the v2 semantic fingerprint (including None as an explicit distinct value). Exact built-in types only, no bool-as-number, no NaN/Inf, negative zero normalized by existing canonical encoder; reject missing/unexpected fields, unknown enum versions, mismatched nested DTO identities and cyclic values. No research-only \`ConservativeSupportBounds\` outcome or runtime attempt state may be included. V1 root, v1 payload, digest domain prefix and golden vectors remain **byte-for-byte identical**; v1 and v2 never compare equal or undergo implicit upgrade. Plan v1/v2 schema versions are separately owned by ADR-0067.
+
+### New nested value candidates and mechanical validation
+
+1. \`SupportQueryNumericPolicy\` (P): \`version: str\` (nonempty versioned semantics), \`support_query_length_tolerance_mm: float\` (finite >0); applies to conservative support-cell geometric predicates and ADR-0058 effective-height-bound **stability comparisons** only. The accepted \`support_metric_convergence_fraction\` and \`support_width_convergence_mm\` retain their separate existing meanings. This single-tolerance model is **a design hypothesis**, not proof of sound conservative geometry (E); if error bounds require multiple predicate tolerances, amend the typed schema **before** approval.
+2. \`CandidateMotionLimits\` (P/E): motion is a tagged sum type, not an unlabeled bare jerk float. Common \`max_candidate_speed_mm_s: float >0\` and \`max_subedge_acceleration_mm_s2: float >0\`. For the source-required classical jerk convention, \`ClassicJerkCorneringLimit\` contains \`model_version: str\` and \`max_subedge_jerk_mm_s: float >0\`; any junction-deviation or other dialect requires a *separate* dimensionally correct tagged type and source evidence before support. Reject an unsupported dialect or mismatched value/units, never reinterpret junction deviation (mm) as classic jerk (mm/s). Printer-specific limit values have no default (E).
+3. \`DirectionalErrorWeights\` (P): \`pred_to_src_weight: float >=0\`, \`src_to_pred_weight: float >=0\`, finite, not both zero, no inferred physical unit. Exact normalized combination/roundoff rule **and purpose** must be reviewed; never replace independent hard directional maxima with weighted averages. See conflict X1.
+4. \`OptimizerCostPolicy\` (P): \`version: str\`; \`quality_mode: literal "hard_bidirectional_max"\`; \`rank_mode: literal "lex_complexity_time_commanded_volume"\`; \`complexity_counter_version: str\`; \`time_estimator_model_version: str\`; \`commanded_volume_accounting_version: str\`; \`tie_break_version: str\`. All versions nonempty/recognized. No arbitrary cost weights, no arbitrary epsilon comparator, no automatic renaming of v1 identity. Current *candidate* structural-complexity ranking is added paths, added segments, independent travel/restart transitions, in that order. Counts are nonnegative exact integers from a versioned canonical plan grammar and need representation-invariance review (E).
+5. \`CandidateExecutionPolicy\` (P): \`version: str\` and \`ordering_policy_id: str\`, both nonempty **allowlisted** identifiers whose complete rules must be documented (E). The Settings policy may select how to plan; the selected ordered paths and temporal support dependencies live in immutable Plan (ADR-0032/0065). No runtime working-file state or raw Orca config belongs here.
+
+### S6 strict comparator, eligibility and exceptional outcomes (P)
+
+Let \`Q(P)\` require both converged bidirectional maxima \`E_pred_to_src_max_mm <= surface_error_tolerance_mm\` **and** \`E_src_to_pred_max_mm <= surface_error_tolerance_mm\`, plus already-accepted geometry, chronological support (ADR-0044/0058), contact, collision, tool clearance and resolved motion gates. A candidate with false/unknown/nonconverged **any** hard gate is not physically eligible. A lower weighted error never compensates for a gate failure.
+
+For a bounded enumerated candidate set \`S\`, define \`F = {P in S : Q(P)}\`. For candidates with complete ranked evidence:
+\`score(P) = (added_path_count, added_segment_count, independent_transition_count, estimated_added_time_s, added_commanded_volume_mm3, canonical_semantic_bytes(P))\`.
+Use native lexicographic integer order, exact finite binary64 numeric order after canonical -0 normalization, and unsigned lexicographic *byte* order for the final semantic key; no pairwise tolerance comparisons (which may be nontransitive). When all scores agree and canonical bytes are identical, treat the plans as equivalent (do not choose by timestamp, enumeration order or object identity). A full SHA digest alone is **not** a total collision-free tie-break; compare canonical bytes in true digest collision cases. Counts/metrics derived from immutable planned intent cannot include wall-clock times, runtime attempt state or final machine E.
+
+\`F\` empty: typed \`NO_FEASIBLE_CANDIDATE\` **proposed** analysis outcome, no injectable fallback. A nonconverged candidate is excluded with a stable reason/evidence. Time/model missing: report \`TIME_ESTIMATE_UNAVAILABLE\` as a proposed **analysis-only, rank-incomplete** result; do not invent a zero or infinity or claim that the candidate is an optimal physically executable selection. Overflow/nonfinite/negative time or commanded volume: reject ranking with a typed stable reason; never coerce NaN/Inf. Search budget exhausted: return best **among examined complete eligible candidates**, with explicitly incomplete-search provenance; never claim global optimality.
+
+### Identified cross-source conflicts / blockers to close before Accepted
+
+- **X1 (High, ADR-0066 / SPECIFICATION §17):** S5 approves directional *optimizer* weights, but approved S6 compares **only hard error pass, then complexity/time/volume**. Without a specified separate use (e.g., deterministic proposal/search exploration or diagnostic reporting), the two weights would affect hashes without the selected ranking; inventing a hidden weighted error term would violate S6. Reviewer must approve an explicit role or revise the S5 field. Hard directional maximum limits are never weighted.
+- **X2 (High, ADR-0067 / current PlanSemanticContent):** existing Plan v1 requires a finite \`estimated_added_time_s\`; it cannot express unknown time, and its ErrorMetrics contains only summary \`e_max_mm\`, not independently testable directional maxima/convergence. Do not add placeholders or relax Plan v1: either the v2 Plan owns explicit directional convergence and typed optional time evidence, or analysis-only unresolved time lives outside the Plan; adjudicate with ADR-0067.
+- **X3 (High, implementation):** physical time model, classic-jerk vs firmware dialect, canonical complexity grammar and exact commanded-volume accounting do not yet have verified consumers/fixtures. Proposal is type-level and cannot imply a calibrated time prediction or printable authorization.
+- **X4 (High, implementation):** a \`CandidateMotionLimits\` cornering variant must not double-count a resolved \`ExecutionConfigFingerprint\` property. Plugin-owned user caps and Orca-resolved machine caps must be independently compared with a documented precedence rule.
+
+### Required source-backed tests before schema implementation acceptance
+
+Golden v1 settings and Plan identity unchanged; v2 root/DTO mismatch rejected; every field affects declared v2 fingerprint; all invalid numeric/type/enum/None conditions rejected or analysis-only; unknown dialect fails closed; directional maxima individually enforced; equal-quality but distinct complexity ordered; equal complexity but distinct time ordered; exact tie handled by canonical bytes; inaccessible time never ranked as 0; nonconverged support/error cannot be selected; no early physical injection; old v1 plan never treated as v2. These are **planned acceptance tests, not tests already run**.
+
+**Disposition:** \`SPEC_REVIEW / SPEC-CHANGE-REQUIRED\` for the complete v2 schema, pending X1–X4 and independent spec review. This text is candidate normative language within an **unaccepted** ADR, not authority for source implementation.
