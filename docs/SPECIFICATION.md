@@ -388,6 +388,10 @@ At psGCodePostProcess, current plugin settings are re-read through the capabilit
 
 Mismatch or missing/invalid settings => Skipped.
 
+
+### Proposed Settings-v2 field closure (ADR-0066, SPEC_REVIEW only)
+
+The unmerged proposal defines a *distinct* semantic \`PluginSettingsV2\` schema, retains the exact v1 bytes and canonical encoding grammar, and includes explicit nested policy DTOs for candidate bead bounds, regularity, support thresholds/refinement/query tolerance, error/correspondence/mesh section, motion limits, directional weights, optimizer cost and execution selection. The requester-approved S6 constraint is **bidirectional converged maximum error and all safety gates first, then lexicographic structural complexity, target-dependent estimated added time, and commanded added material**; missing time is not silently scored as zero. \`ConservativeSupportBounds\` is a metric result, **not Settings**. Precise proposed field names, validation and unresolved X1–X4 are owned by **Proposed ADR-0066**; they do not supersede the Accepted ADRs or authorize v2 fingerprint construction yet.
 PlanStore invalidation is helpful but does not replace this final equality check.
 
 ## 17A. Canonical identity bytes
