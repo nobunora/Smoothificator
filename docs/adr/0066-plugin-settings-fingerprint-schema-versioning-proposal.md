@@ -1,6 +1,6 @@
 # ADR-0066 (SPECIFICATION OWNER APPROVED): Version PluginSettings fingerprint when expanding the complete plugin-owned Settings contract
 
-Status: **Specification-owner approved on Draft PR #5; independent review and SPEC_VALIDATED pending; physical injection prohibited**
+Status: **Accepted by delegated specification owner (schema/policy scope only) on PR #5; independent review, manifest/handoff, and SPEC_VALIDATED pending; physical injection prohibited**
 Date: 2026-10-13
 Scope: `PluginSettings` identity schema and future Phase 0.5 Settings DTO integration only.
 Reconciliation required against Accepted ADR-0045/0049/0050/0059/0062/0063/0064/0065, `docs/SPECIFICATION.md`, `docs/IMPLEMENTATION.md` and installed Orca runtime evidence.
