@@ -369,6 +369,11 @@ Optimization MUST be deterministic for identical canonical inputs/settings.
 
 The requester-approved Domain/Attempt directions are staged as candidate typed contracts in Proposed ADR-0067: typed immutable SurfaceBand geometry references, structural loop/orientation/anchor metadata, candidate temporal support and path ordering, distinct Plan schema for meaning-changing fields, attempt-scoped UNKNOWN/VALIDATED/REJECTED evidence, single-store immutable history and PlanStore-atomic snapshot provenance. Existing Plan v1 error *summary* does not prove both directional hard maxima, and its mandatory numeric time cannot represent unavailable time. A separate v2 directional/convergence result and explicit time-estimate availability are proposals, not changes to v1 bytes. This design branch does not authorize or implement live Orca/G-code/physical behavior.
 
+
+### Proposed unified S5/S6 conflict resolution and unknown-time behavior (SPEC_REVIEW only)
+
+In the consolidated ADR-0066/0067 proposal, directional error weights rank **bounded candidate-search exploration priority only** using the versioned normalized weighted *directional p95* heuristic; they MUST NOT weaken either separately converged directional maximum-error threshold or insert a soft residual-error term into the final quality-gated lexicographic complexity/time/commanded-material ranking. The proposed v2 result distinguishes `AVAILABLE` and `UNAVAILABLE` time evidence; any geometry-feasible candidate with unavailable required time causes a *rank-incomplete, analysis-only* outcome, not a numeric zero, silently discarded candidate or physically executable optimum. Technical details and exact failure fixtures are reviewed in `docs/implementation/phase05-unified-contract-review-2026-10-15.md`. **This is proposed branch language, not part of the Accepted base specification.**
+
 ## 17. Plugin-owned settings identity
 
 Planning builds a versioned PluginSettingsFingerprint from all plugin settings that can affect:
