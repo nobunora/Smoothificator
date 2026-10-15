@@ -77,3 +77,36 @@ Requester approves S1–S5 and S7–S9 as documented in `docs/implementation/set
 **S6 changes requested, NOT approved.** A geometric error-only optimizer was proposed by the requester on grounds that time/material/path complexity may be functions of error. This is not generally an exact functional dependency; different path lengths, order, accelerations and bead widths may yield equal error but different cost. Reviewer must adjudicate error-first lexicographic optimization vs quality-threshold-constrained secondary execution-time/material cost. Exact error function, tie tolerance, secondary-cost measurements and deterministic ordering remain open. See the referenced review packet for bounded alternatives.
 
 Requester direction is not independent ADR acceptance or complete mathematical specification. Status remains Proposed. Do not implement schema-v2 or alter v1 bytes until remaining field/type decisions and formal review are complete.
+
+## 2026-10-15 S6 revised optimizer objective — proposed, not Accepted
+
+Requester's revised preference: specified surface-error threshold has absolute precedence, then minimize structural complexity, estimated time, and added material, in that order. Requester also directed complexity to be modeled before choosing the optimization methodology. This replaces the previous undifferentiated weighted residual-error/length/time/volume objective **for review only**.
+
+### Formal constrained lexicographic proposal
+
+Let `P` be one immutable candidate plan, `S` the source, `E_→(P)` and `E_←(P)` the ADR-0047/0050 bidirectional, converged maximum surface-error metrics, and `epsilon` the configured tolerance in mm. Define feasibility:
+
+`F = {P: E_→(P) <= epsilon and E_←(P) <= epsilon and all support/clearance/geometry/motion/flow and numerical convergence gates PASS}`.
+
+If `F` is empty the engine reports a stable typed `INFEASIBLE` result in analysis, without inventing or injecting an unsafe fallback. Any nonconvergent/unresolved geometric/support/collision or required error check makes that candidate infeasible. Directional weights can rank diagnostic/soft residual error only if an independently reviewed role is identified; they cannot weaken the two maximum-error hard gates.
+
+For each `P in F`, propose immutable complexity tuple
+`C(P)=(N_added_paths, N_added_segments, N_independent_travel_or_restart_transitions)`.
+Each element must be a finite, nonnegative integer counted using a versioned canonical plan grammar. Splitting/reparameterizing a geometrically equivalent path must not allow a scorer to conceal actual commands or breaks; exact path and transition definitions require independent review. Use no arbitrary weighted sum of these counts. This tuple is a **proposal**, not a claim that it is the optimal complexity metric.
+
+Let `T(P)` be separately computed finite, nonnegative estimated **added** execution time in seconds for the selected resolved machine configuration (including finite acceleration and travel/restart effects); it is NOT determined by `C(P)` alone. Let `V_cmd(P)` be finite, nonnegative **added commanded** extrusion volume in mm^3 (not geometric deposited bead volume). Neither quantity may be assigned a guessed universal machine constant, derived from the error alone, or inferred as a mere weight on complexity. Model version, capability, calibration/evidence identity and normalized units participate in complete versioned settings/execution ownership.
+
+**Selection:** `P* = argmin_lex [C(P), T(P), V_cmd(P), K(P)]` for `P in F`, where `K(P)` is a deterministic canonical semantic byte-key tie-breaker (no runtime object identity). The objective makes quality a hard first-tier condition; *within the tolerance*, it does NOT prefer lower residual error over simpler candidates. If the requester later requires strict residual-error ordering even within tolerance, this is a distinct policy and requires a revised comparator.
+
+### Mathematical counterexample to error-only sufficiency
+
+For two feasible plans with identical converged `E_→/E_←`, choose different travel/restart order or bead cross-sections: `C`, `T` and `V_cmd` can differ despite equal error. Likewise two plans with the same path/segment counts may have different length or kinematics. Therefore there is no general single-valued universal relationship `(C,T,V_cmd)=f(E)`, even though correlations often arise from finer geometry. Modeling before choosing the comparator is justified.
+
+### Review blockers and fail-closed cases
+
+- Verify that path/segment/restart counts reflect the actual immutable plan and do not reward fake coalescing or punish semantically equivalent representation.
+- Specify whether `T` is a portable planning estimate vs resolved machine/profile estimate; input precedence and provenance must not double-count Orca-resolved execution configuration. Model uncertainty must not masquerade as exact time.
+- Specify `V_cmd` under existing geometric-vs-commanded-flow separation. Include any intentionally omitted priming/retraction volume only by an explicit versioned rule.
+- Use an explicitly reviewed total ordering for binary64 score values and stable semantic ties (no epsilon-based non-transitive pairwise sort). Numeric convergence tolerances are distinct from score-comparison equality; NaN/Inf/missing measures reject scoring, not treated as zero.
+- Define how a valid research candidate lacking target-specific `T` may be reported without declaring a globally optimal printable selection; this is a pending analysis-mode policy, not permission to guess time.
+- This paragraph must not silently override higher-precedence canonical SPECIFICATION until specification approval; implementation remains blocked by the full Settings v2 contract, revised manifest/handoff and validated repository review. The staged SPECIFICATION/IMPLEMENTATION text on this PR is a **proposed revision**, not a merged contract.
