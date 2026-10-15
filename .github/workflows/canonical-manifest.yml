@@ -1,0 +1,25 @@
+name: Canonical manifest integrity (not specification approval)
+on:
+  push:
+    branches: [codex/spec-readiness-review]
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'AGENTS.md'
+      - '.codex/**'
+      - 'tools/check_canonical_manifest.py'
+      - 'tests/test_canonical_manifest.py'
+      - '.github/workflows/canonical-manifest.yml'
+permissions:
+  contents: read
+jobs:
+  integrity:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m compileall -q tools tests
+      - run: python -m unittest discover -s tests -p 'test_canonical_manifest.py' -v
+      - run: python tools/check_canonical_manifest.py
