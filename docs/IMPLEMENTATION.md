@@ -340,6 +340,10 @@ Raw map order MUST NOT affect either canonical fingerprint.
 
 ADR-0063's five minimum/adjacent segment-regularity settings and physical-fixture evidence identity MUST be validated and included in PluginSettingsFingerprint. Research-only thresholds cannot silently become physical defaults.
 
+
+### Proposed Settings-v2 implementation boundary (ADR-0066, NOT VALIDATED)
+
+Candidate required v2 DTO composition, type/units, dialect-tagged motion model, conservative support-query tolerance and lexicographic ranking/exception contract are specified **for review only** in Proposed ADR-0066, after its 2026-10-15 candidate schema section. No v2 payload can be accepted through existing \`identity_root\`/canonical \`PluginSettings\` v1; version mismatch must fail closed. Before implementation, resolve X1 (directional weights' role under S6), X2 (Plan v2 directional error/time evidence), X3 (time/complexity/volume model), X4 (plugin cap vs resolved Orca config), then refresh canonical audit manifest/handoff and obtain validated repository review. Do not add speculative runtime adapters or physical defaults.
 PlanStore invalidation is useful but does not replace the final equality checks.
 
 ## 13. Immutable domain DTOs
@@ -615,9 +619,11 @@ For each candidate set:
 - reject any future-material or cyclic support dependency;
 - validate candidate geometry/collision;
 - predict the separate completed FinalSurfaceEnvelope;
-- compute required error metrics;
-- score cost;
-- choose minimum-cost feasible set.
+- compute converged bidirectional error metrics and independently enforce the configured maximum-error bound;
+- validate all remaining hard physical/safety gates;
+- compare only feasible candidates using the proposed deterministic lexicographic ranking (structural complexity, estimated added execution time, commanded added volume, canonical semantic tie key), subject to ADR-0066 final approval.
+
+**Draft S6 comparator contract (2026-10-15, not implementation authority):** define complexity as a typed integer tuple (added path count, added segment count, independent travel/restart transition count) ordered lexicographically, with no machine-time coefficient. Estimated time is separately computed from path length and resolved target machine motion policy; it must not be inferred from complexity alone. Material is separately calculated as commanded added volume. Invalid/nonfinite/unavailable estimates fail the ranking contract; missing fixture data may permit documented analysis but never printed authorization. Candidates with nonconverged error/support or any failed hard gate are excluded, never rescued by a low cost. Empty feasible set returns a typed infeasible result. Equal scores are resolved using stable canonical semantic bytes and an explicit collision policy, not enumeration or object identity. Numeric model versions and score semantics must enter complete Settings v2 and be reviewed before acceptance.
 
 No G-code dependency.
 
