@@ -5,6 +5,10 @@
 Baseline: PR #3 `20d38c46fc18f6efd81ada0d9fac479adcb963d8` and PR #4 `cc1562715c616c7284aa52cf2773deeedd212a49` were both Draft and both changed `docs/SPECIFICATION.md` and `docs/IMPLEMENTATION.md` independently. This branch combines their existing draft edits without changing v1 identity or any executable source. Existing Accepted ADR-0037/0047/0062/0065 and their precedence remain authoritative.
 
 
+## CURRENT DISPOSITION — 2026-10-15
+
+**Specification-owner design decisions approved by explicit delegation**, recorded in [phase05-delegated-specification-decisions-2026-10-15.md](phase05-delegated-specification-decisions-2026-10-15.md). Prior "candidate for reviewer approval" sections below remain useful historical technical rationale but no longer represent unresolved *product-owner choices* for X1/X2/X3/X4. Source/fixture proofs and the separately required independent review are still **NOT PERFORMED**. Do not report SPEC_VALIDATED, printer compatibility, final G-code eligibility or production release from this primary record.
+
 ## 2026-10-15 consolidated X1/X2 design adjudication candidate (for reviewer approval)
 
 **Scope:** this addresses the previously identified conflict between requester-approved S5 directional weights and S6's strict quality-gated lexicographic objective, and the v1 Plan's inability to encode unknown time. These decisions are **candidate type/algorithm rules**, not an Accepted ADR or production source implementation.
