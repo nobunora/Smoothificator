@@ -605,6 +605,11 @@ The sectioner MUST NOT perturb selected command Z after optimization.
 
 All predicate/join/quantization-stability tolerances participate in PluginSettingsFingerprint.
 
+
+### Proposed S5 exploration-only and X2 time-evidence implementation contract (SPEC_REVIEW only)
+
+A bounded search may prioritize candidate expansion using normalized directional p95 error and two versioned nonnegative weights (both-zero invalid); formal binary64-as-rational priority prevents nondeterministic float overflow/ties. This **does not** add an error score to the final S6 lex ranking and cannot waive separate bidirectional converged E_max gates. Proposed Plan v2/analysis time evidence is tagged AVAILABLE(valid estimated seconds, model/config/provenance) or UNAVAILABLE(stable reason, missing dependency IDs); do not add Optional/NaN/zero sentinels to v1 Plan. If any otherwise geometric-feasible candidate lacks a required time score, return RANKING_INCOMPLETE/ANALYSIS_ONLY, not an injectable lex-optimal Plan. Exact proposals and tests: `docs/implementation/phase05-unified-contract-review-2026-10-15.md`. These are not implementation authority until ADRs and repository review are accepted.
+
 ## 20. Optimizer
 
 Initial implementation may use deterministic bounded grid/beam search.
