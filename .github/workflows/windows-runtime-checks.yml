@@ -1,0 +1,38 @@
+name: Windows diagnostic and contract checks
+on:
+  pull_request:
+    branches: [phase-0.5-skeleton-20261013, adaptive-subedge-design]
+  push:
+    branches: [codex/windows-runtime-validation]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows-contracts:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Create isolated environment
+        shell: pwsh
+        run: |
+          python -m venv .venv
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./.venv/Scripts/python -c "import sys; assert sys.prefix != sys.base_prefix; print(sys.version)"
+      - name: Syntax and architecture
+        shell: pwsh
+        run: |
+          ./.venv/Scripts/python -m compileall -q adaptive_subedge orca_plugin diagnostics tools tests
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./.venv/Scripts/python -m unittest discover -s tests/architecture -p 'test_*.py' -v
+      - name: Contract and mock probe tests (no installed Orca)
+        run: ./.venv/Scripts/python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Build and clean extracted import verification
+        run: ./.venv/Scripts/python tools/build_validation_artifacts.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-diagnostics-${{ github.sha }}
+          path: dist/
+          retention-days: 7
