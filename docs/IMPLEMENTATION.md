@@ -615,9 +615,11 @@ For each candidate set:
 - reject any future-material or cyclic support dependency;
 - validate candidate geometry/collision;
 - predict the separate completed FinalSurfaceEnvelope;
-- compute required error metrics;
-- score cost;
-- choose minimum-cost feasible set.
+- compute converged bidirectional error metrics and independently enforce the configured maximum-error bound;
+- validate all remaining hard physical/safety gates;
+- compare only feasible candidates using the proposed deterministic lexicographic ranking (structural complexity, estimated added execution time, commanded added volume, canonical semantic tie key), subject to ADR-0066 final approval.
+
+**Draft S6 comparator contract (2026-10-15, not implementation authority):** define complexity as a typed integer tuple (added path count, added segment count, independent travel/restart transition count) ordered lexicographically, with no machine-time coefficient. Estimated time is separately computed from path length and resolved target machine motion policy; it must not be inferred from complexity alone. Material is separately calculated as commanded added volume. Invalid/nonfinite/unavailable estimates fail the ranking contract; missing fixture data may permit documented analysis but never printed authorization. Candidates with nonconverged error/support or any failed hard gate are excluded, never rescued by a low cost. Empty feasible set returns a typed infeasible result. Equal scores are resolved using stable canonical semantic bytes and an explicit collision policy, not enumeration or object identity. Numeric model versions and score semantics must enter complete Settings v2 and be reviewed before acceptance.
 
 No G-code dependency.
 
