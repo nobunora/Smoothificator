@@ -340,6 +340,10 @@ Raw map order MUST NOT affect either canonical fingerprint.
 
 ADR-0063's five minimum/adjacent segment-regularity settings and physical-fixture evidence identity MUST be validated and included in PluginSettingsFingerprint. Research-only thresholds cannot silently become physical defaults.
 
+
+### Proposed Settings-v2 implementation boundary (ADR-0066, NOT VALIDATED)
+
+Candidate required v2 DTO composition, type/units, dialect-tagged motion model, conservative support-query tolerance and lexicographic ranking/exception contract are specified **for review only** in Proposed ADR-0066, after its 2026-10-15 candidate schema section. No v2 payload can be accepted through existing \`identity_root\`/canonical \`PluginSettings\` v1; version mismatch must fail closed. Before implementation, resolve X1 (directional weights' role under S6), X2 (Plan v2 directional error/time evidence), X3 (time/complexity/volume model), X4 (plugin cap vs resolved Orca config), then refresh canonical audit manifest/handoff and obtain validated repository review. Do not add speculative runtime adapters or physical defaults.
 PlanStore invalidation is useful but does not replace the final equality checks.
 
 ## 13. Immutable domain DTOs
