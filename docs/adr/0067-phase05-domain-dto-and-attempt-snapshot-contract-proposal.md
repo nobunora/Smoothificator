@@ -1,9 +1,9 @@
 # ADR-0067 (SPECIFICATION OWNER APPROVED): Complete Phase 0.5 DTO contracts and process-local attempt/snapshot association
 
-Status: **Specification-owner approved on Draft PR #5; independent review and SPEC_VALIDATED pending; physical injection prohibited**
+Status: **Accepted by delegated specification owner (schema/policy scope only) on PR #5; independent review, manifest/handoff, and SPEC_VALIDATED pending; physical injection prohibited**
 Date: 2026-10-14
 Design branch: `proposed-phase05-dto-attempt-20261014`
-Related: Accepted ADR-0037, 0049, 0061, 0062, 0064, 0065; separate **Proposed** ADR-0066 (Settings v2).
+Related: Accepted ADR-0037, 0049, 0061, 0062, 0064, 0065; jointly specification-owner-approved ADR-0066 in Draft PR #5 (not yet merged into canonical base).
 Scope: Phase 0.5 contracts ONLY — no Orca adapter, G-code execution or physical printer authorization.
 
 ## Current proposed disposition at integrated PR #5 (2026-10-15)
