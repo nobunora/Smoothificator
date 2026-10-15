@@ -364,6 +364,11 @@ Among feasible candidate sets minimize a documented cost including:
 
 Optimization MUST be deterministic for identical canonical inputs/settings.
 
+
+### Proposed Phase 0.5 Plan/Attempt schema closure (ADR-0067, SPEC_REVIEW only)
+
+The requester-approved Domain/Attempt directions are staged as candidate typed contracts in Proposed ADR-0067: typed immutable SurfaceBand geometry references, structural loop/orientation/anchor metadata, candidate temporal support and path ordering, distinct Plan schema for meaning-changing fields, attempt-scoped UNKNOWN/VALIDATED/REJECTED evidence, single-store immutable history and PlanStore-atomic snapshot provenance. Existing Plan v1 error *summary* does not prove both directional hard maxima, and its mandatory numeric time cannot represent unavailable time. A separate v2 directional/convergence result and explicit time-estimate availability are proposals, not changes to v1 bytes. This design branch does not authorize or implement live Orca/G-code/physical behavior.
+
 ## 17. Plugin-owned settings identity
 
 Planning builds a versioned PluginSettingsFingerprint from all plugin settings that can affect:
