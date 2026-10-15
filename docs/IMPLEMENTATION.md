@@ -326,7 +326,7 @@ Exact raw-key mapping and override precedence are pinned in compatibility tests.
 During analysis:
 1. build a versioned ExecutionConfigFingerprint from resolved Orca semantics;
 2. validate Adaptive Sub-Edge Settings;
-3. build a versioned PluginSettingsFingerprint from every plugin-owned value that can affect geometry, optimization, candidate seam/gap, ToolClearanceProfile, margins, speed cap, max_subedge_acceleration_mm_s2, max_subedge_jerk_mm_s, candidate bead width/height bounds, support-coverage metric thresholds/tolerances, error-estimator sampling/refinement/convergence, or execution policy.
+3. build a versioned PluginSettingsFingerprint from every plugin-owned value that can affect geometry, optimization, candidate seam/gap, ToolClearanceProfile, margins, speed and acceleration caps, firmware-dialect-tagged jerk/cornering limits, candidate bead width/height bounds, support-coverage metric thresholds/tolerances, error-estimator sampling/refinement/convergence, or execution policy.
 
 At psGCodePostProcess:
 - rebuild ExecutionConfigFingerprint with ctx.config_value();
@@ -340,7 +340,18 @@ Raw map order MUST NOT affect either canonical fingerprint.
 
 ADR-0063's five minimum/adjacent segment-regularity settings and physical-fixture evidence identity MUST be validated and included in PluginSettingsFingerprint. Research-only thresholds cannot silently become physical defaults.
 
+
+### Approved specification-owner schema contract (ADR-0066; implementation still gated)
+
+On this Draft PR, the specification owner approved a **closed, frozen PluginSettingsV2 schema with root/payload schema_version "2"**, unchanged v1 canonical byte grammar and a separate Version 1 hash. Required policy groups are listed in ADR-0066 and docs/implementation/phase05-delegated-specification-decisions-2026-10-15.md. The application serializer must reject unknown versions/fields and ensure every declared plugin-owned planning parameter affects the appropriate v2 Fingerprint. Reuse already implemented ADR-0043/0044/0045/0050/0058/0059/0063 DTOs without inserting them into v1 or reinterpreting v1 hash values.
+
+The support-query numeric policy declares a version and finite positive length tolerance in mm; conservativeness is still an algorithm/fixture proof, not inferred from a numeric value. Motion caps use a tagged initial classic-jerk convention (mm/s) distinct from incompatible junction-deviation dialects, and are checked against separately fingerprinted resolved Orca settings at later export gates. Directional weights affect bounded *exploration* priority only, not hard directional maxima or S6 final ranking. Unknown time uses typed evidence; no guessed speed/time or physical defaults. This design approval does not bypass independent review or REPOSITORY_REVIEW validated before schema implementation.
+
 PlanStore invalidation is useful but does not replace the final equality checks.
+
+### Approved specification-owner domain and Attempt v2 schema contract (ADR-0067; implementation still gated)
+
+Domain reference DTOs are frozen and independent from Orca live objects; SurfaceBand references immutable PrintObject-centered geometry, supports/nesting are validated across the owning analysis graph, and loop/anchor metadata is versioned. New meaning-changing fields require a **new Plan v2 identity root**, not changes to v1. V2 must contain independently converged directional errors, tagged available/unavailable time evidence, and runtime-independent plan intent. Attempt evidence uses UNKNOWN/VALIDATED/REJECTED with application-owned validation proof, bounded immutable revision history and already implemented atomic PlanStore snapshot/Attempt issuing (with runtime-only provenance). See ADR-0067 and the delegated decision record for exact typed contracts. No parser, emitter, actual geometry estimation or physical printing is enabled by accepting their data schemas.
 
 ## 13. Immutable domain DTOs
 
@@ -597,6 +608,11 @@ The sectioner MUST NOT perturb selected command Z after optimization.
 
 All predicate/join/quantization-stability tolerances participate in PluginSettingsFingerprint.
 
+
+### Approved owner decision: S5 explorer and X2 time evidence
+
+Exploration may prioritize candidates by positive-normalized weighted converged directional p95 errors with exact rational interpretation of finite binary64 source weights. The hard bidirectional E_max gates remain independent of weights. The final S6 rank is strictly lexicographic on completed feasible candidates, and the planned exploration budget/version belongs in PluginSettingsFingerprint. A v2 time evidence value is either AVAILABLE with target-model/config identity or UNAVAILABLE with stable reason/missing inputs. Missing time makes full ranking incomplete/analysis-only and may not be encoded as 0 or an injectable Plan. No unreviewed physical time predictor is installed. Accepted ADRs remain authoritative; actual schema source edits require validated repository review.
+
 ## 20. Optimizer
 
 Initial implementation may use deterministic bounded grid/beam search.
@@ -607,7 +623,7 @@ Inputs:
 - support envelope;
 - candidate physical bounds;
 - error tolerance;
-- cost weights;
+- the versioned lexicographic objective and independently versioned directional exploration-priority weights;
 - speed/volumetric constraints.
 
 For each candidate set:
@@ -615,9 +631,11 @@ For each candidate set:
 - reject any future-material or cyclic support dependency;
 - validate candidate geometry/collision;
 - predict the separate completed FinalSurfaceEnvelope;
-- compute required error metrics;
-- score cost;
-- choose minimum-cost feasible set.
+- compute converged bidirectional error metrics and independently enforce the configured maximum-error bound;
+- validate all remaining hard physical/safety gates;
+- compare only feasible candidates using the proposed deterministic lexicographic ranking (structural complexity, estimated added execution time, commanded added volume, canonical semantic tie key), under the approved specification-owner ADR-0066 schema contract and separate implementation review gate.
+
+**Approved S6 comparator contract (specification-owner scope):** complexity is a tuple of nonnegative exact planned-intent counts (added paths, added segments, interpath travel/restart transitions). Compare fully feasible/rankable plans lexicographically by these counts, finite nonnegative model-backed estimated added seconds, commanded added mm³, and exact canonical semantic bytes. No non-transitive pairwise float tolerances, float sentinels, implicit source repr ties or printer-specific guessed constants. Geometric/support/error non-convergence excludes a candidate. If no eligible candidate remains, return a stable typed infeasibility result; if any geometric-feasible candidate lacks ranking evidence, return analysis-only RANKING_INCOMPLETE and do not claim a complete or physically executable optimum. The computed time and commanded-volume models remain separate versioned future-engine responsibilities. Search completeness is disclosed; never claim global optimality from a finite bounded exploration.
 
 No G-code dependency.
 

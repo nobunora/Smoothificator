@@ -1,0 +1,156 @@
+# Phase 0.5 contract convergence — specification approval checklist
+
+**Status: REQUEST FOR SPECIFICATION REVIEW, not a sign-off.**
+Date: 2026-10-14. This pack is intended to make the minimum remaining decisions explicit, based on Accepted ADR-0037/0049/0062/0064/0065, SPECIFICATION §§16–18, ARCHITECTURE §§2–5, IMPLEMENTATION §§12–13, the handoff acceptance criteria, and pinned Orca source. No identity or executable behavior should be implemented from this pack before approval.
+
+## CURRENT DISPOSITION — 2026-10-15
+
+The user has **explicitly delegated and granted specification-owner approval** to the schema-level resolutions for all S1–S9 and D1–D10 design decisions, including X1–X4. The controlling decision record is [phase05-delegated-specification-decisions-2026-10-15.md](phase05-delegated-specification-decisions-2026-10-15.md). Older paragraphs below saying "reviewer needs to approve the S/D direction" are **historical and superseded for those decisions**. They do not mean the requester must make another choice.
+
+Remaining gates are evidence/process, NOT missing user policy: reconcile to one source-of-truth revision, audit canonical manifest/handoff, obtain required independent review / REPOSITORY_REVIEW validated, implement and run exact-SHA tests, then Implementation Review. Machine time prediction, conservative support proofs, Orca hardware fixture and physical print safety are intentionally not "approved" by the policy sign-off. PR #5 remains Draft and physical injection is disabled.
+
+## Dependency order
+
+`D6 Settings v2 (Proposed ADR-0066 in Draft PR #3)` and `D7 Phase-0.5 DTO/attempt contract (Proposed ADR-0067 in Draft PR #4)` require one coherent specification revision. Only after those decisions are Accepted, the team must update the canonical docs and audited manifest, run fresh REPOSITORY_REVIEW, then complete implementation and normal implementation review.
+
+### Decision 1 — version identities; no silent migration
+
+- Proposed: preserve existing `PluginSettings` v1 fields and domain-separated SHA-256 golden bytes exactly.
+- Proposed: a full future `PluginSettingsV2` uses root schema `"2"`, DTO `schema_version="2"`, *unchanged* canonical encoding version `"1"` unless byte syntax genuinely changes.
+- Proposed: any new semantic `PlanSemanticContent` fields require independent version bump and new golden fixture; do not mix Plan v1 with a new schema under the same identity root.
+- **Required review outcome**: choose version IDs, exact root/DTO consistency contract and treatment of retained v1 Plan snapshots when settings change; *do not migrate* by filling missing values.
+
+### Decision 2 — normalized Settings field list and ownership
+
+- Already Accepted: the Settings fingerprint covers every plugin-owned planning/cost/safety policy (SPECIFICATION §17), including tool clearance, candidate regularity, error estimator, surface correspondence, mesh section, width/height/motion bounds, support-coverage thresholds, directional cost and deterministic execution policy.
+- Proposed specific fields are in [Settings v2 schema inventory](https://github.com/nobunora/Smoothificator/blob/proposed-settings-schema-v2-20261013/docs/implementation/settings-v2-schema-adjudication-review-2026-10-13.md).
+- **Required review outcome**: for every proposed sub-DTO, approve or reject its names, exact types, units, requiredness and validation. In particular decide support-coverage contact/sampling tolerance, jerk dialect, optimizer cost normalization, candidate execution-policy switches and nesting of surface correspondence in estimator.
+- **No universal default** for fixture-dependent print safety values. A type-valid number alone does not authorize physical injection. Orca-resolved semantics remain in the separate ExecutionConfigFingerprint.
+
+### Decision 3 — public Domain DTO field schema
+
+- Accepted existence/meaning at high level: SurfaceBand target material boundary, residual error region, support/nesting; StructuralLoopReference geometry/orientation/anchors; immutable candidate support/travel; immutable anchor matching metadata.
+- Proposed [ADR-0067 D1–D2](https://github.com/nobunora/Smoothificator/blob/proposed-phase05-dto-attempt-20261014/docs/adr/0067-phase05-domain-dto-and-attempt-snapshot-contract-proposal.md) is a **starting schema**, not a code contract.
+- **Required review outcome**: decide whether a SurfaceBand stores *closed geometric objects* or *typed reference identities*, how a residual error region is represented, material-side version, bounds/winding/matching anchors, and whether any are included in the Plan semantic payload. If included, make the plan root schema change explicit with byte vectors and reverse-compatibility rejection.
+- Source geometry and print-space units must be independent of live Orca pointers; machine XYZ and final emitted E never enter Plan identity.
+
+### Decision 4 — AttemptRecord immutable validation evidence
+
+- Already Accepted (ADR-0037): attempt ID, selected plan hash, working file identity, immutable chronological state/terminal reason, compatibility descriptor, resolved fingerprint validation and source-file identity validation result.
+- Current record implements only the first set; storing unverified or computed results as “PASS” is forbidden.
+- **Required review outcome**: exact evidence DTO types, Unknown/Rejected/Validated states, revision/terminal transitions, whether missing evidence on analysis-only `SKIPPED` is legitimate, and compatibility ID/version ownership.
+- A first-party UUID can identify an attempt, but source path/file key must follow the accepted working-file commit lock and target platform contract.
+
+### Decision 5 — atomic in-process pairing vs Orca callback integration
+
+- **Already implemented and tested:** Accepted ADR-0065 in-process `PlanStore.begin_postprocess_attempt` issues current-epoch eligible immutable PlanSnapshot and unique STARTED AttemptRecord under PlanStore -> AttemptStore lock order. Collision/rollback and reset/interleaving tests: **216/216 Python 3.12 PASS** on source `4382e122f2584c83a727aa9411bb2b804f4bfba5`.
+- Pinned OrcaSlicer source commit `7d44b60ae4042b4de8c3844eb9dd2671c2d2d873` establishes a `psGCodePostProcess` `cap->execute(ctx)` boundary but no native invocation UUID, so a process-local ID must be created by the application on entry.
+- **Required review outcome:** how to bind one record to its issued snapshot via an immutable provenance field, whether pairing method returns a typed envelope versus tuple, and when an invocation becomes SKIPPED if no fresh Plan exists. Also define cancellation/reset, and evidence needed for later actual Orca integration.
+- Actual Orca plugin registration, export G-code interpretation, filesystem source-digest checks, same-working-file lock and printer behavior are NOT part of Phase 0.5's approved code scope.
+
+### Decision 6 — Phase 0.5 source-tree acceptance and reviews
+
+- Resolve ARCHITECTURE §2 *target* tree versus handoff's express prohibition on implementing engine/Orca/G-code behavior in Phase 0.5. Proposal: only the domain/application/ports boundaries actually needed by this phase are executable modules, and missing later-phase modules are NOT added as speculative empty stubs.
+- **Required review outcome:** accept this limited package-layout interpretation and specify the required Phase 0.5 build/import/architecture checks.
+- The repeated primary code audit and 216 contract tests are not independent specification sign-off or release clearance. No reviewer has yet approved [implementation PR #2](https://github.com/nobunora/Smoothificator/pull/2), [Settings ADR PR #3](https://github.com/nobunora/Smoothificator/pull/3) or [DTO ADR PR #4](https://github.com/nobunora/Smoothificator/pull/4).
+
+## Evidence needed for ready-for-implementation disposition
+
+A specification reviewer records one of: **Accepted with exactly defined schemas and migration**, **changes requested (each issue enumerated)**, or **blocked for specific external fixture evidence**.
+
+Only after approved ADRs and normative doc revisions are coherent:
+1. Update SPECIFICATION, ARCHITECTURE and IMPLEMENTATION exact field/type/ownership descriptions.
+2. Restamp the canonical audit manifest/handoff, preserving v1 golden hashes without self-referential revision hashes.
+3. Perform a fresh independent-of-implementation **repository review** validating the changed scope, resulting in `validated` (or return to specification adjudication).
+4. Implement reviewed DTOs/settings/status evidence with typed fail-closed negatives and canonical version-specific hash fixtures.
+5. Run exact-SHA GitHub Actions plus normal implementation review, verify no unresolved Phase 0.5 Critical/High defects, and leave Physical Injection disabled.
+
+**No sign-off was inferred by the act of writing this document.** Draft proposals do not become Accepted because a user requested completion. This checklist exists to turn the blockers into decisions, not evade the approval gate.
+
+
+## 2026-10-15 execution of milestone-closure plan (primary triage, NOT approval)
+
+Baseline (verified GitHub metadata): implementation PR #2 head `5dc15d122c2180a5e3e3c99e9d09d2909330d4de`, Settings design PR #3 head `d3b97de941b6c95e5a4f5985675180eb3daefc58`, DTO/attempt design PR #4 head `167ac3994a8d63142fcbede4f6198e2473fbd2ae`; all open/Draft/unmerged. PR #3/#4 have **zero submitted PR reviews** at this audit. This paragraph is source-state evidence, not approval. Source branch PR #2 now has **248** reported contract tests (previous 216 count above is historical); GitHub Actions run 38520932726 succeeded on the exact PR #2 head. No test or CI was rerun by this checklist edit.
+
+### Fixed acceptance classification — no scope relaxation
+
+| Acceptance owner and closure evidence | Phase 0.5 disposition | Required next event |
+| --- | --- | --- |
+| Immutable DTOs, units, cross-boundary fields (handoff/ARCHITECTURE/IMPLEMENTATION) | **PARTIAL / IN-SCOPE**: accepted-field standalone bead/support DTOs done; SurfaceBand, loop/anchor/path semantics open | Reviewer selects precise typed reference/geometry ownership and plan version in ADR-0067; then implement and test |
+| PluginSettingsFingerprint covering **all plugin-owned** settings (SPECIFICATION §17) | **BLOCKED / IN-SCOPE**: existing seven-field v1 is deliberately closed, partial research fragments cannot satisfy it | Reviewer approves exhaustive v2 schema and normalization, including support-query tolerance/version and optimization/motion fields in ADR-0066 |
+| Canonical serialization/Plan hash identity (ADR-0049/0062/0064) | **PASS for existing v1 only; NOT for v2** | Preserve independent v1 byte vectors; approve distinct v2 Settings root and new Plan schema only if semantic Plan fields change |
+| PlanStore atomic publication/session/attempt issuance (ADR-0065) | **IMPLEMENTED in pure-process scope**: paired issuance, duplicate ID rejection, rollback/concurrency tests | Keep regression gate; do not reimplement or demand live Orca as Phase 0.5 evidence |
+| Attempt state and validation evidence (ADR-0037) | **PARTIAL / IN-SCOPE**: unique independent attempts/monotonic state done, typed compatibility/settings/execution/source validation evidence missing | ADR-0067 review chooses immutable evidence states/fields, then implementation and negative tests |
+| Architecture/import rules, no premature G-code or physical behavior | **IMPLEMENTED to documented test coverage** | Exact-head import/architecture checks at final verification |
+| Orca callback wiring, working-file precommit lock, G-code/mesh/optimizer, printer calibration | **OUT OF PHASE 0.5 IMPLEMENTATION SCOPE** under handoff Non-goals/ADR-0061; interfaces only where explicitly approved | Do not use as completion blockers or create placeholder runtime implementations; later phase needs fixtures |
+| Review convergence, zero unresolved Critical/High in approved Phase 0.5 scope | **OPEN / IN-SCOPE** | Separate specification approval, revised canonical manifest/handoff, new repository review, exact-SHA CI and Implementation Review |
+
+### Decisions to close, with explicit options and non-decisions
+
+- **S1 (ADR-0066, blocker):** select complete v2 root/DTO field schema and `schema_version="2"` binding versus an alternate explicit version; preserve canonical encoder byte grammar v1. Reuse supported source-defined fields; do **not** silently insert fragments in v1.
+- **S2 (ADR-0066, blocker):** resolve exact support-query tolerance name, dimension, policy version and coupling to ADR-0058 effective-height convergence; motion jerk convention; directional objective normalization; optimizer cost dimensions; execution policy switches. Exact semantics remain unspecified by Accepted ADRs; no safety defaults can be inferred.
+- **S3 (ADR-0066, blocker):** require research/physical distinction in typed policy/provenance; leave actual fixture numeric calibration in later physical validation, not a blocker to immutable DTO definitions.
+- **D1 (ADR-0067, blocker):** choose SurfaceBand geometry-owning vs typed-reference design with target boundary frame, residual-error representation, support provenance and acyclic nesting rules.
+- **D2 (ADR-0067, blocker):** decide loop orientation/material-side/shape identity, insertion matching signature/tolerance and SubEdgePath/Segment support/order metadata, including new Plan root version if identity projection changes.
+- **D3 (ADR-0067, blocker):** define Attempt validation evidence as explicit UNKNOWN / VALIDATED / REJECTED (or reviewer-approved equivalent), with reason/provenance and immutable transitions; missing fixture proof must never become VALIDATED.
+- **D4 (ADR-0067, largely resolved in process):** retain existing atomic PlanStore->AttemptStore pairing; review only immutable snapshot provenance and how a later adapter uses an actual callback, without pretending it is implemented.
+- **D5 (ADR-0067, blocker to interpretation):** confirm that ARCHITECTURE §2 is a target tree, not a Phase 0.5 requirement to add forbidden Orca/G-code/optimizer stubs.
+
+### Approval and execution ownership
+
+Specification owner/reviewer: record an explicit disposition for S1–S3 and D1–D5 (accepted exact contract / changes requested / evidence missing), with accepted ADR text and revised canonical docs. Implementation owner: **only after** `validated` repository review, implement the smallest approved DTO/Settings/Attempt schema changes with independent v1/v2 golden vectors and reject-path tests. Verification owner: run compileall and entire unittest suite at exact resulting SHA, compare diff/manifest, perform normal implementation review and document any unresolved Critical/High. This is a dependency order; neither extra test count nor this primary triage constitutes approval.
+
+**Stop rule:** no speculative v2 serializer root, Plan schema alteration, physical injection, Orca callback, G-code mutation, or PR merge based on this document alone. Maintain SPEC-CHANGE-REQUIRED until formal decisions are recorded.
+## 2026-10-15 requester dispositions, pending normative integration
+
+The requester approved all ADR-0067 direction items D1–D10, and ADR-0066 directions S1–S5, S7–S9; requested redesign of S6. This approval selects design direction only: the proposed documents remain Draft and exact typed layouts, field semantics, validations and accepted review procedures are not yet completed.
+
+### ADR-0067 approved directions
+
+- D1: SurfaceBand owns typed identities referencing separately owned immutable geometry; validate reference integrity and print-space frame.
+- D2: distinct target material boundary, residual-error region, temporal support and acyclic nesting concepts; forbid cyclic/future-material support.
+- D3: structural loop preserves immutable canonical shape, bounds/length/orientation, material-side identity, noncollinear anchors in PrintObject print-space with mm units.
+- D4: typed InsertionAnchor signature/tolerance, plan-fixed order/dependency metadata; runtime validation evidence excluded from immutable Plan identity.
+- D5: existing Plan v1 bytes preserved; meaning-changing Plan fields require a distinct schema/root and independent vectors.
+- D6: attempt evidence distinguishes UNKNOWN, VALIDATED and REJECTED with stable reasons/provenance; never infer validation from existence of an attempt.
+- D7: single AttemptStore owner, monotonic status and immutable record history/snapshots.
+- D8: preserve existing atomic PlanStore/AttemptStore issue operation; bind immutable issued-snapshot provenance, no invented Orca invocation UUID.
+- D9: distinguish analysis generation from PluginSessionEpoch; an intervening analysis alone does not void retained snapshots; reject old-epoch selection after reset.
+- D10: Phase 0.5 implements reviewed domain/application/required ports; final Orca/G-code/optimizer tree is a future target, no empty placeholders.
+
+### Dependencies remaining after requester response
+
+1. Proposed ADR-0067 must convert directions into an exact normative schema: reference identity types, coordinates, residual region semantics, canonical shape algorithm, signature/tolerance policy, attempt-evidence state transitions and snapshot provenance; decide exact Plan schema version/typed fields. No guessed choices.
+2. Proposed ADR-0066 must resolve S6 and precise numeric policy/cost/jerk/tolerance types; separate user-approved high-level direction from complete implementation contract.
+3. Specification owner/reviewer must reconcile Accepted ADRs, SPECIFICATION, ARCHITECTURE, IMPLEMENTATION and handoff; obtain formal review/record, restamp manifest and validate repository assumptions before implementation.
+4. Keep both design PRs Draft and Physical Injection off until the prescribed gates. The requester response is not an independent PR review and does not claim tests ran.
+
+## 2026-10-15 follow-up: S6 optimization direction approved
+
+The requester has now accepted the revised S6 policy: independently enforce directional maximum surface-error tolerance and all accepted hard feasibility/safety rules; among feasible plans lexicographically minimize structural complexity, then estimated added execution time, then commanded added material volume, with a deterministic semantic tie key. The earlier S6 change-request entry above is superseded for this **high-level objective order**. S1–S9 and D1–D10 are all now requester-approved *directions*, not a complete Accepted ADR revision.
+
+The remaining Phase 0.5 specification gate is technical contract completion, not another vote on objective ordering. Reviewer must close: (1) versioned canonical complexity counters and false-segmentation counterexamples, (2) target-specific time model/version/evidence and analysis-only missing-time semantics, (3) commanded-volume definition and exact total-order/tie policy, (4) remaining numeric tolerance/motion-policy Settings v2 fields and typed footprint, (5) SurfaceBand/StructuralLoop/InsertionAnchor/Attempt evidence exact schema and new Plan root version. Update canonical baseline documents and audited revision only after the design has no material contradictions; obtain review-only repository validation before any schema implementation. All legacy v1 bytes and no-injection gates remain in force.
+
+## 2026-10-15 cross-branch repository-review findings (primary, not independent)
+
+Source evidence actually inspected: implementation PR #2 at \`5dc15d122c2180a5e3e3c99e9d09d2909330d4de\`; ADR-0066 design PR #3 and ADR-0067 design PR #4 latest respective proposal branches; Accepted ADR-0037, 0044, 0047, 0058, 0062, 0065; base \`docs/SPECIFICATION.md\` §§16–17, \`docs/IMPLEMENTATION.md\` §§12–13, \`domain/plan.py\`, \`domain/metrics.py\`, \`domain/status.py\`, \`application/plan_store.py\`, \`application/execution_status.py\`, \`application/serialization.py\`. Full independent specification review and runtime behavior were **not** performed.
+
+| ID / severity | Concrete evidence and invariant | Failure scenario | Proposed disposition |
+| --- | --- | --- | --- |
+| R1 / High / confirmed contract gap | Accepted ADR-0047 requires each directional E_max/p95/RMS; current \`domain.metrics.ErrorMetrics\` and \`PlanSemanticContent.error_metrics\` carry only combined four-field summary | A Plan can contain a plausible combined e_max without proving independent source→predicted underfill gate or convergence | Proposed ADR-0067 v2 directional evidence type, new schema root, negative fixtures; do not change v1 |
+| R2 / High / confirmed contract gap | Current \`PlanSemanticContent.estimated_added_time_s: float\` and validation require finite >=0; approved S6 assumes machine-specific time may be unknown | Unknown time wrongly encoded as 0 leads to ranking/printability false positive | Proposed v2 typed available/unavailable time evidence; no fabricated numeric sentinel |
+| R3 / High / confirmed ambiguity | Approved S5 directional optimizer weights but S6 lex rank has only quality gate, complexity, time, material | A supposed settings knob has no specified semantics or covertly changes quality-order when used | ADR-0066 X1: decide allowlisted search exploration/diagnostics-only use or remove from v2 optimizer identity; no hidden quality weight |
+| R4 / High / requires-further-evidence | No validated versioned machine time predictor, motion-cornering dialect, or exact plan complexity counting grammar | Equivalent plans can be ranked inconsistently or firmware-specific time estimated incorrectly | ADR-0066 X3/X4; don't invent hardware constants, require model evidence and deterministic score grammar |
+| R5 / High / requires design-integration review | Both PR #3 and PR #4 change the **same** \`docs/SPECIFICATION.md\` and \`docs/IMPLEMENTATION.md\` based on the same baseline | Independent merges may lose either v2 Settings policy or v2 DTO/evidence contract even when each PR appears internally consistent | Produce one consolidated canonical-document revision in specification gate; resolve both before final ADR signoff, then restamp manifest/handoff |
+| R6 / High / confirmed status gap | \`InjectionAttemptRecord\` currently has five fields and mutable store retains only the latest immutable snapshot; ADR-0037 requires compatibility, both fingerprints, SourceFileIdentity validation outcomes | A STARTED record or attempt-state VALIDATED is taken for full source/config gate proof without evidence | Proposed ADR-0067 immutable typed validation evidence with explicit UNKNOWN, monotonic history/retention design; do not fake PASS |
+| R7 / Medium / confirmed boundary | Atomic \`PlanStore.begin_postprocess_attempt\` now exists and is covered by existing tests, but no real Orca callback binding | Reimplementing pairing wastes work or mistakenly calls in-memory issuance an export validation | Preserve pure-process interface as approved scope; defer actual callback to Phase 1+ per handoff |
+
+### Actual next gate (not a task counter)
+
+1. Specification owner reviews and resolves R1–R6 and exact proposed field/validation schemas in ADR-0066/0067, documenting alternatives and disposition.
+2. Merge **design intent only** into a *single coherent staged canonical specification diff*, preserving Accepted ADRs and v1 golden fingerprints. Do not independently treat conflicting shared-file edits on PR #3 and PR #4 as two finalized sources of truth.
+3. Review-only repository validation on exact consolidated proposed revision: either \`validated\` with enumerated source interfaces/tests or \`spec-change-required\` with specific blockers.
+4. Only then implement the minimum production v2 DTO/identity/attempt evidence changes on PR #2; execute exact-SHA compileall, unittest, independent v1 hash vectors, architecture and rollback/negative tests.
+5. Run normal implementation review, review all Critical/High dispositions, keep no physical injection and Draft PRs until gate closure.
+
+**Actual disposition of this review: SPEC-CHANGE-REQUIRED / NOT READY.** Approval of overall user design priority does not resolve the new exact schema's High findings. The PR #3/#4 proposal changes are documentation-only, not verified Python implementations.

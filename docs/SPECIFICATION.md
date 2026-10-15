@@ -355,12 +355,17 @@ Surface correspondence is local and normal-aware per ADR-0050, but the local dom
 
 These are deterministic numerically converged estimator results per ADR-0045. Sample spacing/refinement/convergence/correspondence settings are versioned plugin Settings and participate in PluginSettingsFingerprint. A hard tolerance decision is invalid if the estimator does not converge within the configured refinement budget.
 
-Among feasible candidate sets minimize a documented cost including:
-- residual error;
-- candidate path length;
-- added commanded material;
-- estimated time;
-- complexity/risk.
+### Approved specification-owner Phase 0.5 optimization/schema decision (ADR-0066/0067)
+
+Specification-owner approval is recorded in [phase05-delegated-specification-decisions-2026-10-15.md](implementation/phase05-delegated-specification-decisions-2026-10-15.md) on this Draft specification PR; this is **not** independent review, complete implementation verification, or authority for printer injection.
+
+Both separately numerically converged directional E_max errors must satisfy surface_error_tolerance_mm; chronological support, geometry, collision, tool clearance and compatible motion limits remain hard gates. For fully rankable candidates passing all gates, select the lexicographically smallest **planned-intent** score: added path count, added segment count, planned nonextruding/restart transition count, target-specific estimated added seconds, commanded added volume mm3, exact canonical semantic bytes. All counts use a versioned deterministic planned-path grammar; no weighted softness may offset a failed hard gate. A bounded candidate search proves optimality only among its completely evaluated feasible candidates. Stable equality/tie ordering never uses timestamps or runtime object identity.
+
+Plugin-owned direction weights are used only for *bounded search expansion priority* via a deterministic weighted average of converged directional p95 errors; they cannot affect hard maxima or re-rank a fixed set of fully evaluated candidate Plans. Full binary64 values are interpreted as exact rational inputs to the priority comparison, with any optimized implementation required to pass equivalence fixtures. Missing/nonconverged error/support results reject the candidate for physical use.
+
+V2 time evidence is tagged AVAILABLE (finite nonnegative seconds with model/config/provenance identity) or UNAVAILABLE (stable reason and explicit missing inputs). Unknown time never becomes numeric zero, NaN/Inf, or a claimed optimal injectable Plan. Any geometry-feasible candidate without required time evidence makes the full comparison RANKING_INCOMPLETE and analysis-only. Missing verified hardware/firmware/time models cannot be repaired by guessed printer constants.
+
+These decisions define the **contract**; the actual conservative estimator, canonical geometry implementation, machine time model and physical fixture parity remain later evidence gates. Legacy v1 Plan and PluginSettings canonical bytes must remain unchanged.
 
 Optimization MUST be deterministic for identical canonical inputs/settings.
 
@@ -380,12 +385,17 @@ Planning builds a versioned PluginSettingsFingerprint from all plugin settings t
 - support-coverage thresholds/tolerances;
 - error-estimator sampling/refinement/convergence policy;
 - local surface-correspondence distance/normal compatibility policy;
-- directional optimizer error weights;
+- directional bounded-search exploration weights (never hard-error acceptance or final S6 ranking);
 - execution policy.
 
 At psGCodePostProcess, current plugin settings are re-read through the capability config contract and fingerprinted again.
 
 Mismatch or missing/invalid settings => Skipped.
+
+
+### Approved specification-owner Settings v2 schema boundary (ADR-0066)
+
+The v2 PluginSettingsFingerprint is a distinct closed typed root (schema_version 2, canonical encoding version 1). It includes all declared plugin-owned settings for geometry, regularity, tool clearance evidence, bead bounds, support thresholds/refinement/numeric query policy, error estimator and correspondence, mesh section, dialect-tagged motion caps, directional **exploration** weights, lexicographic optimizer configuration including search budget, and deterministic planned execution policy. Settings v1 remains byte-identical; no inferred v1→v2 migration. Resolved Orca execution settings remain solely in ExecutionConfigFingerprint. Full field/types and research-mode restrictions are specified by ADR-0066 and the delegated specification decision record. Schema validation does not imply physical support/clearance or printer compatibility.
 
 PlanStore invalidation is helpful but does not replace this final equality check.
 
