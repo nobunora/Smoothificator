@@ -390,7 +390,7 @@ Planning builds a versioned PluginSettingsFingerprint from all plugin settings t
 - support-coverage thresholds/tolerances;
 - error-estimator sampling/refinement/convergence policy;
 - local surface-correspondence distance/normal compatibility policy;
-- directional optimizer error weights;
+- directional bounded-search exploration weights (never hard-error acceptance or final S6 ranking);
 - execution policy.
 
 At psGCodePostProcess, current plugin settings are re-read through the capability config contract and fingerprinted again.
