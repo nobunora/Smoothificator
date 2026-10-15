@@ -61,6 +61,44 @@ jobs:
                       archive.write(file, file.as_posix())
           print(out, out.stat().st_size)
           PY
+      - name: Clean extracted-bundle import and ZIP integrity smoke check
+        shell: bash
+        run: |
+          set -euo pipefail
+          export RESEARCH_EXTRACT="$RUNNER_TEMP/smoothificator-extracted"
+          "$RUNNER_TEMP/smoothificator-phase05-venv/bin/python" -I - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          from os import environ
+          from sys import path
+          from importlib import import_module
+          archive = Path("dist/phase05-research-only.zip").resolve()
+          destination = Path(environ["RESEARCH_EXTRACT"])
+          with ZipFile(archive) as z:
+              assert z.testzip() is None, "ZIP CRC mismatch"
+              names = z.namelist()
+              assert names and len(names) == len(set(names)), "duplicate archive paths"
+              assert "RESEARCH-ONLY.txt" in names
+              assert all(name == "RESEARCH-ONLY.txt" or
+                         (name.endswith(".py") and name.startswith(("adaptive_subedge/", "orca_plugin/")))
+                         for name in names), "unexpected executable/file content"
+              assert "orca_plugin/__init__.py" in names
+              assert not any(name.startswith("orca_plugin/") and
+                             name != "orca_plugin/__init__.py" for name in names), "unexpected live Orca capability"
+              for name in names:
+                  if name == "RESEARCH-ONLY.txt":
+                      continue
+                  assert z.read(name) == Path(name).read_bytes(), f"source differs: {name}"
+              z.extractall(destination)
+          import os
+          os.chdir(destination)
+          path.insert(0, str(destination))
+          for name in ("adaptive_subedge", "orca_plugin", "adaptive_subedge.domain.metrics",
+                       "adaptive_subedge.application.serialization"):
+              module = import_module(name)
+              assert Path(module.__file__).resolve().is_relative_to(destination.resolve()), name
+          print("Clean extracted-bundle import and ZIP integrity: PASS")
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: phase05-research-only-${{ github.sha }}
