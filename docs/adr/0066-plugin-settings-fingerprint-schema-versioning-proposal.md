@@ -1,6 +1,6 @@
-# ADR-0066 (PROPOSED): Version PluginSettings fingerprint when expanding the complete plugin-owned Settings contract
+# ADR-0066 (SPECIFICATION OWNER APPROVED): Version PluginSettings fingerprint when expanding the complete plugin-owned Settings contract
 
-Status: **Proposed — NOT ACCEPTED, NOT IMPLEMENTATION AUTHORITY**
+Status: **Specification-owner approved on Draft PR #5; independent review and SPEC_VALIDATED pending; physical injection prohibited**
 Date: 2026-10-13
 Scope: `PluginSettings` identity schema and future Phase 0.5 Settings DTO integration only.
 Reconciliation required against Accepted ADR-0045/0049/0050/0059/0062/0063/0064/0065, `docs/SPECIFICATION.md`, `docs/IMPLEMENTATION.md` and installed Orca runtime evidence.
@@ -10,6 +10,13 @@ Reconciliation required against Accepted ADR-0045/0049/0050/0059/0062/0063/0064/
 Requester approved all S1–S9 **policy directions**, including S6 hard quality/safety gates followed by strict lexicographic complexity, estimated added time and commanded added volume. The earlier "S6 changes requested" paragraph below records **superseded history**, not the current decision. S5 directional weights affect only the proposed bounded **candidate exploration priority**, never S6 final ranking or hard accept/reject. Missing machine-time evidence yields research-only RANKING_INCOMPLETE, not zero time or printable success. See `docs/implementation/phase05-unified-contract-review-2026-10-15.md`.
 
 This is a consolidated Draft proposal with ADR-0067 on PR #5. Formal accepted field/model definitions, independent specification review and validated repository review are **still missing**. Only the user's design direction is approved; status remains Proposed.
+
+
+## Current specification-owner approval — controlling scope
+
+**Approved by delegated specification owner on 2026-10-15:** the exact schema-level and fail-closed decisions in [phase05-delegated-specification-decisions-2026-10-15.md](../implementation/phase05-delegated-specification-decisions-2026-10-15.md), including v2 Settings root separation, typed policy families, exploratory-only directional weights, S6 hard-gated lexicographic ranking, and unavailable machine time reporting. **The decision record controls over earlier contradictory proposal language in this file.** Old passages reporting S6/X1/X2 "changes requested" or awaiting the requester are historical and superseded as *policy decisions*. No invented print settings, arbitrary machine model, or non-conservative numeric geometry acceptance is approved.
+
+**Separate verification status:** this document is approved as a design/typed schema decision **on this Draft PR only**. It is NOT an independent reviewer approval, reviewed manifest/handoff, validated repository review, installed Orca fixture, Phase 0.5 completion, or physical injection authorization. Before the production v2 implementation, reconcile all canonical normative docs and satisfy the AGENTS.md SPEC_READY → REPOSITORY_REVIEW → SPEC_VALIDATED steps. The physical printer and G-code gates remain disabled.
 
 ## Problem / existing evidence
 
