@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scope": "Phase 0.5 Settings v2 schema-only review; Plan v2 remains blocked",
+  "scope": "Phase 0.5 Settings v2, standalone analysis evidence and bounded Attempt history; Plan v2 remains blocked",
   "review_status": "integrity_only_not_implementation_authority",
   "blobs": [
     {
