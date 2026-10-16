@@ -242,6 +242,87 @@ O(V+F) topology storage, O(F²) bounded pair work and O(F*max_ray_directions)
 bounded ray work, with iterative traversal. No cross-call proof cache, new
 dependency, Orca I/O, filesystem or canonical Plan registration is introduced.
 
+### Closed exact whole-segment material classification
+
+`exact_mesh_segment_material_v1` extends the exact supplied-mesh predicates to
+an entire closed straight segment. Endpoint inclusion alone is insufficient for
+concave material. This predicate gives no bead-radius, extrusion, clearance,
+Orca/frame or physical/injection authority.
+
+```python
+MeshSegmentClassification(state: str, reason: str, classification: str | None)
+
+classify_mesh_segment(mesh: IndexedTriangleMesh, start: PrintPoint3,
+    end: PrintPoint3, *, max_vertices: int, max_triangles: int,
+    max_pair_checks: int, max_ray_directions: int,
+    cancelled: Callable[[], bool]) -> MeshSegmentClassification
+```
+
+The result is frozen/slotted with no defaults. Require exact mesh/start/end
+types and the existing positive exact-int limit/callable rules. Normalize endpoint
+coordinates through float then exact Fraction. Equal normalized endpoints reject
+INVALID_GEOMETRY before mesh evaluation. Malformed query geometry uses
+INVALID_GEOMETRY; limits/callback use INVALID_SETTING. A callback must return
+exact bool and its exceptions propagate, as in the existing point API.
+
+Freshly validate topology and embedding once per public call, with the existing
+max_vertices, max_triangles and max_pair_checks precedence. Reuse only that
+call's validated triangles internally. No result DTO, caller topology or previous
+query is accepted as evidence. After embedding, scan source triangles in input
+face order for intersection with the entire closed segment:
+
+- For noncoplanar segment endpoints, let d0,d1 be their exact signed distances
+  to the face plane. Strict same-sign distances miss. Otherwise compute
+  t=d0/(d0-d1), require 0<=t<=1 and test the exact interpolated point against
+  the closed triangle. This includes either endpoint on the plane.
+- If d0=d1=0, project using the triangle's dominant-normal-axis rule. Start
+  with the closed parameter interval [0,1]. Each oriented triangle halfplane
+  gives a linear inequality a+b*t>=0. For b>0 intersect with t>=-a/b; for b<0
+  intersect with t<=-a/b; b=0,a<0 makes the interval empty. A nonempty final
+  interval, including a singleton, is contact. No epsilon or ray surrogate.
+
+Any triangle contact immediately returns complete/classified with boundary-contact
+after checking cancellation. It includes tangent/vertex/edge contact, coplanar
+overlap, endpoint contact, and crossings through the solid. It does not mean
+the whole segment lies on the boundary or that either endpoint is outside.
+
+If no triangle contact exists, classify start and then end with the existing
+exact boundary-first deterministic parity algorithm, using the same validated
+triangle tuple. max_ray_directions applies separately to each endpoint. The
+existing public classify_mesh_point API must retain its validation, results and
+failure behavior; extract a private shared helper rather than implementing a
+second parity owner. The helper may return a closed inside/outside/boundary string
+or the existing MeshPointClassification, and may raise the owner's typed stop
+signal for incomplete/rejected outcomes. The
+segment API maps either form to its own closed result; ContractError and callback
+exceptions must propagate unchanged, never become a successful classification.
+
+Both endpoint classifications inside return strictly-inside; both outside
+return strictly-outside. A boundary endpoint after the contact-free scan or
+inconsistent inside/outside endpoints returns incomplete/classification-inconsistent
+with None. This defensive outcome indicates unproven/inconsistent evidence, not
+permission to choose either side. Topology/embedding failures and exhausted ray
+directions propagate before any inside/outside conclusion.
+
+Justification: a continuous segment disjoint from the closed embedded boundary
+cannot change material component. Thus contact-free endpoint classification
+establishes the entire closed segment's side. Explicitly scanning every triangle
+is essential: two inside endpoints can leave and re-enter concave material.
+
+Closed result matrix: complete/classified with exact string strictly-inside,
+strictly-outside or boundary-contact; rejected with any existing embedding
+rejection reason and None; incomplete with cancelled, resource-limit,
+ray-directions-exhausted or classification-inconsistent and None. Constructors
+validate exact strings/matrix, not geometric computation. No counters, receipt
+identity, Plan canonical registration or physical fields are added.
+
+Check cancellation before each contact test, before endpoint evaluation, during
+the existing endpoint face/direction loops and before complete return. No partial
+classification escapes. Contact work is O(F); endpoint work is at most
+2*F*max_ray_directions plus boundary scans, following the existing pair-capped
+embedding. Existing limits bound all work without a new hidden default. Reuse
+the existing material-side and exact triangle-predicate module owners.
+
 ## Requirements / invariants introduced
 
 - ModelVolume.is_manifold() is necessary but not sufficient.

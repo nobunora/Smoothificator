@@ -35,3 +35,4 @@ jobs:
       - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase1b-mesh-section.md
       - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase1b-mesh-material.md
       - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase1b-section-stability.md
+      - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase1b-mesh-segment.md
