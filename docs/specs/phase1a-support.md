@@ -3,6 +3,12 @@
 Status: DRAFT_SPEC. This is an executable mathematical proposal for review, not
 authority to implement or to claim calibrated support. No canonical ADR edited.
 
+The bounded actual-bead cell-query subset has since been closed in ADR-0044/0048
+and independently validated in phase1a-support-cell.md. That handoff supersedes
+the corresponding proposals below. Adaptive integration, coverage metrics and
+general union coverage in this document remain draft; they are not completed by
+the cell query implementation.
+
 ## Canonical basis and a necessary geometry correction
 
 ADR-0044 owns area fraction, minimum contiguous width and effective-height
