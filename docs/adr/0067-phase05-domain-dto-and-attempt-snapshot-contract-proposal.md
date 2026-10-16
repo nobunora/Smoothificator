@@ -24,6 +24,30 @@ B6 (D6-D9): ValidationEvidence has UNKNOWN / VALIDATED / REJECTED, typed validat
 
 The implemented PlanStore.begin_postprocess_attempt is retained as the ADR-0065 atomic PlanSnapshot+unique Attempt issuance owner. V2 may add an opaque process-local snapshot_issue_id minted under the same critical section and checked against actual issued snapshot identity; no invented Orca callback UUID. New analysis generation or post-snapshot eviction does not mutate an issued snapshot; epoch reset invalidates old-session eligibility.
 
+## Closed standalone insertion-anchor vocabulary — 2026-10-16
+
+B2's standalone InsertionAnchorV2 has exactly eight required fields:
+anchor_id, structural_loop_ids, layer_index, boundary_signature,
+target_structural_interval_id, boundary_signature_schema_version,
+matching_tolerance_mm, matching_profile_id. It is frozen/slotted, with no defaults.
+All string values are exact builtin nonblank strings. structural_loop_ids is an
+exact nonempty tuple of distinct nonblank builtin strings, preserving order.
+layer_index is an exact builtin int >=1. matching_tolerance_mm is finite binary64
+and >0 (bool/subclasses/overflow reject under existing numeric conventions).
+
+The sole initial boundary_signature_schema_version is
+`opaque_boundary_signature_v1`: a research token vocabulary, NOT a matching or
+signature-generation algorithm. boundary_signature is opaque and MUST NOT be
+interpreted as proof of matching. matching_profile_id names a future verifier's
+profile; construction does not resolve or approve that profile.
+
+This DTO remains outside canonical serialization and PlanStore until the full
+Plan v2 projection is closed. No validated/injectable property is present.
+The analysis owner must later prove loop/interval membership in the same source
+snapshot; no DTO construction or string equality proves geometric correspondence.
+Existing v1 constructors, projected bytes, and hash roots remain unchanged.
+This closes the standalone vocabulary only, not all of B2 or Phase 0.5.
+
 ## Closed analysis-evidence and bounded-history slice — 2026-10-16
 
 This slice concretizes B4/B5 and the retention portion of B6. It does not define
