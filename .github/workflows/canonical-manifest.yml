@@ -25,3 +25,4 @@ jobs:
       - run: python tools/check_canonical_manifest.py
       - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase05-evidence-history.md
       - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase05-insertion-anchor.md
+      - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase05-structural-loop.md

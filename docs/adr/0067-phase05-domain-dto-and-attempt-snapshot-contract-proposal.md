@@ -24,6 +24,74 @@ B6 (D6-D9): ValidationEvidence has UNKNOWN / VALIDATED / REJECTED, typed validat
 
 The implemented PlanStore.begin_postprocess_attempt is retained as the ADR-0065 atomic PlanSnapshot+unique Attempt issuance owner. V2 may add an opaque process-local snapshot_issue_id minted under the same critical section and checked against actual issued snapshot identity; no invented Orca callback UUID. New analysis generation or post-snapshot eviction does not mutate an issued snapshot; epoch reset invalidates old-session eligibility.
 
+## Closed standalone structural-loop vocabulary — 2026-10-16
+
+This closes B2's standalone StructuralLoopReferenceV2 representation, not its
+source-derived geometry proof or the complete Plan v2 projection. The DTO is
+frozen/slotted and has exactly these thirteen required fields, with no defaults:
+
+| Field | Exact type / constraint |
+| --- | --- |
+| loop_id | nonblank builtin str |
+| points | builtin tuple of at least three exact PrintPoint3 values |
+| seam_gap_allowance_mm | finite binary64 >=0 |
+| loop_length_mm | finite binary64 >0; supplied length, not a computed proof |
+| bounds_print_space_mm | builtin six-tuple of finite binary64: xmin,xmax,ymin,ymax,zmin,zmax |
+| coordinate_frame | builtin str literal `centered_printobject_mm_v1` |
+| winding_orientation | builtin str: `unknown`, `cw_xy`, or `ccw_xy` |
+| winding_policy_version | builtin str literal `declared_xy_winding_v1` |
+| material_side_policy_version | nonblank builtin str naming the external orientation/material-side policy |
+| matching_anchor_points_print_space_mm | builtin tuple of at least three exact PrintPoint3 values |
+| anchor_predicate_version | builtin str literal `exact_binary64_cross_product_v1` |
+| shape_canonicalization_version | nonblank builtin str naming the external shape algorithm |
+| canonical_shape_hash | builtin str of exactly 64 lowercase ASCII hexadecimal characters |
+
+Numeric validation uses the existing finite-binary64 convention: builtin int
+inputs are interpreted after conversion to float; bool, numeric subclasses,
+overflow and nonfinite values reject. Coordinate comparisons below use those
+binary64 values, with signed zero equivalent. The point sequence represents a
+cyclic loop: the closing last-to-first edge is implicit, so all points must be
+distinct and a repeated closing endpoint rejects. Preserve point/anchor order;
+do not rotate, reverse, simplify, snap or otherwise canonicalize supplied geometry.
+The bounds must have ordered axis extrema and equal the coordinate-wise extrema
+of points. All anchors must lie within these bounds; anchors need not be vertices
+of points because a later matcher may choose interpolated locations. Anchor
+coordinates must be distinct. These are local representation checks, not a
+simple-loop, planar-loop, contour-membership or mesh-topology proof.
+
+The anchor predicate is defined completely here: convert each coordinate to its
+finite binary64 value, then interpret that value as its exact rational number.
+Let a and b be the first two (distinct) anchors. Require at least one remaining
+anchor c for which the exact 3D cross product (b-a) x (c-a) is nonzero. Do not use
+float intermediate subtraction/multiplication, an epsilon, rounded area or a
+norm/square-root comparison. Arbitrary-precision rational arithmetic gives a
+deterministic predicate even at subnormal/extreme magnitudes. This checks affine
+noncollinearity only: an almost-collinear triple may pass and does not establish
+numerical conditioning or a physically sufficient matcher baseline.
+
+cw_xy/ccw_xy denote a caller's declaration when viewed from +Z toward the XY
+plane; unknown explicitly represents an unresolved declaration. This DTO does
+not derive or certify winding from point order or normals. The material-side
+and shape-algorithm version strings are opaque references, not an allowlist of
+supported algorithms. A syntactically valid supplied digest does not establish
+that its source geometry was canonicalized. ADR-0030's source topology/orientation
+and independent inside/outside validation, ADR-0050's material-side use and
+ADR-0059's simple-loop/no-hole/no-branch/no-self-intersection contract remain
+future analysis-owner obligations. Unknown orientation remains non-injectable.
+Length agreement, anchor-on-contour membership, winding agreement, material-side
+proof and digest/algorithm agreement must be established by that owner; no DTO
+constructor or property grants validated/injectable/matched authority.
+
+Keep this standalone type outside canonical serialization and PlanStore until
+the complete Plan v2 schema is accepted. Do not register the new frame/policy
+names as supported source-geometry hashing or physical matching algorithms.
+Existing StructuralLoopReference, v1 bytes and hash roots remain unchanged.
+Required focused checks include malformed fields, repeated points/anchors,
+incorrect/reversed bounds, outside anchors, exactly collinear rejection,
+noncollinear subnormal/extreme-coordinate acceptance without float overflow,
+unknown frame/predicate/winding values, immutability, canonical rejection and
+unchanged v1 projection. No numerical engine or Orca integration is introduced.
+
 ## Closed standalone insertion-anchor vocabulary — 2026-10-16
 
 B2's standalone InsertionAnchorV2 has exactly eight required fields:
