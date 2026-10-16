@@ -35,6 +35,8 @@ jobs:
         run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase05-evidence-history.md
       - name: Standalone insertion anchor handoff integrity
         run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase05-insertion-anchor.md
+      - name: Standalone structural loop handoff integrity
+        run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase05-structural-loop.md
       - name: Build and clean extracted import verification
         run: ./.venv/Scripts/python tools/build_validation_artifacts.py
       - uses: actions/upload-artifact@v4
