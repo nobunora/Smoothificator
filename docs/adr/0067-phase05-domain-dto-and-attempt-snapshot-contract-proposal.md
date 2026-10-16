@@ -24,6 +24,206 @@ B6 (D6-D9): ValidationEvidence has UNKNOWN / VALIDATED / REJECTED, typed validat
 
 The implemented PlanStore.begin_postprocess_attempt is retained as the ADR-0065 atomic PlanSnapshot+unique Attempt issuance owner. V2 may add an opaque process-local snapshot_issue_id minted under the same critical section and checked against actual issued snapshot identity; no invented Orca callback UUID. New analysis generation or post-snapshot eviction does not mutate an issued snapshot; epoch reset invalidates old-session eligibility.
 
+## Closed research Plan v2 graph and identity — 2026-10-16
+
+This section closes B1-B5's research Plan representation and canonical projection.
+It incorporates the standalone loop, anchor and analysis-evidence vocabulary
+below. It does not assert execution, topology, convergence or physical proof.
+All new DTOs are frozen/slotted, with required fields and no implicit defaults.
+Builtin strings are nonblank, tuple fields require exact tuples and exact nested
+classes, IDs are case-sensitive, duplicate IDs reject, numeric fields use the
+existing finite-binary64 convention and integer fields reject bool/subclasses.
+No raw mappings or live Orca objects substitute for declared DTOs.
+
+### Exact graph vocabulary
+
+Every frame below is the literal `centered_printobject_mm_v1`. IdentityReference
+always includes exact type/schema/encoding and full lowercase SHA-256. Source
+references are source-geometry/1/1, execution references execution-config/1/1,
+and Settings references plugin-settings/2/1. Comparison includes the complete
+typed identity, not its digest alone.
+
+| DTO | All required fields |
+| --- | --- |
+| GeometryRegionReferenceV2 | identity: IdentityReference; source_geometry: IdentityReference; coordinate_frame: str |
+| SupportReferenceV2 | reference_id: str; contributor_kind: str; contributor_id: str |
+| SurfaceBandV2 | surface_band_id: str; source_geometry: IdentityReference; target_boundary_ref: GeometryRegionReferenceV2; residual_error_region_ref: GeometryRegionReferenceV2; chronological_support_reference_ids: tuple[str,...]; nesting_parent_band_id: str or None |
+| StructuralLoopContextV2 | loop_id: str; structural_interval_id: str; layer_index: int>=0; execution_order: int>=0; maximum_path_z_mm: finite binary64 |
+| SegmentSupportIntentV2 | support_reference_ids: tuple[str,...]; settings_identity: IdentityReference; evidence_reference: str or None |
+| SubEdgePathV2 | path: exact existing SubEdgePath; surface_band_id: str; insertion_anchor_id: str; segment_support: tuple[SegmentSupportIntentV2,...] |
+| PlannedTransitionV2 | from_path_id: str; to_path_id: str; kind: str; policy_version: str |
+
+GeometryRegionReferenceV2.identity has type `surface-boundary` or
+`residual-error-region`, schema `1`, encoding `1`. These two identities are
+typed references to future analysis-owned immutable geometry, not new public
+hashing domains or a claim that an engine exists. Reject any other role/version.
+target_boundary_ref requires surface-boundary; residual_error_region_ref
+requires residual-error-region. Both source identities equal their band's
+source_geometry. The frame is required on every region reference. Region
+identity and source identity together bind a registry entry to one snapshot;
+the containing analysis remains responsible for the actual referenced geometry.
+
+SupportReferenceV2.contributor_kind is exactly `structural-loop` or
+`candidate-path`; contributor_id names the corresponding loop_id or path_id.
+IDs are distinct within their own namespace. SegmentSupportIntentV2 records
+immutable planning inputs and optional reproducible analysis evidence, not a
+VALIDATED/PASS outcome. Its settings identity must equal the Plan's Settings
+identity. None means evidence unavailable; a nonblank string does not prove
+support. Empty support lists are allowed for incomplete research analysis and
+cannot be interpreted as a physically supported candidate.
+
+SubEdgePathV2 reuses the unchanged v1 SubEdgePath/SubEdgeSegment numeric and
+continuity constraints. segment_support has exactly one entry per path segment,
+in segment order. It adds no machine XYZ, emitted E or runtime status. A future
+engine can implement path-level support by repeating an immutable intent value
+for its segments; no inference discards segment-local contributor differences.
+
+PlannedTransitionV2.kind is one of `continuous`, `travel`, `restart`,
+`travel-restart`; policy_version is exactly `declared_interpath_intent_v1`.
+These declare intent between successive candidate paths, not safe travel
+coordinates, extrusion amounts or verified G-code. There is exactly one entry
+for each adjacent pair of candidate paths in execution order and no entry for
+an empty/single-path Plan. Continuous contributes zero to the interpath
+travel/restart count; each other entry contributes one, including travel-restart.
+Restart within a path must first be represented as an explicit path split.
+Initial/final transitions to structural G-code are not interpath transitions
+and are excluded from this count, not from later time/safety verification.
+
+### Closed PlanSemanticContentV2 projection
+
+PlanSemanticContentV2 has exactly these eighteen required fields:
+
+| Field | Exact type / constraint |
+| --- | --- |
+| schema_version | builtin str literal `2` |
+| plugin_version | nonblank builtin str |
+| compatibility_descriptor_id | nonblank builtin str; declaration, not validated compatibility |
+| source_geometry | IdentityReference(source-geometry,1,1,digest) |
+| execution_config | IdentityReference(execution-config,1,1,digest) |
+| plugin_settings | IdentityReference(plugin-settings,2,1,digest) |
+| geometry_regions | tuple[GeometryRegionReferenceV2,...] |
+| support_references | tuple[SupportReferenceV2,...] |
+| surface_bands | tuple[SurfaceBandV2,...] |
+| structural_loops | tuple[StructuralLoopReferenceV2,...] |
+| structural_loop_contexts | tuple[StructuralLoopContextV2,...] |
+| candidate_paths | tuple[SubEdgePathV2,...] |
+| anchors | tuple[InsertionAnchorV2,...] |
+| transitions | tuple[PlannedTransitionV2,...] |
+| directional_error | exact DirectionalErrorEvidence |
+| added_time | exact TimeEstimateUnavailable or TimeEstimateAvailable |
+| volumes | exact PlannedVolumesV2 |
+| analysis_outcome | exact ResearchPlanOutcomeV2 |
+
+PlannedVolumesV2 has exactly geometric_volume_mm3 and commanded_volume_mm3,
+both finite binary64 >=0. They are separately declared planned measures; the
+future engine proves their agreement with geometry and commanded flow.
+ResearchPlanOutcomeV2 has exactly injectable (builtin bool, must be false) and
+reason (builtin str in `phase05-analysis-only`, `ranking-incomplete`,
+`unverified-geometry`, `infeasible`). No constructor grants a feasible/optimal
+classification. If added_time is unavailable, reason must be ranking-incomplete
+unless reason is infeasible or unverified-geometry. An available value has its
+existing evidence requirements and must name the exact Plan execution identity.
+It remains research evidence, not an installed time predictor; current Settings'
+unavailable_v1 cannot produce it through the real planning pipeline. Both
+directional convergence policy identities must equal plugin_settings.
+
+All registry-like tuple orders are canonical and checked, not silently sorted:
+geometry_regions by (identity.identity_type, identity.digest_hex);
+support_references by reference_id; surface_bands by surface_band_id;
+structural_loops and structural_loop_contexts by loop_id; anchors by anchor_id.
+String sorting is Python Unicode codepoint order, without Unicode normalization.
+Support reference ID lists are unique and sorted by the same rule. Candidate
+paths are strictly increasing by path.execution_order. Transitions follow their
+adjacent candidate pair order. Loop points, matching anchors, segments and
+insertion-anchor structural_loop_ids retain their existing meaningful order.
+All tuples may be empty where the invariants below permit; no fabricated geometry
+or success evidence is required to represent an empty research result.
+
+### Required containing-graph checks
+
+1. Region keys are unique; every region and band has the exact Plan source
+   identity. Each band's target/residual value equals a complete registry entry.
+   Registry membership proves the declaration exists in this immutable graph,
+   not that an external mesh is closed or its digest has been verified.
+2. Loop contexts cover structural_loops one-to-one, with no extra/missing IDs.
+   maximum_path_z_mm equals the maximum binary64 point Z of its loop, allowing
+   nonplanar ZAA structural loops. This is a conservative path-coordinate bound,
+   not a bead/support envelope or proof of deposited material.
+   Context execution orders and candidate path execution orders together are
+   unique nonnegative chronological event indices; gaps are allowed.
+3. Band parent IDs exist, are not self, and form an acyclic forest. This checks
+   declared nesting only; geometric containment is the future engine's proof.
+4. Every support reference resolves to a declared loop or candidate path.
+   Each segment and band support ID resolves to that support registry. Every
+   candidate has an existing band and insertion anchor. Bands may be unused
+   diagnostic regions; their support chronology is checked when they have
+   consumers and does not become a success assertion when they have none.
+5. For each candidate, union its band's and all its segments' support IDs.
+   Each contributor must have a smaller global execution_order AND strictly
+   lower height than the consumer candidate's command_z_mm: use a structural
+   contributor's maximum_path_z_mm or a candidate contributor's command_z_mm.
+   Candidate contributor path IDs in
+   this union must equal the base path.support_dependency_path_ids set. Thus
+   missing, self, future, same-Z and cyclic candidate support rejects. Preserve
+   the existing base path dependency ordering; require it lexically sorted.
+6. Each anchor loop ID resolves to a contextualized loop; all those contexts'
+   structural_interval_id equals target_structural_interval_id. The anchor
+   layer_index equals each of those context layer_index values. Each candidate
+   path.interval_id equals its anchor.target_structural_interval_id, and every
+   loop of its anchor has execution_order smaller than the candidate's. This is
+   a declared layer/interval mapping, not final G-code insertion proof.
+7. Transitions exactly cover adjacent candidates, without duplicates or dangling
+   endpoints. The derived research complexity counts are len(candidate_paths),
+   sum(len(p.path.segments)), and count(kind != continuous). Do not store a second
+   independently supplied complexity tuple or claim representation-optimality.
+8. Enforce all exact nested types, reference roles/versions, immutable shapes,
+   directional/time identity consistency and non-injectable outcome above.
+
+### Identity and ownership
+
+SubEdgePlanV2 has exactly content:PlanSemanticContentV2, plan_hash:str,
+plan_id:str. Derived IDs are identical full lowercase hashes. The application
+serializer declares the complete explicit Plan-v2-root-context projection above,
+including all new nested DTOs and existing loop/anchor/evidence fields. It does
+not add these types to the public standalone semantic_tree registry: standalone
+semantic_tree calls still reject the new loop/anchor/evidence/Plan-v2 objects.
+Only identity_root(subedge-plan, exact PlanSemanticContentV2, schema_version=2)
+enters this explicit context. The earlier standalone exclusion remains intact;
+this section authorizes their nested projection inside the complete v2 root.
+Support/reference/analysis
+evidence strings included in a Plan must be deterministic immutable planning
+provenance, never invocation IDs, timestamps or mutable runtime evidence.
+Use the existing subedge-plan root with schema `2`, encoding `1` and ADR-0062
+`plan` digest domain. Payload schema_version must also be `2`. Exclude derived
+plan_hash/plan_id, session/generation/attempt state, final machine offsets/E and
+timestamps. There is no v1 migration or registration change to v1 payloads.
+
+Provide dedicated create_plan_v2/verify_plan_v2 application boundaries: construct
+the validated semantic graph, project, compute hash, then create the frozen
+envelope; mismatched caller-supplied IDs reject. Root validation dispatches on
+both identity_type and schema_version, with closed nested validation, exact
+projected scalar tokens and tagged time variants. Only plugin-settings and
+subedge-plan gain schema 2 support; other roots remain schema 1. Unknown fields,
+versions, raw-map shortcuts, cross-domain payloads and mixed v1/v2 references
+reject. Generic typed identity comparison may compare two matching Plan-v2
+identities but never equate different schema versions. Legacy create_plan,
+verify_plan and all v1 bytes retain their current contracts.
+
+PlanStore remains the single publication/session/retention owner and accepts
+verified v1 or v2 envelopes for immutable snapshots and preview. Its publication
+validation dispatches to the corresponding verify_plan or verify_plan_v2; do not
+introduce a parallel store. PlanSemanticContentV2 exposes a read-only injectable
+property returning analysis_outcome.injectable (always false), not a nineteenth
+payload field. begin_postprocess_attempt and eligible continue selecting only
+injectable plans, so research v2 entries cannot enter an execution candidate
+snapshot. General snapshots may contain both envelope types. Publish/generation,
+bounded retention, reset and issued-snapshot ownership remain existing behavior.
+Physical admission needs a separate accepted compatibility/geometry/runtime-
+verifier contract. This explicit research outcome and eligibility check prevent
+new DTOs from silently enabling injection. This closes the
+research Plan representation; it does not claim the remaining runtime proof
+verifier or installed Orca gates are complete.
+
 ## Closed standalone structural-loop vocabulary — 2026-10-16
 
 This closes B2's standalone StructuralLoopReferenceV2 representation, not its
