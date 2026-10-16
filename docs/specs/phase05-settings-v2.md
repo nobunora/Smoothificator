@@ -8,9 +8,9 @@ Status: SPEC_VALIDATED for this Settings-only slice; review evidence is
 ADR-0066's normative schema decision and initial research version registry own
 this slice. ADR-0062/0064 own unchanged canonical bytes and identity projection.
 The canonical manifest is `docs/AUDIT_REVISION_2026-10-16.json`; its blob SHA is
-`b6455f353fd37a4ec5e210338e0978f2bcd5f4f3`.
+`411d396b83b18a74b0365845e4256f5f813739af`.
 
-Manifest Git blob: `b6455f353fd37a4ec5e210338e0978f2bcd5f4f3` No historical manifest authorizes this
+Manifest Git blob: `411d396b83b18a74b0365845e4256f5f813739af` No historical manifest authorizes this
 slice. An integrity check is not specification approval.
 
 ## Goal

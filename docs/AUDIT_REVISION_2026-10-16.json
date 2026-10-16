@@ -333,7 +333,7 @@
     },
     {
       "path": "docs/adr/0067-phase05-domain-dto-and-attempt-snapshot-contract-proposal.md",
-      "git_blob": "f61ee33a80bc8adeafe517baf050e50f118ea3e3"
+      "git_blob": "9a0ac75ec01a38b714b762a32c280d82d02485a2"
     }
   ]
 }
