@@ -10,7 +10,7 @@ No unresolved conflict in this bounded interface scope; production edits follow
 this disposition. This is not a certification of runtime validation.
 
 Manifest: docs/AUDIT_REVISION_2026-10-16.json.
-Manifest Git blob: `44b4a13d7ffe1456d664a1b1d2af610bd1302f7a`
+Manifest Git blob: `0c111825b00195ae834bf60f87a3b2a943913177`
 
 ## Contract and scope
 
