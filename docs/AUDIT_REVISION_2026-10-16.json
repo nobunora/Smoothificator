@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scope": "Phase 0.5 research architecture, Phase 1A nominal bead/flow and adaptive support, Phase 1B mesh topology, material predicates, section and supplied-interval stability; no physical authority",
+  "scope": "Phase 0.5 research architecture, Phase 1A nominal bead/flow and adaptive support, Phase 1B exact mesh material, segment, section and supplied-interval stability; no physical authority",
   "review_status": "integrity_only_not_implementation_authority",
   "blobs": [
     {
@@ -185,7 +185,7 @@
     },
     {
       "path": "docs/adr/0030-validate-source-orientation-material-side.md",
-      "git_blob": "3054f052f163d9824fcc51bb4fc9e03ca105ae6b"
+      "git_blob": "cae36b364d5c779bab3710c960c1ad2af2161b47"
     },
     {
       "path": "docs/adr/0031-byte-preserving-streaming-gcode.md",
