@@ -41,8 +41,10 @@ def main():
                         "import sys,pathlib; sys.path.insert(0,sys.argv[1]); "
                         "import adaptive_subedge.application.serialization as s; import orca_plugin; "
                         "import adaptive_subedge.engine.support_cell as support; "
+                        "import adaptive_subedge.engine.support_coverage as coverage; "
                         "assert pathlib.Path(s.__file__).is_relative_to(sys.argv[1]); "
                         "assert pathlib.Path(support.__file__).is_relative_to(sys.argv[1]); "
+                        "assert pathlib.Path(coverage.__file__).is_relative_to(sys.argv[1]); "
                         "assert pathlib.Path(orca_plugin.__file__).is_relative_to(sys.argv[1])",
                         temporary], cwd=temporary, check=True)
     probe = root / "diagnostics/smoothificator_readonly_probe.py"
