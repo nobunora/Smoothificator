@@ -3,7 +3,7 @@
 Status: SPEC_VALIDATED for the five arithmetic functions below. Implementation starts after the static Phase 0.5 interface checks and independent review pass.
 
 Manifest: docs/AUDIT_REVISION_2026-10-16.json.
-Manifest Git blob: `89ac5da0ca70561ea47496e1e2f5265b4abbf913`
+Manifest Git blob: `44b4a13d7ffe1456d664a1b1d2af610bd1302f7a`
 
 Independent repository review: the implementation lead checked ADR-0048,
 ERROR_MODEL sections 3–6, the empty engine package, CandidateBeadBounds,
