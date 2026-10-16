@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scope": "Phase 0.5 research architecture and Phase 1A nominal bead/flow, certified support cell query and adaptive support controller; no physical authority",
+  "scope": "Phase 0.5 research architecture, Phase 1A nominal bead/flow and adaptive support, Phase 1B indexed mesh topology prerequisite; no physical authority",
   "review_status": "integrity_only_not_implementation_authority",
   "blobs": [
     {
@@ -185,7 +185,7 @@
     },
     {
       "path": "docs/adr/0030-validate-source-orientation-material-side.md",
-      "git_blob": "8f40ca1613935ab27c9eb693adf0d3ef2db35fd9"
+      "git_blob": "e63df95ff5135c738ee4b10b1d448500937f009e"
     },
     {
       "path": "docs/adr/0031-byte-preserving-streaming-gcode.md",
