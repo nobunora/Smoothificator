@@ -87,6 +87,29 @@ The v1 solid treats each segment with its own validated local cross-section and 
 
 No hidden interpolation rule may alter immutable segment intent.
 
+### Explicit source-segment top query — 2026-10-16
+
+For the bounded nominal-support cell query, source start/end XYZ are immutable
+normalized nozzle coordinates. Within one segment width w and effective height h
+are constant; require w>=h>0 and nonzero XY length. No interpolation of width or
+height is introduced. A sloped structural/ZAA segment uses the explicit linear
+nozzle locus z(t)=start.z+t*(end.z-start.z), 0<=t<=1. A candidate source segment
+remains constant-command-Z. Source adapters must establish these normalized
+inputs; this mathematical convention does not assert actual Orca parity.
+
+Let r=h/2, a=(w-h)/2 and u the lateral distance from the segment centerline.
+The swept solid's top is z(t) when abs(u)<=a, and
+z(t)-r+sqrt(r*r-(abs(u)-a)**2) when a<abs(u)<=a+r; elsewhere it is absent.
+The closed axial interval [0,1] retains the existing flat caps. In particular,
+the XY projection is a rectangle, not an XY capsule. For a union, the top is
+the maximum of all present source tops, never their sum or an average. This
+definition includes the circular-section limit a=0 and curved lateral edges.
+
+ADR-0044's closed cell query uses certified bounds on this actual nominal top.
+It must account for partial higher overlaps and must not choose a lower support
+surface to avoid an obstruction. Source chronology, candidate eligibility and
+actual collision/physical contact remain distinct checks.
+
 ### Surface extraction
 
 FinalSurfaceEnvelope is the exposed boundary of the union of the relevant nominal bead solids.

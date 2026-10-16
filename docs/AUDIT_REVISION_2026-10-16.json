@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scope": "Phase 0.5 research graph, Settings and static runtime interfaces; runtime proof remains Phase 4",
+  "scope": "Phase 0.5 research architecture and Phase 1A nominal bead/flow and certified support cell query; no physical authority",
   "review_status": "integrity_only_not_implementation_authority",
   "blobs": [
     {
@@ -241,7 +241,7 @@
     },
     {
       "path": "docs/adr/0044-versioned-support-coverage-metric.md",
-      "git_blob": "5d069597dc426a6e7a218e70e568852cd1b99679"
+      "git_blob": "fd06b37052653ae63fb0065528359f95dd3e8a55"
     },
     {
       "path": "docs/adr/0045-converged-error-estimation-contract.md",
@@ -257,7 +257,7 @@
     },
     {
       "path": "docs/adr/0048-versioned-nominal-bead-solid.md",
-      "git_blob": "56ee4413e536dfa3d3e24da07c808d64a9595473"
+      "git_blob": "fd03050c41050318491d9a79c925e941d7c045e5"
     },
     {
       "path": "docs/adr/0049-canonical-serialization-and-hashing.md",
