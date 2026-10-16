@@ -43,10 +43,12 @@ def main():
                         "import adaptive_subedge.engine.support_cell as support; "
                         "import adaptive_subedge.engine.support_coverage as coverage; "
                         "import adaptive_subedge.engine.mesh_topology as topology; "
+                        "import adaptive_subedge.engine.mesh_section as section; "
                         "assert pathlib.Path(s.__file__).is_relative_to(sys.argv[1]); "
                         "assert pathlib.Path(support.__file__).is_relative_to(sys.argv[1]); "
                         "assert pathlib.Path(coverage.__file__).is_relative_to(sys.argv[1]); "
                         "assert pathlib.Path(topology.__file__).is_relative_to(sys.argv[1]); "
+                        "assert pathlib.Path(section.__file__).is_relative_to(sys.argv[1]); "
                         "assert pathlib.Path(orca_plugin.__file__).is_relative_to(sys.argv[1])",
                         temporary], cwd=temporary, check=True)
     probe = root / "diagnostics/smoothificator_readonly_probe.py"
