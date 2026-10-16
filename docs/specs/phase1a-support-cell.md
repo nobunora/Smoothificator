@@ -16,7 +16,7 @@ chronology, classification and resource limits. ADR-0048 Explicit source-segment
 top query owns the actual swept stadium top and linear structural nozzle locus.
 ADR-0058 owns the later adaptive integration/convergence obligation. Manifest:
 docs/AUDIT_REVISION_2026-10-16.json.
-Manifest Git blob: `66b89c81792c59c95bc6a0d04668c9dd9d875528`
+Manifest Git blob: `89ac5da0ca70561ea47496e1e2f5265b4abbf913`
 
 Implement domain/support_cell.py and engine/support_cell.py (or existing focused
 engine/domain files with identical ownership). Use standard-library Fraction and
