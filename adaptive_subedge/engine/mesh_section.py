@@ -58,21 +58,23 @@ def section_mesh_plane(mesh: IndexedTriangleMesh, command_z_mm: float, *,
             raise _SectionStop("incomplete", "cancelled")
 
     try:
-        return _section(topology.topology, Fraction(float(command_z_mm)), policy,
-                        max_section_segments, max_pair_checks, check_cancelled)
+        return _section(topology.topology, Fraction(float(command_z_mm)),
+                        max_section_segments, max_pair_checks, check_cancelled,
+                        coplanar=Fraction(float(policy.coplanar_section_epsilon_mm)),
+                        epsilon=Fraction(float(policy.section_predicate_epsilon_mm)),
+                        join_tolerance=Fraction(float(policy.mesh_section_join_tolerance_mm)))
     except _SectionStop as stopped:
         return MeshSectionResult(stopped.state, stopped.reason, None)
 
 
-def _section(topology, z, policy, max_segments, max_pairs, check_cancelled):
+def _section(topology, z, max_segments, max_pairs, check_cancelled, *,
+             coplanar, epsilon, join_tolerance):
     points, distances = [], []
     for vertex in topology.mesh.vertices:
         check_cancelled()
         point = tuple(Fraction(float(x)) for x in (vertex.x_mm, vertex.y_mm, vertex.z_mm))
         points.append(point)
         distances.append(point[2]-z)
-    coplanar = Fraction(float(policy.coplanar_section_epsilon_mm))
-    epsilon = Fraction(float(policy.section_predicate_epsilon_mm))
     for triangle in topology.mesh.triangles:
         check_cancelled()
         if all(abs(distances[i]) <= coplanar for i in triangle):
@@ -134,7 +136,7 @@ def _section(topology, z, policy, max_segments, max_pairs, check_cancelled):
     if n*(n-1)//2 + s*(s-1)//2 > max_pairs:
         raise _SectionStop("incomplete", "resource-limit")
     xy = {key: (nodes[key].x_mm, nodes[key].y_mm) for key in keys}
-    join_squared = Fraction(float(policy.mesh_section_join_tolerance_mm))**2
+    join_squared = join_tolerance**2
     for a, b in combinations(keys, 2):
         check_cancelled()
         if sum((x-y)**2 for x, y in zip(xy[a], xy[b])) <= join_squared:

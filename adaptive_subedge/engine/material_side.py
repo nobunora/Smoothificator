@@ -62,7 +62,7 @@ def _embedding(mesh, max_vertices, max_triangles, max_pairs, cancelled, check):
             allowed = all(_point_on_segment(point, a, b) for point in intersection)
         if not allowed:
             raise _Stopped("rejected", "self-intersection")
-    return tuple(triangles)
+    return tuple(triangles), result.topology
 
 
 def evaluate_mesh_embedding(mesh: IndexedTriangleMesh, *, max_vertices: int,
@@ -86,7 +86,7 @@ def classify_mesh_point(mesh: IndexedTriangleMesh, point: PrintPoint3, *, max_ve
     _validate(mesh, (max_vertices, max_triangles, max_pair_checks, max_ray_directions), cancelled)
     check = _cancellation(cancelled)
     try:
-        triangles = _embedding(mesh, max_vertices, max_triangles, max_pair_checks, cancelled, check)
+        triangles, _ = _embedding(mesh, max_vertices, max_triangles, max_pair_checks, cancelled, check)
         query = tuple(Fraction(float(x)) for x in (point.x_mm, point.y_mm, point.z_mm))
         for triangle in triangles:
             check()
