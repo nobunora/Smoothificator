@@ -11,7 +11,7 @@ Authority: ADR-0030 Closed indexed-topology prerequisite owns the exact three
 DTOs, API, failure precedence and proof limits. ADR-0027 owns source validity;
 ADR-0059 requires canonical source adjacency for later topology-aware sections.
 Manifest: docs/AUDIT_REVISION_2026-10-16.json.
-Manifest Git blob: `0c111825b00195ae834bf60f87a3b2a943913177`
+Manifest Git blob: `76fe20cb8d7503e576af5bbf2be6697e935f6c01`
 
 Implement domain/mesh_topology.py and engine/mesh_topology.py. Reuse PrintPoint3,
 finite numeric policy and typed ContractError/ReasonCode. No new dependency,
