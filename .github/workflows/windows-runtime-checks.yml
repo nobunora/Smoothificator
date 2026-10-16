@@ -47,7 +47,9 @@ jobs:
         run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase1a-support-cell.md
       - name: Adaptive support controller handoff integrity
         run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase1a-support-controller.md
-      - name: Build and clean extracted import verification
+      - name: Indexed mesh topology handoff integrity
+        run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase1b-mesh-topology.md
+      - name: Build research archive and verify extracted imports
         run: ./.venv/Scripts/python tools/build_validation_artifacts.py
       - uses: actions/upload-artifact@v4
         with:
