@@ -4,7 +4,7 @@ Scope: ADR-0067's Closed standalone insertion-anchor vocabulary section only.
 Canonical sources: docs/adr/0067-phase05-domain-dto-and-attempt-snapshot-contract-proposal.md,
 docs/IMPLEMENTATION.md, docs/ARCHITECTURE.md and docs/DOCUMENT_CONTRACT.md.
 Manifest: docs/AUDIT_REVISION_2026-10-16.json.
-Manifest Git blob: `76fe20cb8d7503e576af5bbf2be6697e935f6c01`
+Manifest Git blob: `44433a64a924528a517adc3977daa2cba4e28c00`
 
 Repository review: independent reviewer traced B2 and current geometry/plan and
 serializer/hash boundaries. The standalone vocabulary has no dependency on a

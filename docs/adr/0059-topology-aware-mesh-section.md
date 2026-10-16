@@ -92,6 +92,119 @@ Postprocess still MUST NOT change candidate command Z to escape a section event.
 
 If final execution quantization lies outside the proven stability interval, injection is Skipped.
 
+### Closed continuous event-partition stability certificate
+
+The `exact_event_partition_v1` certificate proves numerical section-loop
+stability over a supplied closed Z interval. It does not prove that this interval
+matches an Orca formatter, execution frame or actual machine. Those independent
+owners must supply an adequate uncertainty interval before Plan/injection use.
+
+Exact public API (frozen slotted result, no defaults):
+
+```python
+SectionStabilityResult(state: str, reason: str,
+    z_lower_mm: Fraction, z_upper_mm: Fraction,
+    maximum_boundary_displacement_upper_bound_mm: Fraction | None)
+
+certify_section_stability(mesh: IndexedTriangleMesh, command_z_mm: float,
+    uncertainty_halfwidth_mm: float, *, policy: MeshSectionPolicy,
+    max_vertices: int, max_triangles: int, max_mesh_pair_checks: int,
+    max_section_segments: int, max_section_pair_checks: int,
+    max_section_queries: int, cancelled: Callable[[], bool]) -> SectionStabilityResult
+```
+
+Require exact mesh/policy types, finite binary64 command Z, positive finite
+binary64 halfwidth, exact positive integer limits (no bool), and callable exact-
+bool cancellation. Geometry/query errors use INVALID_GEOMETRY; policy/limit/
+callback errors use INVALID_SETTING; callback exceptions propagate. Normalize
+query scalars to float then Fraction. Bounds are center +/- halfwidth in exact
+rational arithmetic, even if a bound cannot be represented as finite binary64.
+policy.version must be indexed_plane_section_v1 and its stability version must
+be exact_event_partition_v1. Unknown versions fail INVALID_SETTING. Existing
+positive settings remain unchanged; the existing public single-plane API still
+requires unavailable_v1 and retains all its current numerical tolerances.
+
+Freshly evaluate exact embedding and topology under ADR-0030 within each call.
+Its rejection and incomplete reasons propagate with bound None. Private reuse
+of the same call's prepared topology/triangles is permitted; no caller-created
+proof DTO or cross-call cache is trusted. The private embedding operation may
+return its prepared topology alongside triangles to avoid duplicate validation.
+
+This certificate uses a separate exact-symbolic route through the sectioner's
+internal algorithm: rational query Z, exact zero predicate/coplanar/join
+tolerances. Do not construct an invalid zero-tolerance MeshSectionPolicy. The
+internal section routine may accept explicit Fraction tolerances; the existing
+public wrapper passes its configured tolerances unchanged and this route passes
+zeros. Exact horizontal facets reject coplanar-facet; distinct topology nodes
+at exactly coincident XY still reject ambiguous-join. Exact nonzero separation
+needs no arbitrary snapping. This route proves exact normalized-input geometry,
+not robustness to unmodeled source-coordinate errors; the caller's uncertainty
+interval is the explicit Z perturbation being certified.
+
+Build sorted unique knots from lower bound, center, upper bound and every source
+vertex Z within the closed interval. For K knots, preflight 2*K-1 <=
+max_section_queries before any section call, else incomplete/resource-limit.
+Each exact section call uses max_section_segments and max_section_pair_checks
+independently; the query limit bounds total repeated work. Query every knot and
+one exact midpoint of every adjacent knot pair in increasing Z order. Any
+section rejection/incomplete propagates; an empty result maps to
+rejected/non-simple-section. Each successful query must have one simple loop.
+
+At each knot apply an additional event guard: every ON source vertex must occur
+as a single-ID vertex of that knot's loop, and every source edge with two ON
+endpoints must have two incident third vertices of opposite strict signs.
+Otherwise return incomplete/topology-event-unproven. This stronger guard forbids
+unrepresented isolated tangencies and same-side ON edges, including at interval
+endpoints; it does not automatically reject ordinary crossing vertex events.
+
+Continuity justification: within an open slab no source vertex Z is crossed,
+so active edge identities, face segments and graph incidence are fixed, and all
+intersection coordinates are affine in Z. At a knot a triangle with no ON
+vertices has its ordinary segment limit. With one ON vertex and opposite other
+signs it retains a segment; with same-side signs its possible limit is only the
+ON point, which the event guard already places on the accepted loop. With two
+ON vertices, opposite strict third-vertex signs of incident faces supply the
+same edge limit from each adjacent slab. Three ON vertices reject as a facet.
+Consequently each adjacent slab's full segment-set limit equals the knot loop;
+collapsing segments do not introduce omitted points or components. Fresh
+embedding precludes intersections between unrelated faces. A simple midpoint
+loop thus certifies the entire open slab's simple-loop class, and guarded knot
+loops connect these classes continuously. No geometric sampling assumption or
+empirical convergence threshold substitutes for this argument.
+
+For each slab, take the crossing source edges in its midpoint loop. An edge
+from a to b has exact XY speed
+`(|bx-ax|+|by-ay|)/|bz-az|`; denominator is nonzero in an open slab. Let
+`L=1+max(edge XY speeds)` for that slab. The additional one bounds Z displacement.
+At equal convex segment parameter, affine endpoints move by at most
+L*abs(deltaZ) in 3D L1 norm, hence also Euclidean norm. This correspondence in
+both directions bounds symmetric Hausdorff distance between complete slab loops.
+Across knots the certified equal limits allow triangle inequality composition.
+
+Because center is a knot, sum L*slab_width from center to the lower bound and
+separately to the upper bound. Their maximum B is an exact Fraction upper bound
+on the 3D Euclidean symmetric Hausdorff displacement of every loop in the closed
+interval from the nominal center loop. Positive partial sums also cover every
+intermediate Z. Compare B inclusively to the exact normalized configured
+section_quantization_geometry_tolerance_mm. If B <= tolerance, return
+complete/stable with B. Otherwise return incomplete/displacement-unproven with
+B: an excessive conservative upper bound is not proof of actual instability.
+
+Result matrices: complete/stable with nonnegative exact Fraction B; incomplete
+displacement-unproven with nonnegative exact Fraction B; other incomplete reasons
+cancelled, resource-limit or topology-event-unproven with None; rejected with
+any embedding/section rejection reason or non-simple-section with None. Near-ON
+predicate-uncertain cannot occur on the exact-symbolic route. Both interval fields
+are always exact Fraction with lower < upper. Constructors enforce exact string
+types and this closed matrix, not computation authority. There are no counters,
+Plan identity registrations or physical permission fields.
+
+Check cancellation during knot construction, before each section call, each
+event vertex/edge guard, each slab edge/sum and before complete return; retain
+existing embedding/section iteration checks. Interrupted work returns no partial
+bound. Storage and work are bounded by mesh, per-section and total-query limits;
+no extra geometric union-comparison stage or unbounded refinement is introduced.
+
 ## Required settings
 
 ### Closed exact single-plane research section

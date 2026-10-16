@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scope": "Phase 0.5 research architecture, Phase 1A nominal bead/flow and adaptive support, Phase 1B mesh topology, section and exact material predicates; no physical authority",
+  "scope": "Phase 0.5 research architecture, Phase 1A nominal bead/flow and adaptive support, Phase 1B mesh topology, material predicates, section and supplied-interval stability; no physical authority",
   "review_status": "integrity_only_not_implementation_authority",
   "blobs": [
     {
@@ -301,7 +301,7 @@
     },
     {
       "path": "docs/adr/0059-topology-aware-mesh-section.md",
-      "git_blob": "62e940764f9e1853c8909a423c628dbec747ada4"
+      "git_blob": "1f4c5a60a93c394db49da309b547ae07a1d43e0a"
     },
     {
       "path": "docs/adr/0060-closed-candidate-influence-error-domain.md",
