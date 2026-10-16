@@ -24,6 +24,67 @@ B6 (D6-D9): ValidationEvidence has UNKNOWN / VALIDATED / REJECTED, typed validat
 
 The implemented PlanStore.begin_postprocess_attempt is retained as the ADR-0065 atomic PlanSnapshot+unique Attempt issuance owner. V2 may add an opaque process-local snapshot_issue_id minted under the same critical section and checked against actual issued snapshot identity; no invented Orca callback UUID. New analysis generation or post-snapshot eviction does not mutate an issued snapshot; epoch reset invalidates old-session eligibility.
 
+## Closed analysis-evidence and bounded-history slice — 2026-10-16
+
+This slice concretizes B4/B5 and the retention portion of B6. It does not define
+the remaining Plan v2 projection, geometry references, runtime proof verifier,
+or new snapshot token. Existing atomic PlanStore issuance remains the owner.
+
+All evidence values are frozen/slots with required fields, exact declared DTO
+classes and builtin strings/integers. Float inputs use the existing finite
+binary64 convention; bool, numeric subclasses and nonfinite/overflow reject.
+Evidence references are nonblank immutable identifiers, not proof by themselves.
+
+| DTO | Exact fields and constraints |
+| --- | --- |
+| TimeEstimateAvailable | tag literal `available`; estimated_added_time_s finite >=0; predictor_model_version nonblank str other than `unavailable_v1`; resolved_execution_config exact IdentityReference(execution-config,1,1,full digest); evidence_reference nonblank str |
+| TimeEstimateUnavailable | tag literal `unavailable`; reason one of `time-model-unavailable`, `missing-execution-config`, `missing-model-evidence`; missing_dependency_ids nonempty duplicate-free tuple of nonblank builtin str |
+| ErrorConvergenceEvidence | state one of `unknown`, `converged`, `failed`; estimator_policy exact IdentityReference(plugin-settings,2,1,full digest); refinement_count exact int >=0; evidence_reference nonblank str or None; reason declared string below or None |
+| DirectionalErrorEvidence | metrics exact BidirectionalSurfaceErrorMetrics; pred_to_src exact ErrorConvergenceEvidence; src_to_pred exact ErrorConvergenceEvidence |
+
+UNKNOWN requires count=0, evidence=None and reason=None. CONVERGED requires
+count>=1, nonblank evidence and reason=None. FAILED requires a reason from
+`refinement-budget-exhausted`, `missing-error-evidence`, `invalid-error-domain`;
+count may be zero and evidence may be absent. Both direction records must name
+the same typed estimator policy identity. One converged direction never stands
+in for the other. No constructor/property returns printable/validated/feasible
+authorization; future estimator/application ownership remains required.
+
+These DTOs are standalone, deliberately NOT registered in canonical projection
+until a complete Plan v2 contract is reviewed. No bare time Optional/zero sentinel,
+mixed tagged alternatives, v1 Plan/Settings changes or synthetic successful proof.
+The available DTO is a data vocabulary, not a currently supported predictor:
+Settings' only installed time model remains unavailable_v1.
+
+### Opt-in bounded Attempt history
+
+InjectionAttemptStore remains the single state owner. Add keyword-only
+`max_attempts` and `max_revisions_per_attempt`. Either both are omitted/None
+(legacy behavior, no retained revision history), or both are exact positive
+builtin ints. Partial/zero/bool/noninteger values reject. Bounded mode stores an
+immutable `AttemptRevision(revision:int>=0, record:InjectionAttemptRecord)`.
+Begin creates revision 0; each successful monotonic transition adds 1, even after
+older revisions were pruned. Failed operations never change records/history.
+
+At capacity, begin evicts the earliest-created terminal attempt and its history;
+active attempts are never evicted. If all retained attempts are active, reject
+begin with INVALID_STATE_TRANSITION. Validate new record and detect duplicate
+UUID before evicting anything. Every operation uses the existing AttemptStore
+lock; PlanStore -> AttemptStore lock order remains unchanged. Preserve rollback
+on failed atomic issuance. Returned immutable history survives subsequent pruning.
+`history(attempt_id)` returns a tuple, empty for an unknown/evicted ID or legacy
+mode; malformed IDs reject. Revision envelopes stay runtime-only and excluded
+from canonical projection. This adds no validation-evidence success transition;
+legacy AttemptState progression remains unchanged and is not a printer gate.
+
+Bounded retention must not allow an evicted ID to be reused: append a store-owned
+monotonically increasing issuance sequence to the generated UUID in bounded
+mode. IDs remain opaque strings. Reject a generated UUID that duplicates any
+currently retained UUID before eviction; a previously evicted UUID may recur
+only with a different sequence suffix. Increment sequence only on successful
+publication. This prevents stale callbacks addressing a different new attempt
+without requiring an unbounded tombstone set. Legacy ID formatting is unchanged.
+
 ## Historical proposal and rationale (non-normative)
 
 All sections below preserve proposal history. Their Proposed/approval-pending statements and candidate alternatives do not override the normative decision above. Unspecified exact contracts remain unresolved; this move does not invent missing fields, version registries or validation algorithms.
