@@ -27,3 +27,4 @@ jobs:
       - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase05-insertion-anchor.md
       - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase05-structural-loop.md
       - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase05-plan-v2.md
+      - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase05-runtime-interfaces.md

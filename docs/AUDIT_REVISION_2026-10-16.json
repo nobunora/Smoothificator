@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scope": "Phase 0.5 Settings v2, standalone analysis evidence and bounded Attempt history; Plan v2 remains blocked",
+  "scope": "Phase 0.5 research graph, Settings and static runtime interfaces; runtime proof remains Phase 4",
   "review_status": "integrity_only_not_implementation_authority",
   "blobs": [
     {
@@ -333,7 +333,7 @@
     },
     {
       "path": "docs/adr/0067-phase05-domain-dto-and-attempt-snapshot-contract-proposal.md",
-      "git_blob": "f6f7cb5f770615f97ebf431afea8d2cf4d926256"
+      "git_blob": "4bc6ef3a6f5e261f7b614e2ba7c5ceae18d624e6"
     }
   ]
 }
