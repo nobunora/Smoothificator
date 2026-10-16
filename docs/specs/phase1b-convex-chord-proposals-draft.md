@@ -22,7 +22,7 @@ ConvexChordProposalSet(state: str, reason: str,
 
 propose_convex_chords(mesh: IndexedTriangleMesh, command_z_mm: float, *,
     axis: str, width_mm: float, end_trim_mm: float,
-    chord_positions_mm: tuple[float, ...], policy: MeshSectionPolicy,
+    chord_positions_mm: tuple[float, ...], algorithm_version: str,
     max_positions: int, max_vertices: int, max_triangles: int,
     max_mesh_pair_checks: int, max_section_segments: int,
     max_section_pair_checks: int, max_ray_directions: int,
@@ -31,9 +31,13 @@ propose_convex_chords(mesh: IndexedTriangleMesh, command_z_mm: float, *,
 
 All DTOs immutable/frozen/slotted, no defaults. Axis is exact string X or Y.
 For X chords, positions are Y coordinates; for Y chords, positions are X.
-Require finite binary64 Z, positive finite width/trim, exact mesh/policy/tuple
+Require finite binary64 Z, positive finite width/trim, exact mesh/tuple
 types, exact positive integer limits and callable exact-bool cancellation.
-Geometry/input errors use INVALID_GEOMETRY; policy/limits/callback errors use
+The exact string algorithm_version must be convex_axis_chords_v1. Unknown values
+fail INVALID_SETTING. This research API does not consume MeshSectionPolicy:
+its exact symbolic route is owned by this explicit proposed algorithm version,
+while existing public section tolerances and stability policy remain unchanged.
+Geometry/input errors use INVALID_GEOMETRY; version/limits/callback errors use
 INVALID_SETTING. Exceptions from callbacks propagate. Normalize scalars through
 float then Fraction. A finite scalar overflowing binary64 is invalid; subsequent
 Fraction geometry never converts back to float and cannot silently overflow.
@@ -55,8 +59,8 @@ The section must be one simple CCW loop with positive area. Reject a nonconvex
 loop by requiring every consecutive exact turn >=0; exact collinear forward
 vertices are permitted with the existing simple positive-area requirement.
 No convex-hull replacement.
-Do not interpret the positive public MeshSectionPolicy tolerances as zero:
-selection of a new explicit proposal algorithm version needs canonical review.
+The exact-symbolic route under this new version still needs canonical approval;
+this draft cannot authorize changing existing public section behavior.
 
 For each CCW edge use its exact interior halfplane a*x+b*y+c>=0. At position s,
 an X-directed chord of width w must satisfy, for every edge,
@@ -67,7 +71,10 @@ against every inequality. Initialize with the finite section coordinate bounds;
 zero coefficient with negative constant makes the interval empty. All arithmetic
 and closed interval comparisons are exact Fraction operations.
 
-No interval yields per-position rejected/empty-footprint. Otherwise trim both
+An empty interval (lower>upper) yields per-position rejected/empty-footprint,
+including during edge traversal. A singleton lower==upper is a closed nonempty
+interval and proceeds to trimming, where it becomes insufficient-span.
+Otherwise trim both
 ends along the running axis by end_trim_mm. If trimmed lower>=upper, yield
 rejected/insufficient-span. A positive span yields ordered exact XY endpoints.
 The entire rectangular sweep is inside the closed convex section by halfplane
@@ -76,7 +83,12 @@ linearity; this is not a 3D extrusion or surface-error proof.
 Validate each positive-span centerline as strictly inside material, using the
 same freshly embedded triangle tuple and the existing exact segment-contact and
 endpoint-parity owners. Private helpers must accept exact Fraction endpoints;
-do not round them through PrintPoint3. Contact produces per-position
+do not round them through PrintPoint3. Extract one private segment-classification
+helper in the existing material owner, and delegate the existing public segment
+API to it after that API's unchanged fresh validation and normalization. This
+helper scans contact before endpoint parity and returns the existing closed
+classification or typed stop. It must not accept a caller-created proof DTO.
+Contact produces per-position
 rejected/centerline-contact; consistently outside produces rejected/centerline-outside.
 Only strictly-inside produces proposed/unscored with both endpoints. Ray exhaustion
 or inconsistent classification fails the entire output incomplete with no rows.
@@ -85,20 +97,32 @@ or inconsistent classification fails the entire output incomplete with no rows.
 
 Completed set: complete/proposals-evaluated, one row per sorted input position,
 possibly all rejected. Proposed rows have exact ordered endpoints; rejected rows
-have None endpoints. Global rejection/unknown/cancellation returns an empty tuple,
-never a partially usable set. Proposed global rejection reasons include inherited
-mesh/section failures, empty-section and nonconvex-section; incomplete reasons
-include resource-limit, cancelled, ray-directions-exhausted and
-classification-inconsistent. Constructors enforce exact types/matrices only.
+have None endpoints. Each endpoint is an exact tuple of two exact Fractions.
+The enclosing set enforces strictly increasing running coordinates and fixed
+coordinates equal to position_mm; positions are unique and ascending. Exact
+string states/reasons and positive exact Fraction width are required.
+Global rejection/unknown/cancellation returns an empty tuple, never a partially
+usable set. The proposed closed global rejected reasons are empty-mesh,
+unused-vertex, degenerate-bounds, degenerate-triangle, duplicate-triangle,
+nonmanifold-edge, inconsistent-winding, disconnected-shell, nonmanifold-vertex,
+zero-signed-volume, self-intersection, coplanar-facet, ambiguous-join,
+non-simple-graph, multiple-loops, zero-area, empty-section, nonconvex-section.
+Section empty/no-crossing maps to rejected/empty-section. Global incomplete
+reasons are resource-limit, cancelled, ray-directions-exhausted and
+classification-inconsistent. The exact route cannot emit predicate-uncertain.
+Per-position rows are only proposed/unscored with endpoints, or rejected with
+empty-footprint, insufficient-span, centerline-contact or centerline-outside
+and None endpoints. Constructors validate shapes, not computation authority.
 
 Check cancellation before mesh/section phases, every position, each clipping
 edge, each contact/parity iteration and final return. Existing mesh pair and
 section budgets apply once; max_positions bounds repeated O(F) contact and
 O(F*max_ray_directions) endpoint work per chord. No additional hidden retries.
 
-Canonical review must close the proposal algorithm/version selector, precise
-global reason matrix, ownership of exact rational private material queries and
-how later exposed-band/scoring owners consume these unscored proposals. This
+Independent draft review identified version selection, singleton intervals,
+closed result matrices and shared rational material queries as gaps; the text
+above now proposes explicit dispositions. Canonical review must approve these
+choices and define how later exposed-band/scoring owners consume the proposals. This
 draft neither adds Settings defaults nor registers Plan/identity authority.
 
 Fixtures: X/Y axis parity, sloped convex edges, collinear edges, exact transverse
