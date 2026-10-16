@@ -127,6 +127,121 @@ computational parameters, not physical defaults. No dependency or Plan/canonical
 registration is added. IDs are snapshot-local; later persistence/Plan binding
 must associate the source snapshot's identity explicitly.
 
+### Closed exact embedding and point classification
+
+`exact_mesh_embedding_v1` and `exact_mesh_point_parity_v1` add numerical
+embedded-surface and material-side predicates to the preceding topology stage.
+These predicates concern the supplied centered mesh coordinates only. They do
+not establish Orca provenance/frame parity, tolerance/calibration, section
+quantization stability, valid toolpaths or injection/physical authority.
+
+Exact public API (frozen slotted result dataclasses, no defaults):
+
+```python
+MeshEmbeddingResult(state: str, reason: str)
+MeshPointClassification(state: str, reason: str, classification: str | None)
+
+evaluate_mesh_embedding(mesh: IndexedTriangleMesh, *, max_vertices: int,
+    max_triangles: int, max_pair_checks: int,
+    cancelled: Callable[[], bool]) -> MeshEmbeddingResult
+
+classify_mesh_point(mesh: IndexedTriangleMesh, point: PrintPoint3, *,
+    max_vertices: int, max_triangles: int, max_pair_checks: int,
+    max_ray_directions: int, cancelled: Callable[[], bool]) -> MeshPointClassification
+```
+
+Every public call requires exact mesh/point types and exact positive integer
+limits, excluding bool; cancellation must be callable and return exact bool.
+Malformed geometry raises INVALID_GEOMETRY; bad limits/callback raise
+INVALID_SETTING; callback exceptions propagate. Top-level validation precedes
+fresh prepare_mesh_topology. Its resource precedence, failures and cancellation
+are retained. Every classification call freshly evaluates embedding before
+boundary/ray tests; caller-created results or topology values are never accepted
+as proof. Private reuse of the topology produced during that same call is allowed.
+Use exact Fraction(float(coordinate)); no epsilon, snapping or float predicate.
+
+For F faces preflight F*(F-1)/2 <= max_pair_checks after successful topology
+validation, before pair tests; otherwise incomplete/resource-limit. Test every
+face pair in lexicographic input-face-ID order, including adjacent faces. Each
+triangle is the closed convex hull of its three exact coordinates. Determine
+their complete intersection as follows:
+
+- Nonparallel face planes: slice each triangle by the other's plane. Include
+  vertices with exact zero signed distance and strict sign-changing edge
+  intersections. Deduplicate exact points. Empty slice means no intersection;
+  otherwise its convex hull is a point or segment. Intersect the two intervals
+  on their common plane-intersection line, using the axis of greatest absolute
+  component of the cross product of face normals (ties X,Y,Z). Reconstruct
+  overlap endpoints by exact affine interpolation on a nondegenerate slice;
+  if both slices are points, require equality. Preserve point/segment contacts.
+- Parallel distinct planes: empty intersection. Coplanar planes: drop the axis
+  of greatest absolute normal component (ties X,Y,Z), project both triangles
+  injectively into 2D, orient the clipping triangle CCW, and clip the subject
+  triangle against its three closed halfplanes using exact rational line
+  intersections. Retain degenerate point/segment results rather than rejecting
+  zero polygon area. Remove exact duplicate vertices and lift results using
+  the shared plane equation. The resulting convex polygon/segment/point is
+  the complete intersection; an empty list means no intersection.
+
+Coplanar clipping may equivalently retain 3D points while applying projected
+halfplane predicates and interpolate the full 3D endpoints with the same exact
+parameter. This is identical to lifting the projected result through the plane.
+
+The allowed intersection is defined exclusively by shared source vertex IDs:
+none permits no intersection; one permits only that point; two permit only
+that closed source edge. Duplicate faces sharing three IDs were already rejected
+by topology. Reject self-intersection if any intersection vertex lies outside
+this allowed simplex. Because both intersection and allowed simplex are convex,
+this checks the entire intersection, including coplanar area overlap and edge
+contact. Exact 3D collinearity plus closed coordinate bounds tests source-edge
+membership. Nonlocal coincident coordinates are not source adjacency and reject.
+Do not skip adjacent pairs: they may overlap away from the common edge/vertex.
+
+After all pairs pass, embedding returns complete/embedded. This proves an
+embedded connected closed triangulated surface in the exact normalized input
+coordinates; a positive-volume view now has the outward mathematical orientation.
+This is numerical material geometry evidence, not a physical permission token.
+
+For point classification, run embedding first. Then scan all faces for exact
+point-on-triangle membership: plane equation zero and projected closed triangle
+containment. If any matches, return complete/classified with boundary. Boundary
+includes vertices/edges and is distinct from inside; a caller must not silently
+treat it as interior clearance.
+
+Otherwise try ray directions d_k=(1,k,k*k) for k=0,...,max_ray_directions-1 in
+that order. Integers are exact; no normalization is necessary. For each face use
+its plane equation to compute exact ray parameter t. A parallel ray not in the
+face plane contributes no hit. A ray lying in any face plane makes the entire
+direction ambiguous and retries the next direction, even if the finite triangle
+might not be reached; this conservative limitation is explicit. For nonparallel
+rays, ignore t<=0. At t>0, strict triangle-interior intersection contributes one
+hit; an intersection on an edge or vertex makes the direction ambiguous and
+retries. Plane hits outside the triangle do not count. Never infer boundary
+merely from an ambiguous ray: boundary was checked independently first.
+
+After a full unambiguous direction, odd hit count returns inside, even returns
+outside, both complete/classified. Stop after the first such direction. If every
+permitted direction is ambiguous, return incomplete/ray-directions-exhausted
+with classification None. No random direction, automatic extra retry or numerical
+perturbation is permitted. F*max_ray_directions bounds ray work independently
+of the face-pair budget; max_ray_directions is a required computational limit.
+
+Closed result matrices: embedding complete/embedded; rejected with any preceding
+topology rejection reason or self-intersection; incomplete/cancelled or
+resource-limit. Point results complete/classified with exact string inside,
+outside or boundary; rejected with the same rejection reasons; incomplete with
+cancelled, resource-limit or ray-directions-exhausted. Noncomplete classification
+is always None. Constructors enforce exact strings and these matrices but cannot
+certify their caller's computation; only fresh engine evaluation owns proof.
+
+Check cancellation before each triangle-pair test, each face boundary test,
+each ray direction and face test, and before any complete return. Existing
+topology cancellation remains in force. Interrupted calls publish no partial
+classification. Each pair has constant-size exact clipping/slicing work; use
+O(V+F) topology storage, O(F²) bounded pair work and O(F*max_ray_directions)
+bounded ray work, with iterative traversal. No cross-call proof cache, new
+dependency, Orca I/O, filesystem or canonical Plan registration is introduced.
+
 ## Requirements / invariants introduced
 
 - ModelVolume.is_manifold() is necessary but not sufficient.
