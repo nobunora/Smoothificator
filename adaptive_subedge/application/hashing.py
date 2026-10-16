@@ -5,6 +5,7 @@ import hmac
 
 from adaptive_subedge.domain.errors import ContractError, ReasonCode
 from adaptive_subedge.domain.plan import IdentityReference, PlanSemanticContent, SubEdgePlan
+from adaptive_subedge.domain.plan_v2 import PlanSemanticContentV2, SubEdgePlanV2
 from adaptive_subedge.domain.settings import PluginSettings
 from adaptive_subedge.domain.settings_v2 import PluginSettingsV2
 from .serialization import canonical_bytes, identity_root, validate_root, identity_schema_supported
@@ -53,7 +54,7 @@ def typed_identities_equal(expected_type: str, left: IdentityReference, right: I
 def typed_identity(identity_type: str, semantic_payload: object) -> IdentityReference:
     if type(identity_type) is not str or identity_type not in _DOMAIN:
         raise ContractError(ReasonCode.UNKNOWN_IDENTITY_SCHEMA, "unrecognized identity type")
-    schema_version = "2" if type(semantic_payload) is PluginSettingsV2 else "1"
+    schema_version = "2" if type(semantic_payload) in (PluginSettingsV2, PlanSemanticContentV2) else "1"
     root = identity_root(identity_type, semantic_payload, schema_version=schema_version)
     validate_root(root, identity_type)
     return IdentityReference(identity_type, schema_version, "1", domain_digest(_DOMAIN[identity_type], canonical_bytes(root)))
@@ -85,3 +86,15 @@ def create_plan(content: PlanSemanticContent) -> SubEdgePlan:
 def verify_plan(plan: SubEdgePlan) -> None:
     if type(plan) is not SubEdgePlan or create_plan(plan.content).plan_hash != plan.plan_hash:
         raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "plan hash disagrees with its content")
+
+
+def create_plan_v2(content: PlanSemanticContentV2) -> SubEdgePlanV2:
+    if type(content) is not PlanSemanticContentV2:
+        raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "immutable Plan v2 content required")
+    digest = typed_identity("subedge-plan", content).digest_hex
+    return SubEdgePlanV2(content, digest, digest)
+
+
+def verify_plan_v2(plan: SubEdgePlanV2) -> None:
+    if type(plan) is not SubEdgePlanV2 or create_plan_v2(plan.content).plan_hash != plan.plan_hash:
+        raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "Plan v2 hash disagrees with its content")

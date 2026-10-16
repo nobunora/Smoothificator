@@ -21,6 +21,7 @@ from adaptive_subedge.domain.settings_v2 import (
     CandidateMotionLimits, DirectionalErrorWeights, OptimizerCostPolicy,
     CandidateExecutionPolicy,
 )
+from adaptive_subedge.domain.plan_v2 import PlanSemanticContentV2
 
 _FIELDS = {
     SupportQueryNumericPolicy: ("version", "support_query_length_tolerance_mm"),
@@ -173,16 +174,23 @@ def _canonical_bytes(value: object) -> bytes:
 def identity_schema_supported(identity_type: str, schema_version: str) -> bool:
     return (type(identity_type) is str and identity_type in _TYPES
             and type(schema_version) is str
-            and (schema_version == "1" or (identity_type == "plugin-settings" and schema_version == "2")))
+            and (schema_version == "1" or (identity_type in ("plugin-settings", "subedge-plan") and schema_version == "2")))
 
 
 def identity_root(identity_type: str, payload: object, *, schema_version: str = "1", canonical_encoding_version: str = "1") -> dict[str, object]:
     if not identity_schema_supported(identity_type, schema_version) or type(canonical_encoding_version) is not str or canonical_encoding_version != "1":
         raise ContractError(ReasonCode.UNKNOWN_IDENTITY_SCHEMA, "unrecognized identity root")
-    if ((schema_version == "2" and type(payload) is not PluginSettingsV2)
-            or (type(payload) is PluginSettingsV2 and (identity_type, schema_version) != ("plugin-settings", "2"))):
-        raise ContractError(ReasonCode.UNKNOWN_IDENTITY_SCHEMA, "Settings root/payload version mismatch")
-    root = {"identity_type": identity_type, "schema_version": schema_version, "canonical_encoding_version": canonical_encoding_version, "payload": semantic_tree(payload)}
+    version_two_types = {"plugin-settings": PluginSettingsV2, "subedge-plan": PlanSemanticContentV2}
+    if ((schema_version == "2" and type(payload) is not version_two_types.get(identity_type))
+            or (type(payload) in version_two_types.values()
+                and (schema_version != "2" or type(payload) is not version_two_types.get(identity_type)))):
+        raise ContractError(ReasonCode.UNKNOWN_IDENTITY_SCHEMA, "root/payload version mismatch")
+    if type(payload) is PlanSemanticContentV2:
+        from .plan_projection_v2 import project_plan_content_v2
+        projected = project_plan_content_v2(payload)
+    else:
+        projected = semantic_tree(payload)
+    root = {"identity_type": identity_type, "schema_version": schema_version, "canonical_encoding_version": canonical_encoding_version, "payload": projected}
     if schema_version == "2":
         validate_root(root, identity_type)
     return root
@@ -216,9 +224,15 @@ def validate_root(root: object, expected_type: str) -> None:
         raise ContractError(ReasonCode.UNKNOWN_IDENTITY_SCHEMA, "invalid typed identity root")
     if root["schema_version"] == "2":
         try:
-            _settings_value_from_tree(root["payload"], PluginSettingsV2)
+            if expected_type == "subedge-plan":
+                from .plan_projection_v2 import validate_plan_projection_v2
+                validate_plan_projection_v2(root["payload"])
+            else:
+                _settings_value_from_tree(root["payload"], PluginSettingsV2)
         except RecursionError as exc:
-            raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "recursive Settings payload") from exc
+            raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "recursive schema-2 payload") from exc
+    elif expected_type == "subedge-plan" and type(root["payload"]) is dict and root["payload"].get("schema_version") == "2":
+        raise ContractError(ReasonCode.UNKNOWN_IDENTITY_SCHEMA, "Plan root/payload version mismatch")
     elif expected_type == "plugin-settings" and type(root["payload"]) is dict and root["payload"].get("schema_version") == "2":
         raise ContractError(ReasonCode.UNKNOWN_IDENTITY_SCHEMA, "Settings root/payload version mismatch")
 
