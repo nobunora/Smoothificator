@@ -39,6 +39,10 @@ jobs:
         run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase05-structural-loop.md
       - name: Research Plan v2 handoff integrity
         run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase05-plan-v2.md
+      - name: Static runtime interface handoff integrity
+        run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase05-runtime-interfaces.md
+      - name: Bead arithmetic handoff integrity
+        run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase1a-bead-flow.md
       - name: Build and clean extracted import verification
         run: ./.venv/Scripts/python tools/build_validation_artifacts.py
       - uses: actions/upload-artifact@v4
