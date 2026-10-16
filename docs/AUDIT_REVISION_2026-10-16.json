@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scope": "Phase 0.5 research architecture, Phase 1A nominal bead/flow and adaptive support, Phase 1B indexed mesh topology prerequisite; no physical authority",
+  "scope": "Phase 0.5 research architecture, Phase 1A nominal bead/flow and adaptive support, Phase 1B mesh topology and single-plane section; no physical authority",
   "review_status": "integrity_only_not_implementation_authority",
   "blobs": [
     {
@@ -301,7 +301,7 @@
     },
     {
       "path": "docs/adr/0059-topology-aware-mesh-section.md",
-      "git_blob": "ed8741401e6a58bc1a8b5737f5381624055d69bf"
+      "git_blob": "62e940764f9e1853c8909a423c628dbec747ada4"
     },
     {
       "path": "docs/adr/0060-closed-candidate-influence-error-domain.md",
