@@ -24,6 +24,114 @@ B6 (D6-D9): ValidationEvidence has UNKNOWN / VALIDATED / REJECTED, typed validat
 
 The implemented PlanStore.begin_postprocess_attempt is retained as the ADR-0065 atomic PlanSnapshot+unique Attempt issuance owner. V2 may add an opaque process-local snapshot_issue_id minted under the same critical section and checked against actual issued snapshot identity; no invented Orca callback UUID. New analysis generation or post-snapshot eviction does not mutate an issued snapshot; epoch reset invalidates old-session eligibility.
 
+## Closed Phase 0.5 runtime-interface skeleton — 2026-10-16
+
+This section closes the static B6 diagnostic vocabulary and ROADMAP Phase 0.5's
+ADR-0061 commit-lock interface. It does not implement the Phase 4 runtime proof
+verifier, path resolution, filesystem locking or replacement. It deliberately
+does not complete B6's eventual VALIDATED evidence lifecycle. These later gates
+must not be represented as passed or used to block independent Phase 1 pure
+geometry once the architecture-skeleton gates themselves pass.
+
+### Immutable diagnostic shapes, with no success authority
+
+All three DTOs below are frozen/slotted, exact nested types, all fields required
+and no defaults. Strings are exact builtin nonblank strings, with no implicit
+trimming/normalization. They are runtime-only and remain excluded from every
+canonical Plan/Settings projection, including the Plan-v2 context.
+
+| DTO | All required fields |
+| --- | --- |
+| ValidationEvidence | state: str; subject: IdentityReference or None; validation_policy_version: str; reason: ReasonCode or None; evidence_reference: str or None |
+| AttemptDiagnosticSnapshot | attempt_revision: exact AttemptRevision; compatibility: exact ValidationEvidence; plugin_settings: exact ValidationEvidence; execution_config: exact ValidationEvidence; source_working_file: exact ValidationEvidence |
+| WorkingFileCommitKey | key_id: str; resolver_policy_version: str |
+
+ValidationEvidence.state accepts exactly `unknown` or `rejected`. `validated`
+is reserved and MUST reject in Phase 0.5, regardless of subject, string evidence,
+caller or policy. There is no success factory, authority token, bypass flag,
+transition method or constructor variation that creates VALIDATED. The initial
+validation_policy_version is exactly `diagnostic_checks_v1`: this names the
+diagnostic representation rules only, not an implemented validation algorithm.
+Unknown requires reason=None and evidence_reference=None. Rejected requires
+an exact existing ReasonCode; evidence_reference is None or a nonblank string
+identifying failure diagnostics. A subject may be None for either state, since
+failure or missing inputs can occur before a trustworthy subject is established.
+A supplied subject must be an exact IdentityReference with full valid digest.
+
+The only subject role/version/encoding tuples accepted by ValidationEvidence are
+compatibility-descriptor/1/1, plugin-settings/1/1, plugin-settings/2/1,
+execution-config/1/1 and source-working-file/1/1. The diagnostic snapshot further
+requires each non-None subject to have the corresponding check's role, with only
+plugin_settings accepting either schema 1 or 2. Compatibility/source-file roles
+are reference vocabulary, not newly implemented public hashing domains. No path,
+mtime or arbitrary descriptor string may be silently hashed to invent proof.
+Diagnostic evidence does not certify that its supplied subject is genuine.
+
+AttemptDiagnosticSnapshot binds all four distinct checks to the single supplied
+immutable AttemptRevision. Read-only attempt_id and record_revision properties
+derive respectively from attempt_revision.record.attempt_id and its revision;
+do not accept separately writable identifiers. The value is a diagnostic view,
+not an authoritative store update: DTO construction cannot establish that the
+revision was issued by a store, or that it is still retained/current. Consumers
+must not treat it as a receipt, execute from it or change AttemptState from it.
+No snapshot registry/cache or second mutable owner is introduced in this slice.
+
+InjectionAttemptStore retains its existing records, monotonic revisions and
+bounded retention. It does not attach or persist this new diagnostic view yet.
+Phase 4's application-owned verifier must associate actual checks with the exact
+store-issued attempt/revision, reject stale/foreign associations, and commit
+evidence plus any authorized state update under that same owner's lock and
+retention policy. That later change requires its own reviewed interface and
+failure-atomicity tests; this slice does not add a caller-writable success path.
+Existing AttemptState.VALIDATED remains the legacy lifecycle vocabulary and is
+not upgraded into proof by this diagnostic DTO.
+
+Typed Settings/ExecutionConfig equality is a deterministic identity operation;
+it proves only equality of the supplied supported typed fingerprints. It does
+not prove they came from the current hook/config. Source-working-file validation
+requires actual platform path/file identity and streaming digest I/O plus final
+revalidation under ADR-0061. Neither fingerprint equality nor a key/evidence
+string substitutes for those checks. Compatibility likewise needs the reviewed
+target descriptor and actual supported runtime, not constructor success.
+
+### Commit-lock port only
+
+WorkingFileCommitKey.key_id and resolver_policy_version are opaque nonblank
+builtin strings. The DTO does not normalize/resolve paths, read metadata,
+interpret file IDs, reject symlinks or certify an authorized resolver. A future
+platform adapter supplies the result only after performing ADR-0061 resolution;
+there is no built-in default resolver policy and no path-to-key helper here.
+
+Define exactly this synchronous structural Protocol in the ports layer:
+
+```python
+class WorkingFileCommitLockRegistry(Protocol):
+    def hold(self, key: WorkingFileCommitKey) -> ContextManager[None]: ...
+```
+
+The future provider's context manager acquires the process-local key's exclusion
+on __enter__ and releases it on __exit__, including exceptional exits. The entire
+ADR-0061 final revalidation/idempotence/replace/outcome sequence runs inside that
+context, not the long parsing pass. Same-key commits serialize and different
+keys may proceed independently; registry cleanup must be bounded. The port
+itself performs no acquisition, I/O, normalization, atomic replacement or proof.
+Do not supply a no-op production implementation or success-returning fake.
+Platform-specific timeout/cancellation and key verification belong to the later
+provider's reviewed contract. Tests may use a local test double solely to verify
+the call shape; they cannot claim real concurrency or platform guarantees.
+
+### Skeleton acceptance and sequencing
+
+Test exact fields/types, unknown/rejected state combinations, reserved validated
+rejection, malformed and wrong-role subjects, diagnostic association properties,
+immutability and canonical rejection. Check the port imports only permitted
+domain/standard-library types and has the exact hold signature; no filesystem
+adapter or concrete lock implementation appears. Existing stores, v1/v2 hashes
+and all tests remain unchanged. Once these and prior skeleton quality/review
+gates pass, Phase 1A mathematical primitives may proceed. Actual runtime proof,
+source I/O, matching, cancellation and commit serialization remain explicitly
+unverified Phase 4 obligations, not falsely completed Phase 0.5 work.
+
 ## Closed research Plan v2 graph and identity — 2026-10-16
 
 This section closes B1-B5's research Plan representation and canonical projection.
