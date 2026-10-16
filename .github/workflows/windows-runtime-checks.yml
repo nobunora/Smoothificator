@@ -51,7 +51,9 @@ jobs:
         run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase1b-mesh-topology.md
       - name: Exact mesh section handoff integrity
         run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase1b-mesh-section.md
-      - name: Build research archive and verify extracted modules
+      - name: Exact mesh material handoff integrity
+        run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase1b-mesh-material.md
+      - name: Build research archive and verify extracted geometry modules
         run: ./.venv/Scripts/python tools/build_validation_artifacts.py
       - uses: actions/upload-artifact@v4
         with:
