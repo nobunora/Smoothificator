@@ -114,3 +114,28 @@ def _ray_hit(point, direction, triangle):
     if any(side < 0 for side in sides):
         return "miss"
     return "ambiguous" if any(side == 0 for side in sides) else "hit"
+
+
+def _segment_contacts_triangle(start, end, triangle):
+    """Exact closed segment contact, including coplanar singleton intersections."""
+    normal = _normal(triangle)
+    first = _dot(normal, _difference(start, triangle[0]))
+    last = _dot(normal, _difference(end, triangle[0]))
+    if first == last == 0:
+        lower, upper = 0, 1
+        for a, b in zip(_triangle_sides(start, triangle), _triangle_sides(end, triangle)):
+            slope = b-a
+            if slope == 0:
+                if a < 0:
+                    return False
+            elif slope > 0:
+                lower = max(lower, -a/slope)
+            else:
+                upper = min(upper, -a/slope)
+            if lower > upper:
+                return False
+        return True
+    if first*last > 0:
+        return False
+    t = first/(first-last)
+    return 0 <= t <= 1 and _point_on_triangle(_affine(start, end, t), triangle)

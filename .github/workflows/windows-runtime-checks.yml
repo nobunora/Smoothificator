@@ -55,6 +55,8 @@ jobs:
         run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase1b-mesh-material.md
       - name: Continuous section stability handoff integrity
         run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase1b-section-stability.md
+      - name: Whole-segment material handoff integrity
+        run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase1b-mesh-segment.md
       - name: Build research archive and verify extracted geometry modules
         run: ./.venv/Scripts/python tools/build_validation_artifacts.py
       - uses: actions/upload-artifact@v4

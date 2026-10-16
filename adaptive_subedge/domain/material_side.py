@@ -45,3 +45,23 @@ class MeshPointClassification:
             if self.state == "incomplete" and self.reason == "ray-directions-exhausted":
                 return
             MeshEmbeddingResult(self.state, self.reason)
+
+
+@dataclass(frozen=True, slots=True)
+class MeshSegmentClassification:
+    state: str
+    reason: str
+    classification: str | None
+
+    def __post_init__(self):
+        _require(type(self.state) is str and type(self.reason) is str,
+                 "exact segment disposition strings required")
+        if self.state == "complete":
+            _require(self.reason == "classified" and type(self.classification) is str
+                     and self.classification in ("strictly-inside", "strictly-outside", "boundary-contact"),
+                     "invalid segment classification")
+        else:
+            _require(self.classification is None, "partial segment classification forbidden")
+            if self.state == "incomplete" and self.reason == "classification-inconsistent":
+                return
+            MeshPointClassification(self.state, self.reason, None)

@@ -52,6 +52,7 @@ def main():
                         "assert pathlib.Path(topology.__file__).is_relative_to(sys.argv[1]); "
                         "assert pathlib.Path(section.__file__).is_relative_to(sys.argv[1]); "
                         "assert pathlib.Path(material.__file__).is_relative_to(sys.argv[1]); "
+                        "assert callable(material.classify_mesh_segment); "
                         "assert pathlib.Path(stability.__file__).is_relative_to(sys.argv[1]); "
                         "assert pathlib.Path(orca_plugin.__file__).is_relative_to(sys.argv[1])",
                         temporary], cwd=temporary, check=True)
