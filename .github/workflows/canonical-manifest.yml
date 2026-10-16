@@ -30,3 +30,4 @@ jobs:
       - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase05-runtime-interfaces.md
       - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase1a-bead-flow.md
       - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase1a-support-cell.md
+      - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase1a-support-controller.md

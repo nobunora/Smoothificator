@@ -5,6 +5,11 @@ Date: 2026-10-08
 
 ## Context
 
+The closed straight-footprint controller in ADR-0058 defines the executable
+adaptive integration of this ADR's actual nominal-bead cell query, including
+arbitrary-direction footprint enclosure and minimum contiguous width. It does
+not replace the source-envelope builder or confer physical/injection authority.
+
 Current v1 documents correctly separate ChronologicalSupportEnvelope from FinalSurfaceEnvelope, but still use phrases such as "sufficient overlap/contact" without defining one authoritative metric.
 
 That leaves a serious implementation ambiguity:

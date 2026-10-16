@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scope": "Phase 0.5 research architecture and Phase 1A nominal bead/flow and certified support cell query; no physical authority",
+  "scope": "Phase 0.5 research architecture and Phase 1A nominal bead/flow, certified support cell query and adaptive support controller; no physical authority",
   "review_status": "integrity_only_not_implementation_authority",
   "blobs": [
     {
@@ -241,7 +241,7 @@
     },
     {
       "path": "docs/adr/0044-versioned-support-coverage-metric.md",
-      "git_blob": "fd06b37052653ae63fb0065528359f95dd3e8a55"
+      "git_blob": "a6a4783a0135f842c7a52bc6193e92c361f8b69d"
     },
     {
       "path": "docs/adr/0045-converged-error-estimation-contract.md",
@@ -297,7 +297,7 @@
     },
     {
       "path": "docs/adr/0058-conservative-converged-support-coverage.md",
-      "git_blob": "e8aa90e054f881402fd74fd527c753da1343cb3b"
+      "git_blob": "4ec249b0980f6e3a292e7ab164b1d4fac5169b43"
     },
     {
       "path": "docs/adr/0059-topology-aware-mesh-section.md",

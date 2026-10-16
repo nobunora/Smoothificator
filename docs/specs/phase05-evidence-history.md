@@ -8,7 +8,7 @@ docs/implementation/evidence-history-review-2026-10-16.md. No release/merge appr
 ADR-0067 closed analysis-evidence/bounded-history section owns exact contracts.
 ADR-0037/0065 own Attempt lifecycle and atomic issuance. ADR-0066's initial time
 model remains unavailable_v1. The refreshed 83-blob manifest is
-docs/AUDIT_REVISION_2026-10-16.json; Manifest Git blob: `66b89c81792c59c95bc6a0d04668c9dd9d875528`
+docs/AUDIT_REVISION_2026-10-16.json; Manifest Git blob: `89ac5da0ca70561ea47496e1e2f5265b4abbf913`
 
 ## Goal
 
