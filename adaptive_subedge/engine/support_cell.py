@@ -1,0 +1,118 @@
+"""Certified bounds on actual stadium-sweep support over a closed XY rectangle."""
+from fractions import Fraction
+from math import isqrt
+
+from adaptive_subedge.domain.errors import ContractError, ReasonCode
+from adaptive_subedge.domain.numeric import finite_binary64
+from adaptive_subedge.domain.settings import CandidateBeadBounds
+from adaptive_subedge.domain.support_cell import (
+    NominalSupportSegment, SupportCellQueryPolicy, SupportCellQueryResult, SupportCellXY,
+)
+
+
+def _r(value: float) -> Fraction:
+    return Fraction(float(value))
+
+
+def _sqrt_bounds(radicand: Fraction, bits: int) -> tuple[Fraction, Fraction]:
+    denominator = 1 << bits
+    root = isqrt((radicand.numerator << (2 * bits)) // radicand.denominator)
+    lower = Fraction(root, denominator)
+    upper = lower if lower * lower == radicand else Fraction(root + 1, denominator)
+    return lower, upper
+
+
+def _cap_bounds(lateral_squared: Fraction, radius: Fraction,
+                flat_half_width: Fraction, bits: int) -> tuple[Fraction, Fraction]:
+    if lateral_squared <= flat_half_width * flat_half_width:
+        return radius, radius
+    lateral_lower, lateral_upper = _sqrt_bounds(lateral_squared, bits)
+    side_lower = max(Fraction(0), lateral_lower - flat_half_width)
+    side_upper = max(Fraction(0), lateral_upper - flat_half_width)
+    radicand_lower = max(Fraction(0), radius * radius - side_upper * side_upper)
+    radicand_upper = max(Fraction(0), radius * radius - side_lower * side_lower)
+    cap_lower = _sqrt_bounds(radicand_lower, bits)[0]
+    cap_upper = min(radius, _sqrt_bounds(radicand_upper, bits)[1])
+    return cap_lower, cap_upper
+
+
+def _segment_top_bounds(
+    source: NominalSupportSegment, corners: tuple[tuple[Fraction, Fraction], ...], bits: int,
+) -> tuple[Fraction | None, Fraction] | None:
+    sx, sy, sz = (_r(source.start.x_mm), _r(source.start.y_mm), _r(source.start.z_mm))
+    dx, dy = _r(source.end.x_mm) - sx, _r(source.end.y_mm) - sy
+    dz = _r(source.end.z_mm) - sz
+    length_squared = dx * dx + dy * dy
+    parameters = tuple(((x - sx) * dx + (y - sy) * dy) / length_squared for x, y in corners)
+    crosses = tuple((x - sx) * dy - (y - sy) * dx for x, y in corners)
+    t_min, t_max = min(parameters), max(parameters)
+    c_min, c_max = min(crosses), max(crosses)
+    q_min = (Fraction(0) if c_min <= 0 <= c_max
+             else min(c_min * c_min, c_max * c_max) / length_squared)
+    q_max = max(c_min * c_min, c_max * c_max) / length_squared
+    half_width, radius = _r(source.width_mm) / 2, _r(source.height_mm) / 2
+    if t_max < 0 or t_min > 1 or q_min > half_width * half_width:
+        return None
+    fully_covered = t_min >= 0 and t_max <= 1 and q_max <= half_width * half_width
+    nozzle_endpoints = (sz + max(Fraction(0), t_min) * dz,
+                        sz + min(Fraction(1), t_max) * dz)
+    flat_half_width = half_width - radius
+    upper = max(nozzle_endpoints) - radius + _cap_bounds(q_min, radius, flat_half_width, bits)[1]
+    lower = None
+    if fully_covered:
+        lower = min(nozzle_endpoints) - radius + _cap_bounds(q_max, radius, flat_half_width, bits)[0]
+    return lower, upper
+
+
+def query_nominal_support_cell(
+    cell: SupportCellXY, sources: tuple[NominalSupportSegment, ...], *,
+    command_z_mm: float, execution_order: int,
+    height_bounds: CandidateBeadBounds, policy: SupportCellQueryPolicy,
+) -> SupportCellQueryResult:
+    """Prove local vertical eligibility or return conservative unresolved bounds.
+
+    Single-segment full coverage is sufficient. General union coverage and
+    adaptive area/width convergence deliberately remain outside this provider.
+    """
+    if type(policy) is not SupportCellQueryPolicy or type(height_bounds) is not CandidateBeadBounds:
+        raise ContractError(ReasonCode.INVALID_SETTING, "exact support query settings required")
+    if (type(cell) is not SupportCellXY or type(sources) is not tuple
+            or not finite_binary64(command_z_mm)
+            or type(execution_order) is not int or execution_order < 0):
+        raise ContractError(ReasonCode.INVALID_GEOMETRY, "invalid support query inputs")
+    if len(sources) > policy.max_source_segments:
+        return SupportCellQueryResult("unresolved", None, None, None, None, "resource-limit")
+    identifiers = set()
+    for source in sources:
+        if type(source) is not NominalSupportSegment:
+            raise ContractError(ReasonCode.INVALID_GEOMETRY, "exact nominal source segment required")
+        if source.segment_id in identifiers or source.execution_order >= execution_order:
+            raise ContractError(ReasonCode.INVALID_GEOMETRY, "duplicate or nonchronological support source")
+        identifiers.add(source.segment_id)
+        if source.source_kind == "candidate" and _r(source.start.z_mm) >= _r(command_z_mm):
+            raise ContractError(ReasonCode.INVALID_GEOMETRY, "candidate support must be strictly lower Z")
+    corners = tuple((x, y) for x in (_r(cell.x_min_mm), _r(cell.x_max_mm))
+                    for y in (_r(cell.y_min_mm), _r(cell.y_max_mm)))
+    top_lower = top_upper = None
+    for source in sources:
+        segment_bounds = _segment_top_bounds(source, corners, policy.sqrt_fraction_bits)
+        if segment_bounds is None:
+            continue
+        lower, upper = segment_bounds
+        top_upper = upper if top_upper is None else max(top_upper, upper)
+        if lower is not None:
+            top_lower = lower if top_lower is None else max(top_lower, lower)
+    if top_upper is None:
+        return SupportCellQueryResult("proven-unsupported", None, None, None, None, "disjoint")
+    height_lower = _r(command_z_mm) - top_upper
+    height_upper = None if top_lower is None else _r(command_z_mm) - top_lower
+    minimum, maximum = _r(height_bounds.min_candidate_height_mm), _r(height_bounds.max_candidate_height_mm)
+    if height_lower > maximum or (height_upper is not None and height_upper < minimum):
+        state, reason = "proven-unsupported", "height-outside-bounds"
+    elif height_upper is not None and minimum <= height_lower <= height_upper <= maximum:
+        state, reason = "proven-supported", "height-within-bounds"
+    elif top_lower is None:
+        state, reason = "unresolved", "coverage-unresolved"
+    else:
+        state, reason = "unresolved", "height-unresolved"
+    return SupportCellQueryResult(state, top_lower, top_upper, height_lower, height_upper, reason)
