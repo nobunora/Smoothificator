@@ -12,7 +12,7 @@ two APIs, two result DTOs, exact algorithms and failure/resource precedence.
 The indexed-topology subsection remains its prerequisite; ADR-0027 retains
 independent Orca/frame requirements.
 Manifest: docs/AUDIT_REVISION_2026-10-16.json.
-Manifest Git blob: `76fe20cb8d7503e576af5bbf2be6697e935f6c01`
+Manifest Git blob: `44433a64a924528a517adc3977daa2cba4e28c00`
 
 Implement domain/material_side.py, engine/material_side.py and focused private
 engine/triangle_intersection.py. Reuse IndexedTriangleMesh, PrintPoint3,
