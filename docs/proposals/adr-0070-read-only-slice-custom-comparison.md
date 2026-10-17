@@ -104,3 +104,19 @@ support. Its true 3D midpoint Z=0.5 mm was projected onto existing Z=0.6 mm
 solely for viewer compatibility. Future G-code must use a separately validated
 candidate Z/layer and cannot execute the projected display segment merely
 because Preview rendered it.
+
+## Top-only multi-line correction (research)
+
+The underside midpoint from the first viewer is outside the requested top-only
+scope. The next offline probe selects only `Top surface` source paths at
+Z=2.2/2.4 mm. Pairing the original hatch segments by sequence collapsed all
+midpoints to one horizontal line, so the corrected probe instead interpolates
+the rectangular top-surface centerline envelope and tiles its 2.674-mm span
+with seven 0.4-mm display paths at 0.379-mm pitch. Orca standard Preview shows
+the seven green Custom paths together with the original red top paths at the
+existing Z=2.4-mm display layer. The true interpolated height is Z=2.3 mm.
+This is a visual-only construction: the envelope may overfill the true model
+surface, profile-wide minimum/maximum bead constraints and physical support
+are not certified, and the projected paths are not executable. Acceptance of
+this ADR must require a top-surface boundary certificate and enough bounded
+paths to cover that boundary; no underside candidate may enter the Plan.

@@ -15,6 +15,15 @@ byte-identical. Produce only a disposable VIEW_ONLY derivative in plugin-owned
 storage. No output/export/postprocess capability, printer connection, upload,
 physical print or validated execution Plan is within this handoff.
 
+Candidate generation is restricted to the model's upward-facing top surface.
+Bottom surfaces and underside overhangs are excluded. A candidate region wider
+than the permitted line width requires multiple separately recorded paths;
+their count, centerline spacing and widths must cover the intended region
+without violating profile minimum/maximum widths or leaving uncovered gaps.
+An envelope-based viewer drawing alone does not prove preservation of the
+source model's exact geometry. Future acceptance requires model/slice identity,
+the actual top-surface boundary, footprint error and support checks.
+
 ## Required closure before SPEC_READY
 
 1. Define how the source G-code is selected without invoking the GUI export or
@@ -89,3 +98,17 @@ layers. The probe projected it to the existing 0.6 mm layer for native display.
 Any eventual G-code path must either prove an existing-layer candidate at
 0.6 mm, or explicitly validate a changed layer schedule for Z=0.5 mm. The
 viewer projection alone cannot decide that geometry or support question.
+
+## Top-only multi-line research update
+
+The earlier underside midpoint was rejected for this feature. A subsequent
+ignored probe took only 18 `Top surface` source segments each at Z=2.2 and
+2.4 mm, interpolated their bounded top-surface envelope at true Z=2.3 mm,
+and filled its 2.674-mm Y span with seven 0.4-mm Custom centerlines at
+0.379-mm pitch. The paths were projected to the existing Z=2.4-mm viewer
+layer. A Python window capture of Orca's standard Preview shows seven green
+paths among the red original top-surface paths on that layer. The source
+G-code remained SHA-256 identical. This proves multi-line native display,
+not exact model shape preservation: a bounding envelope may include area
+outside the real top surface, and the display Z differs from the proposed
+physical Z. No printable candidate or safe G-code claim follows.
