@@ -120,7 +120,7 @@ Pinned source evidence at 86905a8a20d5887f3b13017e66cd897766334bd3 shows Orca
 producer recognition requires a sufficiently populated serialized config block;
 a short forged producer header fails configuration extraction. UI-thread copies
 of host full_config_keys/opt_serialize values may supply the viewer configuration.
-Keys must match [a-z][a-z0-9_]* and values contain no raw CR/LF/NUL. Exclude
+Keys must match [A-Za-z][A-Za-z0-9_]* and values contain no raw CR/LF/NUL. Exclude
 connection/authentication/URL/custom-script fields before storage and require
 the source-verified minimum remaining config count. No hidden secrets or custom
 scripts may be copied for convenience. Width/height metadata uses exact reserved
@@ -136,7 +136,7 @@ tag spellings where needed. Require at least 80 retained valid serialized
 settings; unavailable or insufficient config fails explicitly. Exclude any key
 whose lowercase name contains host, api, password, token, secret, user, device,
 url, gcode, notes or credential. Drop non-ASCII serialized values. Reject raw
-CR/LF/NUL and malformed retained keys/values rather than escaping them into
+CR/LF/NUL and keys outside [A-Za-z][A-Za-z0-9_]* rather than escaping them into
 executable text. Never log serialized values or copy excluded values into HTML.
 Require retained printer_model, filament_diameter and extruder_offset values;
 validate needed numeric geometry and positive filament diameter. Positive E is
@@ -159,6 +159,12 @@ tolerance is not physical proof. The nearest-grid displayed width can differ
 from exact S/n, so its native bands must never be called exact certified coverage.
 
 ## Validation and pending review
+
+Pinned Orca source/runtime configuration includes required_nozzle_HRC,
+machine_max_force_Y and machine_bed_mass_Y. Their ASCII uppercase letters are
+valid serialized key characters. The implementation lead approved this narrow
+grammar correction; case-insensitive sensitive-key filtering and the existing
+value delimiter guards remain unchanged.
 
 Geometry fixtures: one band, exact min/max equality, height raises effective min,
 infeasible width interval, resource precedence, rational S/n, X/Y symmetry,

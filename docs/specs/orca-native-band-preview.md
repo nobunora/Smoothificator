@@ -4,7 +4,7 @@ Status: SPEC_VALIDATED for the bounded research geometry and manual-open artifac
 
 Authority: accepted ADR-0069, with existing ADR-0005/0030/0059/0068 owners.
 Manifest: docs/AUDIT_REVISION_2026-10-16.json.
-Manifest Git blob: `6daab8f3e35a03cc0cbc7bdda20dbe096d78950b`
+Manifest Git blob: `7c0e2b4787f9cb6df8f62786ea2c9bc3d1dc9688`
 
 Implement only after the relevant section receives repository validation.
 The numerical API is propose_convex_band_preview and frozen BandChordPreview

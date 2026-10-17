@@ -10,7 +10,7 @@ this slice. ADR-0062/0064 own unchanged canonical bytes and identity projection.
 The canonical manifest is `docs/AUDIT_REVISION_2026-10-16.json`; its blob SHA is
 `09296e1337d783a210aabdff59750eb59aef6282`.
 
-Manifest Git blob: `6daab8f3e35a03cc0cbc7bdda20dbe096d78950b` No historical manifest authorizes this
+Manifest Git blob: `7c0e2b4787f9cb6df8f62786ea2c9bc3d1dc9688` No historical manifest authorizes this
 slice. An integrity check is not specification approval.
 
 ## Goal
