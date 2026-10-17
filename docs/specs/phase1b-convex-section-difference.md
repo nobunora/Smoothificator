@@ -1,14 +1,18 @@
 # Exact two-height convex-section difference
 
-Status: SPEC_READY for independent repository review; not yet implementation
-authority.
+Status: SPEC_VALIDATED for the bounded exact planar research primitive.
 
 Authority: accepted ADR-0005 exposed-band and nesting research scope, reusing
 ADR-0030 embedding and ADR-0059 exact symbolic section machinery. This handoff
 adds no Plan, physical/G-code gate, dependency owner or Orca hook; the accepted
 ADRs need no change. An independent specification review closed cyclic clipping,
-strict cell validation, work bounds and failure precedence. Repository review
-is pending. Manifest: docs/AUDIT_REVISION_2026-10-16.json.
+strict cell validation, work bounds and failure precedence. Independent
+repository review against MAIN `88c527b` found no material interface or
+architecture conflict and returned `validated`: `_embedding` supplies the
+same-call topology, `_section` accepts exact Z and zero tolerances, empty
+sections map to `rejected/empty-section`, and domain DTOs do not own geometry
+proof. The wrapper must check cancellation when converting every expected
+failure. Manifest: docs/AUDIT_REVISION_2026-10-16.json.
 Manifest Git blob: `7c0e2b4787f9cb6df8f62786ea2c9bc3d1dc9688`
 
 This closes a planar prerequisite for exposed-band work,
