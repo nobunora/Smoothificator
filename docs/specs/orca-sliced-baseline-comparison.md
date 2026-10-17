@@ -66,3 +66,25 @@ M624/M625 inside every layer, so it does not satisfy the proposed conventional
 linear-motion subset. Review must either select and prove a simpler offline
 fixture or explicitly specify and validate those modal effects before accepting
 this handoff. Treating the current fixture as supported would be unsafe.
+
+## New read-only reconstruction option to adjudicate
+
+An implementation-checkout research probe used a fixed-hash generic Marlin
+offline slice and reconstructed a separate, limited-motion native viewer
+representation from actual extrusion segments. Its serialized records retain
+source layer ordinals, Z, feature role, width and G-code line provenance for
+15 layers; native visual equivalence is not yet verified. The probe added
+one Custom display segment at an existing layer. This differs from
+the byte-preserving insertion contract above: the viewer file is not a copy
+of the original executable program and cannot be used to validate later
+original-command state restoration. It should be considered as a separate
+read-only preview handoff after source acquisition, parser scope, provenance,
+native visual acceptance and viewer-file lifecycle are specified. The source
+slice itself must remain byte-identical. The layer/line manifest may inform a
+future immutable execution Plan, but it grants no G-code modification authority.
+
+The actual adjacent-line midpoint lies at Z=0.5 mm between 0.4/0.6 mm source
+layers. The probe projected it to the existing 0.6 mm layer for native display.
+Any eventual G-code path must either prove an existing-layer candidate at
+0.6 mm, or explicitly validate a changed layer schedule for Z=0.5 mm. The
+viewer projection alone cannot decide that geometry or support question.

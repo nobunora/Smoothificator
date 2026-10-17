@@ -22,9 +22,10 @@ The pinned Orca source increments layer identity at layer-change tags, rather
 than merging moves by equal Z. An end-of-file append inherits the last layer
 identity, so it cannot recover an earlier target layer by matching Z and may
 also follow end-of-print commands. Native plugin APIs expose no viewer reload.
-The only proposed standard Preview route is to copy source bytes into a separate
-unique file while inserting a Custom block inside the exact target layer, then
-open that derivative manually in a separate Orca process.
+The initial proposed route was to copy source bytes into a separate unique
+file while inserting a Custom block inside the exact target layer, then open
+that derivative manually in a separate Orca process. A reconstructed
+layer-viewer route is now under review below; neither route is accepted.
 
 The first supported input must be a single-tool, millimetre, conventional
 linear-motion slice with a uniquely identified nonfinal target layer and known
@@ -69,3 +70,30 @@ coverage, byte-preserving insertion grammar, coordinate provenance, and whether
 a viewer derivative containing normal printer commands creates unacceptable
 accidental-output exposure. If any cannot be closed, retain separate baseline
 and Custom-only views and do not claim same-plan comparison.
+
+## Research update: reconstructed layer viewer (not yet accepted)
+
+The implementation checkout now has a local, ignored proof using a fixed
+SHA-256 offline Marlin slice from the pinned Orca build. A read-only parser
+extracted 669 baseline extrusion segments from 15 actual layers, retaining
+source G-code line numbers and layer ordinals. It emitted a new limited-motion
+viewer representation with those baseline segments and one Custom segment on
+an existing layer. The representation contains only G21/G90/M83/G92 E0/G1
+and comments; it does not copy the original temperature, homing or machine
+macros. The source bytes remained unchanged. A separate Orca process parsed
+the file, entered standard Preview and disabled slice/export controls. Native
+visual inspection of Custom and the layer slider remains inconclusive because
+Windows Graphics Capture failed with `SetIsBorderRequired / 0x80004002`.
+
+This route reduces the accidental-output exposure of copying original
+printer commands, but the viewer representation still has positive-E G1 and
+is not intrinsically unprintable. It requires an explicit read-only source
+selection API, a fail-closed parser with exact mode/role/width/layer semantics,
+native visual acceptance, exclusive artifact lifecycle, and a firm separation
+from executable Plan/G-code output before this ADR can be accepted. The
+candidate's XY came from two source G-code lines, so those input line IDs are
+directly recorded; this does not prove model-instance geometry or physical
+support. Its true 3D midpoint Z=0.5 mm was projected onto existing Z=0.6 mm
+solely for viewer compatibility. Future G-code must use a separately validated
+candidate Z/layer and cannot execute the projected display segment merely
+because Preview rendered it.
