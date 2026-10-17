@@ -47,6 +47,7 @@ def main():
                         "import adaptive_subedge.engine.material_side as material; "
                         "import adaptive_subedge.engine.section_stability as stability; "
                         "import adaptive_subedge.engine.convex_chords as chords; "
+                        "import adaptive_subedge.engine.path_regularity as regularity; "
                         "assert pathlib.Path(s.__file__).is_relative_to(sys.argv[1]); "
                         "assert pathlib.Path(support.__file__).is_relative_to(sys.argv[1]); "
                         "assert pathlib.Path(coverage.__file__).is_relative_to(sys.argv[1]); "
@@ -56,6 +57,7 @@ def main():
                         "assert callable(material.classify_mesh_segment); "
                         "assert pathlib.Path(stability.__file__).is_relative_to(sys.argv[1]); "
                         "assert pathlib.Path(chords.__file__).is_relative_to(sys.argv[1]); "
+                        "assert pathlib.Path(regularity.__file__).is_relative_to(sys.argv[1]); "
                         "assert pathlib.Path(orca_plugin.__file__).is_relative_to(sys.argv[1])",
                         temporary], cwd=temporary, check=True)
     probe = root / "diagnostics/smoothificator_readonly_probe.py"
