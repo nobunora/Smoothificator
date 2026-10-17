@@ -129,18 +129,24 @@ def classify_mesh_segment(mesh: IndexedTriangleMesh, start: PrintPoint3, end: Pr
     check = _cancellation(cancelled)
     try:
         triangles, _ = _embedding(mesh, max_vertices, max_triangles, max_pair_checks, cancelled, check)
-        for triangle in triangles:
-            check()
-            if _segment_contacts_triangle(first, last, triangle):
-                check()
-                return MeshSegmentClassification("complete", "classified", "boundary-contact")
-        check()
-        start_side = _classify_point(triangles, first, max_ray_directions, check)
-        check()
-        end_side = _classify_point(triangles, last, max_ray_directions, check)
-        check()
-        if start_side != end_side or start_side == "boundary":
-            return MeshSegmentClassification("incomplete", "classification-inconsistent", None)
-        return MeshSegmentClassification("complete", "classified", "strictly-"+start_side)
+        classification = _classify_segment(triangles, first, last, max_ray_directions, check)
+        return MeshSegmentClassification("complete", "classified", classification)
     except _Stopped as stopped:
         return MeshSegmentClassification(stopped.state, stopped.reason, None)
+
+
+def _classify_segment(triangles, first, last, max_ray_directions, check):
+    """Same-call exact endpoints and validated triangles; never a public receipt API."""
+    for triangle in triangles:
+        check()
+        if _segment_contacts_triangle(first, last, triangle):
+            check()
+            return "boundary-contact"
+    check()
+    start_side = _classify_point(triangles, first, max_ray_directions, check)
+    check()
+    end_side = _classify_point(triangles, last, max_ray_directions, check)
+    check()
+    if start_side != end_side or start_side == "boundary":
+        raise _Stopped("incomplete", "classification-inconsistent")
+    return "strictly-"+start_side
