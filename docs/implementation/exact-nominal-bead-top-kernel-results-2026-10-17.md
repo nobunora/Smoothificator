@@ -29,9 +29,18 @@ Windows Python 3.12.10 validation:
 - Exact nominal top plus existing support/structural top focused modules:
   32 PASS.
 - Full `unittest discover -s tests -p test_*.py -q`: 608 PASS.
+- Canonical manifest integrity at implementation commit `89191c6`: 85 Git
+  blobs PASS (integrity only, not spec approval).
+- `tools/build_validation_artifacts.py`: PASS, exact-head research ZIP SHA-256
+  `d2f470175e8da98f4daba90e23b669a4b57e8cfc686cc78ca528a53574d19d98`;
+  isolated extracted source import PASS. The ZIP is non-installable.
+- `tools/build_preview_plugin.py --output-dir artifacts/package-check`:
+  PASS, check wheel SHA-256
+  `57cf00019fb9dba66e5883c486b8384f50ced3cc748ae9a0ec7920f4a1d7e081`;
+  isolated `python -I` import of the new query PASS. This wheel was not
+  installed or runtime-tested inside Orca.
 - Lint/type analyzers: NOT CONFIGURED; no dependency added.
 
-Exact-head package and CI results are recorded separately after commit.
 The next research unit may compare the same fully covered planar rectangle's
 nominal baseline and augmented top-residual intervals, but cannot claim
 ADR-0047 bidirectional surface error, ADR-0060 affected-domain closure,
