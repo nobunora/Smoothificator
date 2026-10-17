@@ -1,7 +1,7 @@
 # Layered same-slice Orca Preview probe
 
-Disposition: research viewer load PASS; visual Custom/slider acceptance
-INCONCLUSIVE. This is not a printable Plan or safe G-code export.
+Disposition: research viewer load and visual Custom/slider acceptance PASS.
+This is not a printable Plan or safe G-code export.
 
 The pinned offline OrcaSlicer 2.5.0-dev (`86905a8a`) sliced
 `artifacts/fixtures/offline-coupon.3mf` with the isolated generic Marlin
@@ -36,9 +36,18 @@ parsing, `GCodeViewer::load_as_gcode`, and navigation to Preview. Windows
 accessibility showed the export and slice controls disabled. No network TCP
 connection was found for that process; no device action was requested.
 
-Visual verification could not be completed: Windows Graphics Capture still
-returned `SetIsBorderRequired / 0x80004002`, and element clicking returned
-`coordinate input geometry is unavailable`. The profile's first launch also
+Windows Graphics Capture returned `SetIsBorderRequired / 0x80004002`, and
+element clicking returned `coordinate input geometry is unavailable`. A
+target-window Python capture using Pillow 11.3.0, pywin32 and
+`ImageGrab.grab(window=hwnd)` succeeded instead. The 1680x792 screenshot at
+`artifacts/layered-viewer/orca-layered-window.png` has SHA-256
+`08e158d7a24cb121e33bf240c0be2c69eaf7d168385ab7a6e29db5be76f3eef3`.
+It shows Orca's standard Preview, multiple original extrusion roles beside
+the green `Custom` candidate, and the native layer slider spanning Z=0.2
+to Z=0.6 mm. The G-code pane selects `;TYPE:Custom`, width 0.4 mm, height
+0.2 mm and the candidate extrusion command. This confirms native visual
+overlay and layer association, not geometric equivalence of every reconstructed
+segment or executable output safety. The profile's first launch also
 reported a malformed copied configuration; Orca regenerated its isolated
 profile, the notification was dismissed, and the G-code viewer loaded. The
 user's ordinary Orca profile was untouched. Computer Use state was reset
