@@ -38,3 +38,4 @@ jobs:
       - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase1b-mesh-segment.md
       - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase1b-convex-chord-proposals.md
       - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase1c-path-regularity.md
+      - run: python tools/check_canonical_manifest.py --handoff docs/specs/orca-readonly-chord-preview.md

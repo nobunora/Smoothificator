@@ -15,7 +15,7 @@ Authority: ADR-0058 Closed straight-footprint adaptive controller owns the exact
 three DTOs, API, partition, metric, convergence and failure contract. ADR-0044
 owns the existing actual-bead cell query and ADR-0048 its nominal solid.
 Manifest: docs/AUDIT_REVISION_2026-10-16.json.
-Manifest Git blob: `a2db5305551533b98df22a1436a35c5985e09b93`
+Manifest Git blob: `7e96ba2c2f77717503fcee1e22e8c6de3ba3501e`
 
 Implement domain/support_coverage.py and engine/support_coverage.py. Reuse all
 existing settings/source types and engine/support_cell._sqrt_bounds. No arbitrary
