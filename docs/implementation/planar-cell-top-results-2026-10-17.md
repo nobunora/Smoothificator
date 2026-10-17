@@ -34,9 +34,18 @@ Validation on Windows with `.venv/Scripts/python.exe` (Python 3.12.10):
 - Architecture/import-boundary suite: 43 PASS.
 - Planar-cell and section-difference focused suite: 21 PASS.
 - Full `unittest discover -s tests -p test_*.py -q`: 593 PASS.
+- Canonical manifest integrity: 85 Git blobs PASS (integrity, not spec approval).
+- `tools/build_validation_artifacts.py` at code commit `181d97e`:
+  PASS, extracted research ZIP isolated-imported the new module; ZIP SHA-256
+  `21017711e9447f3bae7986bc2b6bb1636875ed80c6f9fa78ae9e9f193c13e7d8`.
+- `tools/build_preview_plugin.py --output-dir artifacts/package-check`:
+  PASS, check wheel SHA-256
+  `b1c065b64f7515781d792b39c4673083cee6dca766fb6f08ba4f080d42671214`;
+  `python -I` import of the new module from that wheel PASS. This wheel was
+  not installed or runtime-tested inside Orca.
 - Lint/type analyzers: NOT CONFIGURED; no dependency was added.
 
-Package/source build evidence is recorded after the exact commit. Remaining:
+Remaining:
 the caller-supplied cell is not proven to originate from an exposed model
 band. A separate specification must close interval nesting, finite-bead
 candidate footprints and same-domain baseline/candidate error before any
