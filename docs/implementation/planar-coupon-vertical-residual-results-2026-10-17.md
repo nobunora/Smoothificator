@@ -53,3 +53,27 @@ product improvement can be claimed, candidate placement must be bound to
 an actual source-model region and explicit slicer baseline, with full
 ADR-0047/0060 geometry, support and side-effect gates. Same-plan native
 Preview and validated G-code output remain unresolved.
+
+## Adjacent-line midpoint probe (2026-10-17)
+
+A reproducible exploratory call used the analytic frustum from
+`tests/unit/test_section_difference.py`, not an Orca slice. Two X-directed
+structural centerlines ran from X=1 to X=3 mm at (Y,Z)=(0.25,0.25) and
+(0.75,0.75) mm, each with 0.6 mm nominal width and 0.2 mm height. The
+candidate joined their midpoint positions at (Y,Z)=(0.5,0.5) mm with
+0.3 mm nominal width and 0.2 mm height. The target rectangle was
+X=[1.5,2.5], Y=[0.45,0.55] mm on the planar face Z=Y. The ignored scratch
+reproducer is
+`tests/unit/test_coupon_residual.py::CouponResidualTests.test_adjacent_line_midpoint_requires_full_structural_baseline`;
+run the module with `.venv/Scripts/python.exe -m unittest
+tests.unit.test_coupon_residual -q`.
+
+With **both** adjacent structural lines in the baseline, baseline and
+augmented maximum vertical residual intervals were identical:
+`[129601637/536870912, 664695683/2684354560]` mm (148 leaves,
+`interval-overlap`). With only the lower line in an artificial baseline,
+the interval changed from `[8589803517/21474836480, 2/5]` mm to exactly
+`1/20` mm (one leaf, `certified-reduction`). Thus midpoint placement is a
+possible candidate heuristic, but cannot itself certify benefit against the
+full sliced baseline. Width/footprint, support, and Orca slice provenance
+remain unverified; this probe authorizes no injection or printing.

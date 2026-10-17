@@ -140,6 +140,40 @@ class CouponResidualTests(unittest.TestCase):
         self.assertEqual((budget.state, budget.reason, budget.leaf_count),
                          ("complete", "interval-overlap", 1))
 
+    def test_adjacent_line_midpoint_requires_full_structural_baseline(self):
+        def segment(identity, y, width, kind):
+            return ExactNominalTopSegment(
+                identity, (F(1), y, y), (F(3), y, y),
+                width, F(1, 5), kind)
+
+        structural = (
+            segment("lower", F(1, 4), F(3, 5), "structural"),
+            segment("upper", F(3, 4), F(3, 5), "structural"),
+        )
+        midpoint = (segment("midpoint", F(1, 2), F(3, 10), "candidate"),)
+        target = ExactTopCellXY(F(3, 2), F(5, 2), F(9, 20), F(11, 20))
+        options = dict(source_mesh_id="analytic-frustum", baseline_slice_id="synthetic",
+                       max_vertices=100, max_triangles=100, max_mesh_pair_checks=1000,
+                       max_cell_vertices=20, max_centroid_tests=100,
+                       max_facet_clip_tests=1000, max_sources=3,
+                       max_coordinate_bits=256, sqrt_fraction_bits=32,
+                       max_refinement_depth=4, max_leaf_cells=256,
+                       cancelled=lambda: False)
+
+        complete_baseline = compare_planar_coupon_vertical_residual(
+            frustum(), target, structural, midpoint, **options)
+        self.assertEqual(complete_baseline.reason, "interval-overlap")
+        self.assertEqual(complete_baseline.baseline_max_residual,
+                         complete_baseline.augmented_max_residual)
+
+        artificial_baseline = compare_planar_coupon_vertical_residual(
+            frustum(), target, structural[:1], midpoint, **options)
+        self.assertEqual(artificial_baseline.reason, "certified-reduction")
+        self.assertEqual(artificial_baseline.augmented_max_residual,
+                         VerticalResidualInterval(F(1, 20), F(1, 20)))
+        self.assertGreater(artificial_baseline.baseline_max_residual.lower_mm,
+                           artificial_baseline.augmented_max_residual.upper_mm)
+
     def test_cancellation_after_prior_leaf_discards_intervals(self):
         structural = ExactNominalTopSegment("s", (F(0), F(2), F(0)),
                                             (F(4), F(2), F(0)), F(1), F(1), "structural")
