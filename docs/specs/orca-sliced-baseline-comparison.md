@@ -21,7 +21,10 @@ physical print or validated execution Plan is within this handoff.
    postprocess seam. The current Script/Pages host exposes no source path.
 2. Define a source-to-candidate coordinate and slice identity proof for the
    supported offline fixture. A filename, model label or identical Z is not
-   enough. Candidate production must use that proof or fail closed.
+   enough. Candidate production must use that proof or fail closed. In
+   particular, the candidate's commanded Z must equal the target layer's
+   machine-frame extrusion Z after the verified coordinate transform; the
+   earlier 1.522544393-mm Custom-only demonstration does not establish this.
 3. Define a bounded binary parser for nonfinal target-layer boundaries and all
    modal states needed to leave every later original command unchanged,
    including units, flow, retraction, forced tags, last-extruded-Z, wipe,
