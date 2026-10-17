@@ -81,15 +81,22 @@ viewer representation with those baseline segments and one Custom segment on
 an existing layer. The representation contains only G21/G90/M83/G92 E0/G1
 and comments; it does not copy the original temperature, homing or machine
 macros. The source bytes remained unchanged. A separate Orca process parsed
-the file, entered standard Preview and disabled slice/export controls. Native
-visual inspection of Custom and the layer slider remains inconclusive because
-Windows Graphics Capture failed with `SetIsBorderRequired / 0x80004002`.
+the file, entered standard Preview and disabled slice/export controls. Windows
+Graphics Capture failed with `SetIsBorderRequired / 0x80004002`, but a
+target-window Python Pillow/pywin32 capture succeeded. The 1680x792 image
+(`artifacts/layered-viewer/orca-layered-window.png` in the implementation
+checkout, SHA-256
+`08e158d7a24cb121e33bf240c0be2c69eaf7d168385ab7a6e29db5be76f3eef3`)
+shows original extrusion roles and the green Custom segment together in
+standard Preview, with the native layer slider covering Z=0.2 to 0.6 mm.
+This passes the bounded visual overlay check, not geometric equivalence or
+executable G-code safety.
 
 This route reduces the accidental-output exposure of copying original
 printer commands, but the viewer representation still has positive-E G1 and
 is not intrinsically unprintable. It requires an explicit read-only source
 selection API, a fail-closed parser with exact mode/role/width/layer semantics,
-native visual acceptance, exclusive artifact lifecycle, and a firm separation
+repeatable visual acceptance, exclusive artifact lifecycle, and a firm separation
 from executable Plan/G-code output before this ADR can be accepted. The
 candidate's XY came from two source G-code lines, so those input line IDs are
 directly recorded; this does not prove model-instance geometry or physical

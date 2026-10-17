@@ -73,8 +73,9 @@ An implementation-checkout research probe used a fixed-hash generic Marlin
 offline slice and reconstructed a separate, limited-motion native viewer
 representation from actual extrusion segments. Its serialized records retain
 source layer ordinals, Z, feature role, width and G-code line provenance for
-15 layers; native visual equivalence is not yet verified. The probe added
-one Custom display segment at an existing layer. This differs from
+15 layers; Python window capture confirms that the reconstructed baseline
+roles and one Custom segment appear together in native Preview with its layer
+slider. Per-segment geometric equivalence remains unverified. This differs from
 the byte-preserving insertion contract above: the viewer file is not a copy
 of the original executable program and cannot be used to validate later
 original-command state restoration. It should be considered as a separate
