@@ -1,7 +1,7 @@
 # Top-surface multi-line Orca Preview probe
 
-Disposition: bounded native visual display PASS; printable geometry and
-G-code safety remain unverified. This record supersedes the underside
+Disposition: bounded native visual display PASS; executable candidate FAIL.
+This record supersedes the underside
 single-line candidate in the earlier layered viewer *for future research*.
 
 The fixed-hash offline generic Marlin slice of `offline-coupon.3mf` remained
@@ -40,3 +40,39 @@ on the existing Z=2.4-mm layer. Minimum/maximum bead-width policy, structural
 support, collisions and exact affected-surface error are not proven. The
 positive-E VIEW_ONLY file must not be printed. Production integration awaits
 the top-only, multi-path specification and its geometry/output gates.
+
+## Executable-candidate audit after user review
+
+The displayed Z=2.4 mm is not the proposed Z=2.3 mm. The seven paths also
+overlap already scheduled Z=2.4 mm structural extrusion footprints. Closest
+centerline distances to an original path, in ascending candidate Y order, are
+0, 0, 0, 0, 0, 0.1645 and 0.1885 mm. The corresponding nominal footprint
+clearances after subtracting half the two recorded widths are all negative:
+-0.4068 mm for the first five (Top surface), -0.2605 mm for the sixth
+(Inner wall), and -0.2115 mm for the seventh (Outer wall). The source G-code
+line numbers for the nearest paths include 1357/1354/1350, 1330 and 1339.
+The first five each geometrically cross 14-15 original top-surface centerlines.
+At the prior Z=2.2 mm layer, five of the seven candidates likewise intersect
+14-15 top-surface centerlines. These are direct defects of the additive
+viewer geometry, not merely missing hardware tolerances.
+
+Consequently none of the seven may be converted into an executable insertion.
+The dedicated invalid viewer was closed, the source remains unchanged, and no
+modified printable G-code was published. A future plan must use true candidate
+Z, account for the material and motion on both adjacent layers, prove an
+actual reduction in full top-surface error, and validate the chronological
+nozzle/hotend clearance before any G-code mutation. Existing research Settings
+v2 deliberately raises `PHYSICAL_INJECTION_NOT_AUTHORIZED` when injection is
+requested; there is no production injector in this checkout.
+
+`tools/audit_layered_preview_overlap.py` now reproduces this fixture audit
+read-only. It SHA-pins the original source, parses its recorded extrusion
+segments, measures horizontal candidate-to-structural centerline distance,
+subtracts both nominal half-widths, and returns `rejected` with seven negative
+clearances and `printable_authorized: false`. The manifest's candidate and
+per-layer counts must agree, so a missing segment cannot silently pass this
+screen. It measures the displayed layer only: actual-Z adjacent-layer and
+chronological nozzle/hotend clearance remain unverified. Python 3.12.10
+compile/import, 43 architecture tests, eight focused audit tests and the
+627-test full suite passed. No G-code writer or physical injection flag was
+enabled.
