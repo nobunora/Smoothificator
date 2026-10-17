@@ -60,3 +60,9 @@ Current repository review disposition: **spec-change-required**. The fixed
 Orca `SlicingPipelineContext.gcode_path` exists only at postprocess; that seam
 also fires for export/upload and is outside this research mode. Manual local
 file selection and same-slice coordinate provenance are not yet specified.
+The existing offline A1-mini fixture
+`artifacts/fixtures/probe-selected-1.gcode` also contains G2/G3 and M622/M623/
+M624/M625 inside every layer, so it does not satisfy the proposed conventional
+linear-motion subset. Review must either select and prove a simpler offline
+fixture or explicitly specify and validate those modal effects before accepting
+this handoff. Treating the current fixture as supported would be unsafe.
