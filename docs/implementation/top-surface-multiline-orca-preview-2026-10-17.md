@@ -76,3 +76,83 @@ chronological nozzle/hotend clearance remain unverified. Python 3.12.10
 compile/import, 43 architecture tests, eight focused audit tests and the
 627-test full suite passed. No G-code writer or physical injection flag was
 enabled.
+
+## True-Z 3D review and bead-height correction
+
+The initial seven-line envelope fill is superseded for review. A pinned 3MF
+build transform plus the pinned Orca plate offset now produces top-face
+isocontours at their actual XYZ coordinates. Five 0.4-mm-wide review lines
+at Z=2.22, 2.26, 2.30, 2.34 and 2.38 mm lie on the transformed upward top
+face. The first two avoid the higher-layer XY footprint but their minimum
+sampled effective bead heights above the Z=2.20-mm source material are only
+0.02 and 0.06 mm, below the 0.08-mm research/fixture minimum. They were
+removed from the focused Orca viewer. The last three have heights 0.10,
+0.14 and 0.18 mm but overlap higher-layer structural footprints; they too
+are excluded.
+
+A bounded width/Z search found one *review-only* alternative at Z=2.28 mm,
+Y=127.336335 mm, X=120.3–129.7 mm and width 0.30 mm. Its sampled lower
+support top is Z=2.20 mm across 21 X positions and three Y offsets; the
+sampled effective height is 0.08 mm. Its nearest later-layer XY footprint
+clearance is 0.038 mm. That tiny clearance is not a physical tool margin;
+the 0.30-mm minimum width is also not yet validated against an actual
+printer/profile. It is a geometry-review hypothesis, not a printable path.
+
+`tools/generate_top_surface_candidates.py` records six mesh-clipped true-Z
+lines, their rejection reasons and source hashes in an ignored local JSON.
+`tools/build_true_z_orca_review.py --focus` reconstructs the original
+slice through Z=2.20 mm and adds only the Z=2.28-mm Custom review line,
+with viewer bead height 0.08 mm. The original source slice remains unchanged.
+The focused VIEW_ONLY file has 12 display layers, an adjacent manifest with
+`printable_authorized: false`, and no machine setup, homing or heater commands.
+Dedicated Orca loaded it in standard Preview and displayed a separate
+Custom category and the `;Z:2.28` / `;HEIGHT:0.08` commands. A window
+capture is at `artifacts/geometry-review/orca-bonded-review-loaded.png`.
+The user additionally inspected the earlier Z=2.22/2.26 side view and
+reported those lines floating, consistent with the computed subminimum
+heights.
+
+`tools/render_top_surface_3d_review.py` also generated an offline,
+self-contained 3D canvas comparison showing the transformed top face,
+original slice, one hypothesis and five excluded reference lines. Its
+JavaScript passed `node --check`; browser visual acceptance was unavailable
+because the local file URL was blocked by the browser security policy.
+No shape-error improvement, full-area support, width feasibility or
+chronological tool clearance is established.
+
+## Exact lower-bead check after side-view feedback
+
+The user inspected the focused Z=2.28-mm Custom line and reported that it
+still floats and appears to have nearly zero thickness. The line is not
+zero-volume: its 9.4-mm length, 0.30-mm width and 0.08-mm nominal height
+give a rounded-rectangle cross-section of 0.022626548 mm² and volume
+0.21268955 mm³. With the source's 1.75-mm filament diameter, the viewer's
+synthetic `E` increment is about 0.088426 mm. Orca's coarse filament-length
+and mass labels can therefore show 0.00 without implying zero geometry.
+
+The earlier sampled support check used source-line XY footprints and treated
+all points within a width as having the full source top Z=2.20 mm. That was
+insufficient. An exact nominal top query against the pinned source bead
+heights, at 95 positions along the candidate and the center plus both width
+edges, found a conservative lower top of Z=2.161310 mm. A nominal 0.08-mm
+bead commanded at Z=2.28 has its bottom at Z=2.20 mm, leaving up to about
+0.03869 mm of nominal gap. This accounts for the visible floating sections.
+
+The generator now marks this sixth line `nominal-support-valley`; the Orca
+viewer builder refuses to display it as an accepted Custom candidate. The
+other five lines already failed minimum height or higher-layer footprint
+checks, so this pinned unchanged-source coupon currently has **no accepted
+additive review line**. The previously opened focused VIEW_ONLY artifact is
+superseded and must not be treated as an improved or printable slice. This
+check is still sampled and nominal; it does not certify continuous support,
+printer tolerances, or collision clearance. Correctly supported geometry
+requires a new candidate construction and a separate validation pass.
+
+An independent code review also found that the 95-by-3-point nominal probe
+cannot prove continuous contact or exclude a narrow material intrusion
+between samples. The generator therefore never promotes a line solely from
+that sampled check: otherwise plausible lines are marked
+`continuous-contact-unverified`. The VIEW_ONLY builder requires an explicit
+continuous-contact result and consistent bead-height metadata before it can
+show a green candidate. No such certificate is produced by this research
+generator, and no printable G-code path is enabled.
