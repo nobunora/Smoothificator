@@ -35,7 +35,7 @@ aside{padding:16px}label{display:block;margin:15px 0}input[type=range]{width:100
 <label><input id="excluded" type="checkbox" checked> <i class="sw" style="background:#ff826b"></i>浮き・上層重なりで除外した参考線</label>
 <label>表示する元スライスの上限Z: <span id="limitText">3.00</span> mm
 <input id="limit" type="range" min="0.2" max="3" step="0.02" value="2.2"></label>
-<p class="warn">現在の6本は全て除外。特に top-06 は下層の上面に谷があり浮きます。レビュー専用で、G-code出力機能はありません。</p>
+<p class="warn">top-07 は幅0.34 mm・厚さ0.14 mmの表示仮説です。点検した位置では下面が下層に届きますが、全区間の接触・形状改善・ノズル干渉は未検証です。レビュー専用で印刷不可。</p>
 <div class="rows" id="rows"></div>
 <p><small>3MF SHA-256: <code id="modelSha"></code><br>Orca slice SHA-256: <code id="sliceSha"></code></small></p>
 </aside></main>
@@ -86,7 +86,7 @@ def build_html(source: bytes, plan: dict) -> str:
             or plan.get("printable_authorized") is not False):
         raise ValueError("review fixture identity mismatch")
     baseline = source_segments(source)
-    if len(baseline) != 669 or len(plan.get("segments", [])) != 6:
+    if len(baseline) != 669 or len(plan.get("segments", [])) != 7:
         raise ValueError("unexpected review segment counts")
     payload = {"base": [row[:6] for row in baseline], "top": top_corners(plan),
                "candidates": plan["segments"], "model_sha": MODEL_SHA256,

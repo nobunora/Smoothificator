@@ -10,6 +10,7 @@ def plan():
             "segments": [{"id": "upper-1", "reason": "top-surface",
                           "start_mm": [120, 125, 2.3], "end_mm": [130, 125, 2.3],
                           "width_mm": 0.4,
+                          "bead_height_mm": 0.1,
                           "nearest_higher_footprint_clearance_mm": 0.2,
                           "higher_footprint_overlap": False,
                           "sampled_effective_height_mm": 0.1,
@@ -56,6 +57,7 @@ class TrueZOrcaReviewTests(unittest.TestCase):
         data["segments"].append({"id": "upper-2", "reason": "top-surface",
                                  "start_mm": [120, 124, 2.34], "end_mm": [130, 124, 2.34],
                                  "width_mm": 0.4,
+                                 "bead_height_mm": 0.14,
                                  "nearest_higher_footprint_clearance_mm": -0.1,
                                  "higher_footprint_overlap": True,
                                  "sampled_effective_height_mm": 0.14,
@@ -71,6 +73,7 @@ class TrueZOrcaReviewTests(unittest.TestCase):
         data = plan()
         data["segments"][0]["sampled_effective_height_mm"] = 0.02
         data["segments"][0]["sampled_support_top_z_mm"] = 2.28
+        data["segments"][0]["bead_height_mm"] = 0.08
         data["segments"][0]["review_status"] = "below-minimum-height"
         with self.assertRaisesRegex(ValueError, "no height-and-footprint review candidates"):
             _candidate_rows(data, "source")

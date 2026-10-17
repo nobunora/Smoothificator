@@ -26,9 +26,10 @@ STL_SHA256 = "d785d15dba5e3675215abd4f98cb0c7d227e90caa1d1d424709eba8f11cf5b7a"
 SLICE_SHA256 = "499ecc78586fea15694eea16a33bfebea761522aa0bf5eee9069e67c0ae1dd9e"
 # Pinned Orca CLI fixture: the 3MF build center (90,90) is placed at bed (125,125).
 PLATE_OFFSET_MM = (35.0, 35.0)
-REVIEW_Z_MM = (2.22, 2.26, 2.30, 2.34, 2.38, 2.28)
-REVIEW_WIDTH_MM = 0.4
-NARROW_REVIEW_WIDTH_MM = 0.3
+REVIEW_BEADS = ((2.22, 0.4, 0.08), (2.26, 0.4, 0.08),
+                (2.30, 0.4, 0.10), (2.34, 0.4, 0.14),
+                (2.38, 0.4, 0.18), (2.28, 0.3, 0.08),
+                (2.28, 0.34, 0.14))
 MIN_EFFECTIVE_HEIGHT_MM = 0.08
 EDGE_INSET_MM = 0.3
 
@@ -123,8 +124,7 @@ def generate(model: bytes, stl: bytes, source: bytes) -> dict[str, object]:
     if not left_x < right_x or abs((left_x + right_x) / 2 - 125) > 1e-6:
         raise ValueError("coupon slice frame mismatch")
     segments = []
-    for index, z_mm in enumerate(REVIEW_Z_MM, 1):
-        width_mm = NARROW_REVIEW_WIDTH_MM if index == len(REVIEW_Z_MM) else REVIEW_WIDTH_MM
+    for index, (z_mm, width_mm, bead_height_mm) in enumerate(REVIEW_BEADS, 1):
         local_y = (z_mm - matrix[8] * top_local_z - matrix[11]) / matrix[5]
         if not -5 + EDGE_INSET_MM < local_y < 5 - EDGE_INSET_MM:
             raise ValueError("candidate outside top face")
@@ -157,7 +157,7 @@ def generate(model: bytes, stl: bytes, source: bytes) -> dict[str, object]:
         if status == "candidate-for-review":
             nominal_minimum_top = _exact_source_top_probe(
                 source, structural, left_x, right_x, y_mm, width_mm, z_mm)
-            if nominal_minimum_top < max(known_support) - 1e-6:
+            if nominal_minimum_top < z_mm - bead_height_mm - 1e-6:
                 status = "nominal-support-valley"
             else:
                 # Finite samples cannot prove contact over the entire bead.
@@ -166,6 +166,7 @@ def generate(model: bytes, stl: bytes, source: bytes) -> dict[str, object]:
                          "start_mm": [round(left_x, 6), round(y_mm, 6), z_mm],
                          "end_mm": [round(right_x, 6), round(y_mm, 6), z_mm],
                          "width_mm": width_mm,
+                         "bead_height_mm": bead_height_mm,
                          "sampled_support_top_z_mm": max(known_support),
                          "sampled_effective_height_mm": round(effective_height_mm, 6),
                          "sampled_effective_height_max_mm": round(maximum_effective_height_mm, 6),
@@ -175,7 +176,7 @@ def generate(model: bytes, stl: bytes, source: bytes) -> dict[str, object]:
                          "minimum_effective_height_mm": MIN_EFFECTIVE_HEIGHT_MM,
                          "review_status": status,
                          "continuous_contact_verified": False,
-                         "width_minimum_verified": False,
+                         "width_minimum_verified": width_mm >= 0.34,
                          "nearest_higher_footprint_clearance_mm": round(nearest[0], 6),
                          "nearest_higher_source_line": nearest[1],
                          "higher_footprint_overlap": nearest[0] <= 0})

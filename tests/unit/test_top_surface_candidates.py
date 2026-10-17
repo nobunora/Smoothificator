@@ -23,7 +23,7 @@ class TopSurfaceCandidatesTests(unittest.TestCase):
         review = generate(self.model, self.stl, self.source)
         matrix = review["frame"]["transform_3mf"]
         segments = review["segments"]
-        self.assertEqual(len(segments), 6)
+        self.assertEqual(len(segments), 7)
         self.assertEqual(len({row["start_mm"][2] for row in segments}), 6)
         self.assertFalse(review["printable_authorized"])
         for row in segments:
@@ -37,12 +37,15 @@ class TopSurfaceCandidatesTests(unittest.TestCase):
             self.assertLess(abs(local_y), 5)
         self.assertFalse(segments[0]["higher_footprint_overlap"])
         self.assertEqual(segments[0]["review_status"], "below-minimum-height")
-        self.assertTrue(segments[-2]["higher_footprint_overlap"])
-        self.assertEqual(segments[-1]["review_status"], "nominal-support-valley")
+        self.assertTrue(segments[-3]["higher_footprint_overlap"])
+        self.assertEqual(segments[-2]["review_status"], "nominal-support-valley")
+        self.assertFalse(segments[-2]["width_minimum_verified"])
+        self.assertEqual(segments[-1]["review_status"], "continuous-contact-unverified")
         self.assertAlmostEqual(segments[-1]["sampled_nominal_minimum_top_z_mm"], 2.16131, places=4)
         self.assertEqual(segments[-1]["sampled_effective_height_mm"], 0.08)
-        self.assertEqual(segments[-1]["width_mm"], 0.3)
-        self.assertFalse(segments[-1]["width_minimum_verified"])
+        self.assertEqual(segments[-1]["bead_height_mm"], 0.14)
+        self.assertEqual(segments[-1]["width_mm"], 0.34)
+        self.assertTrue(segments[-1]["width_minimum_verified"])
 
     def test_source_identity_change_fails_closed(self):
         with self.assertRaisesRegex(ValueError, "unpinned 3MF"):
@@ -54,6 +57,15 @@ class TopSurfaceCandidatesTests(unittest.TestCase):
         review = generate(self.model, self.stl, self.source)
         with self.assertRaisesRegex(ValueError, "no height-and-footprint review candidates"):
             build_review(self.source, review, focus=True)
+
+    def test_unverified_viewer_displays_explicit_thicker_bead(self):
+        review = generate(self.model, self.stl, self.source)
+        content, manifest = build_review(self.source, review, focus=True, show_unverified=True)
+        self.assertEqual(manifest["candidate_ids"], ["top-07"])
+        self.assertTrue(manifest["unverified_display"])
+        self.assertFalse(manifest["printable_authorized"])
+        self.assertIn(";Z:2.28\n;HEIGHT:0.14", content)
+        self.assertIn(";TYPE:Custom\n;WIDTH:0.34\n;HEIGHT:0.14", content)
 
 
 if __name__ == "__main__":
