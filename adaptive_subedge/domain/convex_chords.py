@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from fractions import Fraction
 
 from .errors import ContractError, ReasonCode
-from .mesh_section import MeshSectionResult
+from .mesh_section import MeshSectionLoop, MeshSectionResult
 
 
 def _require(condition, message):
@@ -75,3 +75,18 @@ class ConvexChordProposalSet:
                 _require(start[running] < end[running]
                          and start[1-running] == end[1-running] == row.position_mm,
                          "chord endpoints must follow their declared axis and position")
+
+
+@dataclass(frozen=True, slots=True)
+class ConvexChordPreview:
+    section: MeshSectionLoop | None
+    proposals: ConvexChordProposalSet
+
+    def __post_init__(self):
+        _require(type(self.proposals) is ConvexChordProposalSet, "exact proposal set required")
+        if self.proposals.state == "complete":
+            _require(type(self.section) is MeshSectionLoop
+                     and self.section.command_z_mm == self.proposals.command_z_mm,
+                     "completed preview requires its source section")
+        else:
+            _require(self.section is None, "failed preview cannot retain partial geometry")

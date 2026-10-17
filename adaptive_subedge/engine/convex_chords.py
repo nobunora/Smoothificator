@@ -2,7 +2,7 @@
 from fractions import Fraction
 from typing import Callable
 
-from adaptive_subedge.domain.convex_chords import ChordProposal, ConvexChordProposalSet
+from adaptive_subedge.domain.convex_chords import ChordProposal, ConvexChordProposalSet, ConvexChordPreview
 from adaptive_subedge.domain.errors import ContractError, ReasonCode
 from adaptive_subedge.domain.mesh_topology import IndexedTriangleMesh
 from adaptive_subedge.domain.numeric import finite_binary64
@@ -57,6 +57,35 @@ def propose_convex_chords(mesh: IndexedTriangleMesh, command_z_mm: float, *,
                           max_mesh_pair_checks: int, max_section_segments: int,
                           max_section_pair_checks: int, max_ray_directions: int,
                           cancelled: Callable[[], bool]) -> ConvexChordProposalSet:
+    return propose_convex_chord_preview(
+        mesh, command_z_mm, axis=axis, width_mm=width_mm, end_trim_mm=end_trim_mm,
+        chord_positions_mm=chord_positions_mm, algorithm_version=algorithm_version,
+        max_positions=max_positions, max_vertices=max_vertices, max_triangles=max_triangles,
+        max_mesh_pair_checks=max_mesh_pair_checks, max_section_segments=max_section_segments,
+        max_section_pair_checks=max_section_pair_checks, max_ray_directions=max_ray_directions,
+        cancelled=cancelled).proposals
+
+
+def propose_convex_chord_preview(mesh: IndexedTriangleMesh, command_z_mm: float, *,
+                          axis: str, width_mm: float, end_trim_mm: float,
+                          chord_positions_mm: tuple[float, ...], algorithm_version: str,
+                          max_positions: int, max_vertices: int, max_triangles: int,
+                          max_mesh_pair_checks: int, max_section_segments: int,
+                          max_section_pair_checks: int, max_ray_directions: int,
+                          cancelled: Callable[[], bool]) -> ConvexChordPreview:
+    return _preview(mesh, command_z_mm, axis=axis, width_mm=width_mm,
+        end_trim_mm=end_trim_mm, chord_positions_mm=chord_positions_mm,
+        algorithm_version=algorithm_version, max_positions=max_positions,
+        max_vertices=max_vertices, max_triangles=max_triangles,
+        max_mesh_pair_checks=max_mesh_pair_checks, max_section_segments=max_section_segments,
+        max_section_pair_checks=max_section_pair_checks, max_ray_directions=max_ray_directions,
+        cancelled=cancelled)
+
+
+def _preview(mesh, command_z_mm, *, axis, width_mm, end_trim_mm, chord_positions_mm,
+             algorithm_version, max_positions, max_vertices, max_triangles,
+             max_mesh_pair_checks, max_section_segments, max_section_pair_checks,
+             max_ray_directions, cancelled):
     if (not finite_binary64(command_z_mm) or type(axis) is not str or axis not in ("X", "Y")
             or not finite_binary64(width_mm) or float(width_mm) <= 0
             or not finite_binary64(end_trim_mm) or float(end_trim_mm) <= 0
@@ -100,6 +129,8 @@ def propose_convex_chords(mesh: IndexedTriangleMesh, command_z_mm: float, *,
             proposals.append(_propose(position, running, width, trim, bounds, planes, triangles,
                                        z, max_ray_directions, check))
         check()
-        return ConvexChordProposalSet("complete", "proposals-evaluated", z, axis, width, tuple(proposals))
+        return ConvexChordPreview(section.loop, ConvexChordProposalSet(
+            "complete", "proposals-evaluated", z, axis, width, tuple(proposals)))
     except (_Stopped, _SectionStop) as stopped:
-        return ConvexChordProposalSet(stopped.state, stopped.reason, z, axis, width, ())
+        return ConvexChordPreview(None, ConvexChordProposalSet(
+            stopped.state, stopped.reason, z, axis, width, ()))
