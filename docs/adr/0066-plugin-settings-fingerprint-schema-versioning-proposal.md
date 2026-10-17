@@ -5,6 +5,95 @@ Date: 2026-10-13
 Scope: `PluginSettings` identity schema and future Phase 0.5 Settings DTO integration only.
 Reconciliation required against Accepted ADR-0045/0049/0050/0059/0062/0063/0064/0065, `docs/SPECIFICATION.md`, `docs/IMPLEMENTATION.md` and installed Orca runtime evidence.
 
+## Normative schema decision — consolidated 2026-10-16
+
+The following is the specification-owner-approved contract, moved verbatim from the delegated decision record at Git revision `515c2a97fd51dd9590be93678524337d63447731`. This ADR owns these requirements; implementation records document provenance and do not override this ADR. No acceptance status, physical permission or implementation gate is changed.
+
+A1 (S1/S2/S8/S9): Separate, closed, frozen PluginSettingsV2 with schema_version exactly "2"; plugin-settings root schema_version exactly "2"; canonical_encoding_version remains "1" and the preexisting ADR-0062 domain-separated byte grammar remains unchanged. All declared plugin-owned controls are fingerprinted. Reject missing/extra/unknown fields, unsupported versions, bool-as-number, NaN/Inf, cyclic values and wrong nested DTO types. No v1 migration or old-hash reinterpretation. Unverified hardware profile => analysis-only; no invented safety defaults.
+
+Required top-level fields: schema_version, surface_error_tolerance_mm, minimum_effective_bead_height_mm, candidate_seam_gap_mm, regularity_policy, tool_clearance_profile, candidate_bead_bounds, support_coverage_thresholds, support_refinement_policy, support_query_numeric_policy, error_estimator_config, mesh_section_policy, candidate_motion_limits, directional_error_weights, optimizer_cost_policy, candidate_execution_policy, physical_injection_requested. Exact ToolClearanceProfile or None for research; physical_injection_requested must be false in Phase 0.5. Preserve existing public field name regularity_policy. ConservativeSupportBounds (a result), raw Orca config, runtime status, machine XYZ and final E are NOT plugin Settings. Preserve v1 bytes independently.
+
+A2 (S3): SupportQueryNumericPolicy(version: nonempty recognized string, support_query_length_tolerance_mm: finite positive binary64). This governs geometric query resolution and conservative effective-height bound convergence only; ADR-0058 area/width convergence remains separately configured. The value alone NEVER proves conservative geometric support. No numeric default. A more complicated numeric model needs its own reviewed version when an engine exists.
+
+A3 (S4/X4): CandidateMotionLimits(max_candidate_speed_mm_s: finite positive binary64, max_subedge_acceleration_mm_s2: finite positive binary64, cornering_limit: ClassicJerkCorneringLimit). The only initially declared cornering dialect is ClassicJerkCorneringLimit(model_version: nonempty allowlisted string, max_subedge_jerk_mm_s: finite positive binary64). Junction deviation and other conventions are unsupported until separately reviewed. Plugin user caps are PluginSettings fields; Orca-resolved machine limits are separate ExecutionConfigFingerprint inputs. Later executable limits must satisfy BOTH; unknown/contradictory/missing profile values fail closed. Never equate classic jerk mm/s with junction deviation mm.
+
+A4 (S5/X1): DirectionalErrorWeights(pred_to_src_weight and src_to_pred_weight: finite nonnegative binary64; not both zero) control versioned bounded-search EXPLORATION PRIORITY only, using converged directional p95:
+H = (w_pred * E_p95_pred_to_src + w_src * E_p95_src_to_pred) / (w_pred + w_src).
+Interpret binary64 inputs as exact rationals for comparison to avoid overflow and nontransitive approximate ties; faster parity-equivalent methods require testing. Weights DO NOT weaken either maximum-error hard gate or enter the final S6 ranking. Under incomplete/bounded search, weights may affect candidates examined: disclose the exploration budget and never claim global optimality.
+
+A5 (S6/S7): A plan is geometry-feasible only after independently converged bidirectional maximum error <= configured tolerance and all accepted support, collision, shape, material, clearance and motion gates. Among fully ranked, examined feasible candidates, strictly lexicographically minimize (added_path_count, added_segment_count, planned_interpath_travel_or_restart_transition_count, estimated_added_time_s, added_commanded_volume_mm3, exact_canonical_semantic_bytes). Complexity counts refer to the immutable PLANNED execution intent after versioned canonical path splitting/merging; they are nonnegative exact integers. Transitions are explicit planned non-extruding interpath or restart transitions, NOT inferred G-code. Equivalent source representations must have deterministic canonical counts; intentional path splitting can increase complexity. No float epsilon comparator and no digest-only semantic tie. No claim of globally optimal result from bounded candidate search.
+
+OptimizerCostPolicy required fields: version, literal quality_mode="hard_bidirectional_max", literal rank_mode="lex_complexity_time_commanded_volume", complexity_counter_version, search_priority_version, time_estimator_model_version, commanded_volume_accounting_version, tie_break_version, max_candidate_evaluations (positive builtin int; bool forbidden). All version IDs are nonempty/known and fingerprinted. No time predictor or universal machine constant is implied by the schema. CandidateExecutionPolicy(version, ordering_policy_id) initially allows chronological_dependency_first_v1, preserving chronological DAG and forbidding future/same-Z support; exact planned path ordering belongs to immutable Plan.
+
+## Closed Settings v2 field contract
+
+PluginSettingsV2 is frozen and slots-enabled. All 17 fields are required with no
+defaults. No subclass substitutes for an exact nested DTO class. Every field,
+including explicit None, enters the declared canonical projection.
+
+| Field | Exact type / constraint |
+| --- | --- |
+| schema_version | builtin str equal to `2` |
+| surface_error_tolerance_mm | finite binary64 > 0 |
+| minimum_effective_bead_height_mm | finite binary64 > 0 |
+| candidate_seam_gap_mm | finite binary64 >= 0 |
+| regularity_policy | CandidateSegmentRegularityPolicy |
+| tool_clearance_profile | ToolClearanceProfile or explicit None; research only |
+| candidate_bead_bounds | CandidateBeadBounds |
+| support_coverage_thresholds | SupportCoverageThresholds |
+| support_refinement_policy | SupportRefinementPolicy |
+| support_query_numeric_policy | SupportQueryNumericPolicy |
+| error_estimator_config | ErrorEstimatorConfig; sole nested SurfaceCorrespondencePolicy |
+| mesh_section_policy | MeshSectionPolicy |
+| candidate_motion_limits | CandidateMotionLimits; cornering_limit exact ClassicJerkCorneringLimit |
+| directional_error_weights | DirectionalErrorWeights; always required |
+| optimizer_cost_policy | OptimizerCostPolicy |
+| candidate_execution_policy | CandidateExecutionPolicy |
+| physical_injection_requested | builtin bool equal to false |
+
+The existing finite-binary64 scalar/projection convention is retained: builtin
+int inputs may be accepted for float fields when conversion to binary64 is
+finite, and canonical projection converts these fields to binary64. Bool,
+numeric subclasses, overflow, NaN and infinity reject; signed zero normalizes
+in the existing encoder. Integer search budgets remain exact builtin positive
+int, not float. This does not alter legacy DTOs or their byte vectors. New nested
+field names and constraints are A2–A5 above; all of their fields are required.
+
+## Initial research schema version registry — 2026-10-16
+
+This registry concretizes the delegated schema decisions for the Settings-only
+implementation slice. It assigns identifiers to the already selected semantics;
+it does not implement a predictor, geometry method or physical profile. Every
+new version field below accepts exactly its listed string. Unknown strings,
+non-string values and string subclasses are rejected. These identifiers are
+required inputs, never implicit defaults.
+
+| DTO field | Only accepted initial value | Meaning / owner |
+| --- | --- | --- |
+| SupportQueryNumericPolicy.version | `support_query_length_v1` | positive mm tolerance schema; future support engine proves conservativeness |
+| ClassicJerkCorneringLimit.model_version | `classic_jerk_v1` | classic-jerk cap in mm/s; no junction-deviation conversion |
+| OptimizerCostPolicy.version | `lexicographic_v1` | hard-gated S6 ordering described above |
+| OptimizerCostPolicy.complexity_counter_version | `planned_intent_counts_v1` | planned paths, segments, interpath travel/restart counts; no counter implemented in this slice |
+| OptimizerCostPolicy.search_priority_version | `weighted_directional_p95_rational_v1` | exact-rational normalized exploratory priority, not final rank |
+| OptimizerCostPolicy.time_estimator_model_version | `unavailable_v1` | no installed time predictor; later analysis must produce UNAVAILABLE, never AVAILABLE even with zero seconds |
+| OptimizerCostPolicy.commanded_volume_accounting_version | `commanded_volume_sum_v1` | commanded volume, separate from geometric volume; no emitter implemented |
+| OptimizerCostPolicy.tie_break_version | `canonical_semantic_bytes_v1` | lexicographic full semantic bytes, never digest-only ties |
+| CandidateExecutionPolicy.version | `candidate_execution_v1` | immutable planned-order policy schema |
+| CandidateExecutionPolicy.ordering_policy_id | `chronological_dependency_first_v1` | chronological dependency-first intent, no future/same-Z support |
+
+All fields enter the Settings v2 fingerprint. Existing nested v1 fragment DTOs
+retain their already implemented validation, including their opaque evidence
+and version strings; this registry applies to the new fields only and must not
+change old DTO acceptance or v1 bytes. `unavailable_v1` deliberately provides a
+valid research configuration while making a fully ranked or executable result
+unavailable. A real predictor ID requires a separately reviewed registry change.
+No Plan v2 projection, runtime verifier or ranking implementation is authorized
+by this Settings-only registry.
+
+## Historical proposal and rationale (non-normative)
+
+All sections below preserve proposal history. Their Proposed/approval-pending statements and candidate alternatives do not override the normative decision above. Unspecified exact contracts remain unresolved; this move does not invent missing fields, version registries or validation algorithms.
+
 ## Current proposed disposition at integrated PR #5 (2026-10-15)
 
 Requester approved all S1–S9 **policy directions**, including S6 hard quality/safety gates followed by strict lexicographic complexity, estimated added time and commanded added volume. The earlier "S6 changes requested" paragraph below records **superseded history**, not the current decision. S5 directional weights affect only the proposed bounded **candidate exploration priority**, never S6 final ranking or hard accept/reject. Missing machine-time evidence yields research-only RANKING_INCOMPLETE, not zero time or printable success. See `docs/implementation/phase05-unified-contract-review-2026-10-15.md`.

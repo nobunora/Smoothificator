@@ -6,6 +6,489 @@ Design branch: `proposed-phase05-dto-attempt-20261014`
 Related: Accepted ADR-0037, 0049, 0061, 0062, 0064, 0065; jointly specification-owner-approved ADR-0066 in Draft PR #5 (not yet merged into canonical base).
 Scope: Phase 0.5 contracts ONLY — no Orca adapter, G-code execution or physical printer authorization.
 
+## Normative schema decision — consolidated 2026-10-16
+
+The following is the specification-owner-approved contract, moved verbatim from the delegated decision record at Git revision `515c2a97fd51dd9590be93678524337d63447731`. This ADR owns these requirements; implementation records document provenance and do not override this ADR. No acceptance status, physical permission or implementation gate is changed.
+
+B1 (D1-D4/D10): SurfaceBand has unique nonempty surface_band_id, typed source_geometry identity, typed immutable target_boundary_ref and residual_error_region_ref, chronological_support_reference_ids and optional nesting_parent_band_id. References include exact type/schema/full lowercase digest and centered PrintObject frame identity, with mm units. Analysis-owner validation (NOT mere DTO construction) proves references exist in the same immutable snapshot, temporal support is earlier than its consumer, and nesting has no cycle. This is a vocabulary contract, not a topology/support algorithm. Final ARCHITECTURE source tree is a later-phase target; no placeholder G-code/Orca/optimizer executable files in Phase 0.5.
+
+B2 (D3/D4): StructuralLoopReferenceV2 adds finite positive length, six finite ordered PrintObject bounds in mm, versioned winding/material-side policy, at least three non-collinear matching anchors under a versioned predicate, canonical shape algorithm version and full 64-lowercase-hex digest. Do not infer material side from raw normals. InsertionAnchorV2 adds structural interval, boundary signature/schema version, finite positive matching_tolerance_mm and matching_profile_id. Planner path/segment support provenance and explicit travel/restart intent are immutable. These fields DO NOT certify real Orca matching.
+
+B3 (D5): PlanSemanticContentV2 uses subedge-plan identity root schema_version="2" (independent of Settings root), unchanged encoding version "1", full hash-free semantic projection and derived plan_id == plan_hash. Plan v1 source/bytes stay unchanged. V2 includes typed source/execution/settings identity references, frozen geometry, temporal support/order, v2 loop/anchor metadata, separate directional/convergence evidence, and tagged estimated-time availability. Exclude runtime attempt/session/generation, final emitted E, machine offsets and timestamps.
+
+B4 (D5/D6): BidirectionalSurfaceErrorMetrics retain separate direction max/RMS/p95 (already present as standalone DTO in PR #2). A separate ErrorConvergenceEvidence record has UNKNOWN / CONVERGED / FAILED, estimator policy identity, refinement count and evidence reference. Constructing a DTO with CONVERGED cannot substitute for actual estimator verification. Both directional maxima must be independently converged before physical acceptance. Existing v1 summary ErrorMetrics does not prove either direction.
+
+B5 (X2): AddedTimeEvidence is a disjoint tagged union: AVAILABLE(finite nonnegative estimated_added_time_s, predictor model version, typed resolved ExecutionConfig identity, evidence reference) OR UNAVAILABLE(stable failure reason, immutable nonempty missing-dependency IDs). Reject mixed variants, missing evidence and numeric 0/None/NaN/Inf as placeholders for unknown. Geometry-feasible candidates with missing required time make full comparison RANKING_INCOMPLETE / ANALYSIS_ONLY; do not silently exclude them then claim a globally or physically optimal choice. Geometry may still be reported for research.
+
+B6 (D6-D9): ValidationEvidence has UNKNOWN / VALIDATED / REJECTED, typed validated subject when applicable, policy version, stable reason and evidence reference. Only the application-owned verifier may transition to VALIDATED after actual proof. Attempt checks are distinct for compatibility descriptor, Settings fingerprint, ExecutionConfig fingerprint and source-working-file identity. Missing => UNKNOWN, never PASS. InjectionAttemptStore remains the single owner of monotonic state and immutable revisions, with explicitly caller-configured bounded retention (no unbounded log). Do not modify Plan hash with attempt data.
+
+The implemented PlanStore.begin_postprocess_attempt is retained as the ADR-0065 atomic PlanSnapshot+unique Attempt issuance owner. V2 may add an opaque process-local snapshot_issue_id minted under the same critical section and checked against actual issued snapshot identity; no invented Orca callback UUID. New analysis generation or post-snapshot eviction does not mutate an issued snapshot; epoch reset invalidates old-session eligibility.
+
+## Closed Phase 0.5 runtime-interface skeleton — 2026-10-16
+
+This section closes the static B6 diagnostic vocabulary and ROADMAP Phase 0.5's
+ADR-0061 commit-lock interface. It does not implement the Phase 4 runtime proof
+verifier, path resolution, filesystem locking or replacement. It deliberately
+does not complete B6's eventual VALIDATED evidence lifecycle. These later gates
+must not be represented as passed or used to block independent Phase 1 pure
+geometry once the architecture-skeleton gates themselves pass.
+
+### Immutable diagnostic shapes, with no success authority
+
+All three DTOs below are frozen/slotted, exact nested types, all fields required
+and no defaults. Strings are exact builtin nonblank strings, with no implicit
+trimming/normalization. They are runtime-only and remain excluded from every
+canonical Plan/Settings projection, including the Plan-v2 context.
+
+| DTO | All required fields |
+| --- | --- |
+| ValidationEvidence | state: str; subject: IdentityReference or None; validation_policy_version: str; reason: ReasonCode or None; evidence_reference: str or None |
+| AttemptDiagnosticSnapshot | attempt_revision: exact AttemptRevision; compatibility: exact ValidationEvidence; plugin_settings: exact ValidationEvidence; execution_config: exact ValidationEvidence; source_working_file: exact ValidationEvidence |
+| WorkingFileCommitKey | key_id: str; resolver_policy_version: str |
+
+ValidationEvidence.state accepts exactly `unknown` or `rejected`. `validated`
+is reserved and MUST reject in Phase 0.5, regardless of subject, string evidence,
+caller or policy. There is no success factory, authority token, bypass flag,
+transition method or constructor variation that creates VALIDATED. The initial
+validation_policy_version is exactly `diagnostic_checks_v1`: this names the
+diagnostic representation rules only, not an implemented validation algorithm.
+Unknown requires reason=None and evidence_reference=None. Rejected requires
+an exact existing ReasonCode; evidence_reference is None or a nonblank string
+identifying failure diagnostics. A subject may be None for either state, since
+failure or missing inputs can occur before a trustworthy subject is established.
+A supplied subject must be an exact IdentityReference with full valid digest.
+
+The only subject role/version/encoding tuples accepted by ValidationEvidence are
+compatibility-descriptor/1/1, plugin-settings/1/1, plugin-settings/2/1,
+execution-config/1/1 and source-working-file/1/1. The diagnostic snapshot further
+requires each non-None subject to have the corresponding check's role, with only
+plugin_settings accepting either schema 1 or 2. Compatibility/source-file roles
+are reference vocabulary, not newly implemented public hashing domains. No path,
+mtime or arbitrary descriptor string may be silently hashed to invent proof.
+Diagnostic evidence does not certify that its supplied subject is genuine.
+
+AttemptDiagnosticSnapshot binds all four distinct checks to the single supplied
+immutable AttemptRevision. Read-only attempt_id and record_revision properties
+derive respectively from attempt_revision.record.attempt_id and its revision;
+do not accept separately writable identifiers. The value is a diagnostic view,
+not an authoritative store update: DTO construction cannot establish that the
+revision was issued by a store, or that it is still retained/current. Consumers
+must not treat it as a receipt, execute from it or change AttemptState from it.
+No snapshot registry/cache or second mutable owner is introduced in this slice.
+
+InjectionAttemptStore retains its existing records, monotonic revisions and
+bounded retention. It does not attach or persist this new diagnostic view yet.
+Phase 4's application-owned verifier must associate actual checks with the exact
+store-issued attempt/revision, reject stale/foreign associations, and commit
+evidence plus any authorized state update under that same owner's lock and
+retention policy. That later change requires its own reviewed interface and
+failure-atomicity tests; this slice does not add a caller-writable success path.
+Existing AttemptState.VALIDATED remains the legacy lifecycle vocabulary and is
+not upgraded into proof by this diagnostic DTO.
+
+Typed Settings/ExecutionConfig equality is a deterministic identity operation;
+it proves only equality of the supplied supported typed fingerprints. It does
+not prove they came from the current hook/config. Source-working-file validation
+requires actual platform path/file identity and streaming digest I/O plus final
+revalidation under ADR-0061. Neither fingerprint equality nor a key/evidence
+string substitutes for those checks. Compatibility likewise needs the reviewed
+target descriptor and actual supported runtime, not constructor success.
+
+### Commit-lock port only
+
+WorkingFileCommitKey.key_id and resolver_policy_version are opaque nonblank
+builtin strings. The DTO does not normalize/resolve paths, read metadata,
+interpret file IDs, reject symlinks or certify an authorized resolver. A future
+platform adapter supplies the result only after performing ADR-0061 resolution;
+there is no built-in default resolver policy and no path-to-key helper here.
+
+Define exactly this synchronous structural Protocol in the ports layer:
+
+```python
+class WorkingFileCommitLockRegistry(Protocol):
+    def hold(self, key: WorkingFileCommitKey) -> ContextManager[None]: ...
+```
+
+The future provider's context manager acquires the process-local key's exclusion
+on __enter__ and releases it on __exit__, including exceptional exits. The entire
+ADR-0061 final revalidation/idempotence/replace/outcome sequence runs inside that
+context, not the long parsing pass. Same-key commits serialize and different
+keys may proceed independently; registry cleanup must be bounded. The port
+itself performs no acquisition, I/O, normalization, atomic replacement or proof.
+Do not supply a no-op production implementation or success-returning fake.
+Platform-specific timeout/cancellation and key verification belong to the later
+provider's reviewed contract. Tests may use a local test double solely to verify
+the call shape; they cannot claim real concurrency or platform guarantees.
+
+### Skeleton acceptance and sequencing
+
+Test exact fields/types, unknown/rejected state combinations, reserved validated
+rejection, malformed and wrong-role subjects, diagnostic association properties,
+immutability and canonical rejection. Check the port imports only permitted
+domain/standard-library types and has the exact hold signature; no filesystem
+adapter or concrete lock implementation appears. Existing stores, v1/v2 hashes
+and all tests remain unchanged. Once these and prior skeleton quality/review
+gates pass, Phase 1A mathematical primitives may proceed. Actual runtime proof,
+source I/O, matching, cancellation and commit serialization remain explicitly
+unverified Phase 4 obligations, not falsely completed Phase 0.5 work.
+
+## Closed research Plan v2 graph and identity — 2026-10-16
+
+This section closes B1-B5's research Plan representation and canonical projection.
+It incorporates the standalone loop, anchor and analysis-evidence vocabulary
+below. It does not assert execution, topology, convergence or physical proof.
+All new DTOs are frozen/slotted, with required fields and no implicit defaults.
+Builtin strings are nonblank, tuple fields require exact tuples and exact nested
+classes, IDs are case-sensitive, duplicate IDs reject, numeric fields use the
+existing finite-binary64 convention and integer fields reject bool/subclasses.
+No raw mappings or live Orca objects substitute for declared DTOs.
+
+### Exact graph vocabulary
+
+Every frame below is the literal `centered_printobject_mm_v1`. IdentityReference
+always includes exact type/schema/encoding and full lowercase SHA-256. Source
+references are source-geometry/1/1, execution references execution-config/1/1,
+and Settings references plugin-settings/2/1. Comparison includes the complete
+typed identity, not its digest alone.
+
+| DTO | All required fields |
+| --- | --- |
+| GeometryRegionReferenceV2 | identity: IdentityReference; source_geometry: IdentityReference; coordinate_frame: str |
+| SupportReferenceV2 | reference_id: str; contributor_kind: str; contributor_id: str |
+| SurfaceBandV2 | surface_band_id: str; source_geometry: IdentityReference; target_boundary_ref: GeometryRegionReferenceV2; residual_error_region_ref: GeometryRegionReferenceV2; chronological_support_reference_ids: tuple[str,...]; nesting_parent_band_id: str or None |
+| StructuralLoopContextV2 | loop_id: str; structural_interval_id: str; layer_index: int>=0; execution_order: int>=0; maximum_path_z_mm: finite binary64 |
+| SegmentSupportIntentV2 | support_reference_ids: tuple[str,...]; settings_identity: IdentityReference; evidence_reference: str or None |
+| SubEdgePathV2 | path: exact existing SubEdgePath; surface_band_id: str; insertion_anchor_id: str; segment_support: tuple[SegmentSupportIntentV2,...] |
+| PlannedTransitionV2 | from_path_id: str; to_path_id: str; kind: str; policy_version: str |
+
+GeometryRegionReferenceV2.identity has type `surface-boundary` or
+`residual-error-region`, schema `1`, encoding `1`. These two identities are
+typed references to future analysis-owned immutable geometry, not new public
+hashing domains or a claim that an engine exists. Reject any other role/version.
+target_boundary_ref requires surface-boundary; residual_error_region_ref
+requires residual-error-region. Both source identities equal their band's
+source_geometry. The frame is required on every region reference. Region
+identity and source identity together bind a registry entry to one snapshot;
+the containing analysis remains responsible for the actual referenced geometry.
+
+SupportReferenceV2.contributor_kind is exactly `structural-loop` or
+`candidate-path`; contributor_id names the corresponding loop_id or path_id.
+IDs are distinct within their own namespace. SegmentSupportIntentV2 records
+immutable planning inputs and optional reproducible analysis evidence, not a
+VALIDATED/PASS outcome. Its settings identity must equal the Plan's Settings
+identity. None means evidence unavailable; a nonblank string does not prove
+support. Empty support lists are allowed for incomplete research analysis and
+cannot be interpreted as a physically supported candidate.
+
+SubEdgePathV2 reuses the unchanged v1 SubEdgePath/SubEdgeSegment numeric and
+continuity constraints. segment_support has exactly one entry per path segment,
+in segment order. It adds no machine XYZ, emitted E or runtime status. A future
+engine can implement path-level support by repeating an immutable intent value
+for its segments; no inference discards segment-local contributor differences.
+
+PlannedTransitionV2.kind is one of `continuous`, `travel`, `restart`,
+`travel-restart`; policy_version is exactly `declared_interpath_intent_v1`.
+These declare intent between successive candidate paths, not safe travel
+coordinates, extrusion amounts or verified G-code. There is exactly one entry
+for each adjacent pair of candidate paths in execution order and no entry for
+an empty/single-path Plan. Continuous contributes zero to the interpath
+travel/restart count; each other entry contributes one, including travel-restart.
+Restart within a path must first be represented as an explicit path split.
+Initial/final transitions to structural G-code are not interpath transitions
+and are excluded from this count, not from later time/safety verification.
+
+### Closed PlanSemanticContentV2 projection
+
+PlanSemanticContentV2 has exactly these eighteen required fields:
+
+| Field | Exact type / constraint |
+| --- | --- |
+| schema_version | builtin str literal `2` |
+| plugin_version | nonblank builtin str |
+| compatibility_descriptor_id | nonblank builtin str; declaration, not validated compatibility |
+| source_geometry | IdentityReference(source-geometry,1,1,digest) |
+| execution_config | IdentityReference(execution-config,1,1,digest) |
+| plugin_settings | IdentityReference(plugin-settings,2,1,digest) |
+| geometry_regions | tuple[GeometryRegionReferenceV2,...] |
+| support_references | tuple[SupportReferenceV2,...] |
+| surface_bands | tuple[SurfaceBandV2,...] |
+| structural_loops | tuple[StructuralLoopReferenceV2,...] |
+| structural_loop_contexts | tuple[StructuralLoopContextV2,...] |
+| candidate_paths | tuple[SubEdgePathV2,...] |
+| anchors | tuple[InsertionAnchorV2,...] |
+| transitions | tuple[PlannedTransitionV2,...] |
+| directional_error | exact DirectionalErrorEvidence |
+| added_time | exact TimeEstimateUnavailable or TimeEstimateAvailable |
+| volumes | exact PlannedVolumesV2 |
+| analysis_outcome | exact ResearchPlanOutcomeV2 |
+
+PlannedVolumesV2 has exactly geometric_volume_mm3 and commanded_volume_mm3,
+both finite binary64 >=0. They are separately declared planned measures; the
+future engine proves their agreement with geometry and commanded flow.
+ResearchPlanOutcomeV2 has exactly injectable (builtin bool, must be false) and
+reason (builtin str in `phase05-analysis-only`, `ranking-incomplete`,
+`unverified-geometry`, `infeasible`). No constructor grants a feasible/optimal
+classification. If added_time is unavailable, reason must be ranking-incomplete
+unless reason is infeasible or unverified-geometry. An available value has its
+existing evidence requirements and must name the exact Plan execution identity.
+It remains research evidence, not an installed time predictor; current Settings'
+unavailable_v1 cannot produce it through the real planning pipeline. Both
+directional convergence policy identities must equal plugin_settings.
+
+All registry-like tuple orders are canonical and checked, not silently sorted:
+geometry_regions by (identity.identity_type, identity.digest_hex);
+support_references by reference_id; surface_bands by surface_band_id;
+structural_loops and structural_loop_contexts by loop_id; anchors by anchor_id.
+String sorting is Python Unicode codepoint order, without Unicode normalization.
+Support reference ID lists are unique and sorted by the same rule. Candidate
+paths are strictly increasing by path.execution_order. Transitions follow their
+adjacent candidate pair order. Loop points, matching anchors, segments and
+insertion-anchor structural_loop_ids retain their existing meaningful order.
+All tuples may be empty where the invariants below permit; no fabricated geometry
+or success evidence is required to represent an empty research result.
+
+### Required containing-graph checks
+
+1. Region keys are unique; every region and band has the exact Plan source
+   identity. Each band's target/residual value equals a complete registry entry.
+   Registry membership proves the declaration exists in this immutable graph,
+   not that an external mesh is closed or its digest has been verified.
+2. Loop contexts cover structural_loops one-to-one, with no extra/missing IDs.
+   maximum_path_z_mm equals the maximum binary64 point Z of its loop, allowing
+   nonplanar ZAA structural loops. This is a conservative path-coordinate bound,
+   not a bead/support envelope or proof of deposited material.
+   Context execution orders and candidate path execution orders together are
+   unique nonnegative chronological event indices; gaps are allowed.
+3. Band parent IDs exist, are not self, and form an acyclic forest. This checks
+   declared nesting only; geometric containment is the future engine's proof.
+4. Every support reference resolves to a declared loop or candidate path.
+   Each segment and band support ID resolves to that support registry. Every
+   candidate has an existing band and insertion anchor. Bands may be unused
+   diagnostic regions; their support chronology is checked when they have
+   consumers and does not become a success assertion when they have none.
+5. For each candidate, union its band's and all its segments' support IDs.
+   Each contributor must have a smaller global execution_order AND strictly
+   lower height than the consumer candidate's command_z_mm: use a structural
+   contributor's maximum_path_z_mm or a candidate contributor's command_z_mm.
+   Candidate contributor path IDs in
+   this union must equal the base path.support_dependency_path_ids set. Thus
+   missing, self, future, same-Z and cyclic candidate support rejects. Preserve
+   the existing base path dependency ordering; require it lexically sorted.
+6. Each anchor loop ID resolves to a contextualized loop; all those contexts'
+   structural_interval_id equals target_structural_interval_id. The anchor
+   layer_index equals each of those context layer_index values. Each candidate
+   path.interval_id equals its anchor.target_structural_interval_id, and every
+   loop of its anchor has execution_order smaller than the candidate's. This is
+   a declared layer/interval mapping, not final G-code insertion proof.
+7. Transitions exactly cover adjacent candidates, without duplicates or dangling
+   endpoints. The derived research complexity counts are len(candidate_paths),
+   sum(len(p.path.segments)), and count(kind != continuous). Do not store a second
+   independently supplied complexity tuple or claim representation-optimality.
+8. Enforce all exact nested types, reference roles/versions, immutable shapes,
+   directional/time identity consistency and non-injectable outcome above.
+
+### Identity and ownership
+
+SubEdgePlanV2 has exactly content:PlanSemanticContentV2, plan_hash:str,
+plan_id:str. Derived IDs are identical full lowercase hashes. The application
+serializer declares the complete explicit Plan-v2-root-context projection above,
+including all new nested DTOs and existing loop/anchor/evidence fields. It does
+not add these types to the public standalone semantic_tree registry: standalone
+semantic_tree calls still reject the new loop/anchor/evidence/Plan-v2 objects.
+Only identity_root(subedge-plan, exact PlanSemanticContentV2, schema_version=2)
+enters this explicit context. The earlier standalone exclusion remains intact;
+this section authorizes their nested projection inside the complete v2 root.
+Support/reference/analysis
+evidence strings included in a Plan must be deterministic immutable planning
+provenance, never invocation IDs, timestamps or mutable runtime evidence.
+Use the existing subedge-plan root with schema `2`, encoding `1` and ADR-0062
+`plan` digest domain. Payload schema_version must also be `2`. Exclude derived
+plan_hash/plan_id, session/generation/attempt state, final machine offsets/E and
+timestamps. There is no v1 migration or registration change to v1 payloads.
+
+Provide dedicated create_plan_v2/verify_plan_v2 application boundaries: construct
+the validated semantic graph, project, compute hash, then create the frozen
+envelope; mismatched caller-supplied IDs reject. Root validation dispatches on
+both identity_type and schema_version, with closed nested validation, exact
+projected scalar tokens and tagged time variants. Only plugin-settings and
+subedge-plan gain schema 2 support; other roots remain schema 1. Unknown fields,
+versions, raw-map shortcuts, cross-domain payloads and mixed v1/v2 references
+reject. Generic typed identity comparison may compare two matching Plan-v2
+identities but never equate different schema versions. Legacy create_plan,
+verify_plan and all v1 bytes retain their current contracts.
+
+PlanStore remains the single publication/session/retention owner and accepts
+verified v1 or v2 envelopes for immutable snapshots and preview. Its publication
+validation dispatches to the corresponding verify_plan or verify_plan_v2; do not
+introduce a parallel store. PlanSemanticContentV2 exposes a read-only injectable
+property returning analysis_outcome.injectable (always false), not a nineteenth
+payload field. begin_postprocess_attempt and eligible continue selecting only
+injectable plans, so research v2 entries cannot enter an execution candidate
+snapshot. General snapshots may contain both envelope types. Publish/generation,
+bounded retention, reset and issued-snapshot ownership remain existing behavior.
+Physical admission needs a separate accepted compatibility/geometry/runtime-
+verifier contract. This explicit research outcome and eligibility check prevent
+new DTOs from silently enabling injection. This closes the
+research Plan representation; it does not claim the remaining runtime proof
+verifier or installed Orca gates are complete.
+
+## Closed standalone structural-loop vocabulary — 2026-10-16
+
+This closes B2's standalone StructuralLoopReferenceV2 representation, not its
+source-derived geometry proof or the complete Plan v2 projection. The DTO is
+frozen/slotted and has exactly these thirteen required fields, with no defaults:
+
+| Field | Exact type / constraint |
+| --- | --- |
+| loop_id | nonblank builtin str |
+| points | builtin tuple of at least three exact PrintPoint3 values |
+| seam_gap_allowance_mm | finite binary64 >=0 |
+| loop_length_mm | finite binary64 >0; supplied length, not a computed proof |
+| bounds_print_space_mm | builtin six-tuple of finite binary64: xmin,xmax,ymin,ymax,zmin,zmax |
+| coordinate_frame | builtin str literal `centered_printobject_mm_v1` |
+| winding_orientation | builtin str: `unknown`, `cw_xy`, or `ccw_xy` |
+| winding_policy_version | builtin str literal `declared_xy_winding_v1` |
+| material_side_policy_version | nonblank builtin str naming the external orientation/material-side policy |
+| matching_anchor_points_print_space_mm | builtin tuple of at least three exact PrintPoint3 values |
+| anchor_predicate_version | builtin str literal `exact_binary64_cross_product_v1` |
+| shape_canonicalization_version | nonblank builtin str naming the external shape algorithm |
+| canonical_shape_hash | builtin str of exactly 64 lowercase ASCII hexadecimal characters |
+
+Numeric validation uses the existing finite-binary64 convention: builtin int
+inputs are interpreted after conversion to float; bool, numeric subclasses,
+overflow and nonfinite values reject. Coordinate comparisons below use those
+binary64 values, with signed zero equivalent. The point sequence represents a
+cyclic loop: the closing last-to-first edge is implicit, so all points must be
+distinct and a repeated closing endpoint rejects. Preserve point/anchor order;
+do not rotate, reverse, simplify, snap or otherwise canonicalize supplied geometry.
+The bounds must have ordered axis extrema and equal the coordinate-wise extrema
+of points. All anchors must lie within these bounds; anchors need not be vertices
+of points because a later matcher may choose interpolated locations. Anchor
+coordinates must be distinct. These are local representation checks, not a
+simple-loop, planar-loop, contour-membership or mesh-topology proof.
+
+The anchor predicate is defined completely here: convert each coordinate to its
+finite binary64 value, then interpret that value as its exact rational number.
+Let a and b be the first two (distinct) anchors. Require at least one remaining
+anchor c for which the exact 3D cross product (b-a) x (c-a) is nonzero. Do not use
+float intermediate subtraction/multiplication, an epsilon, rounded area or a
+norm/square-root comparison. Arbitrary-precision rational arithmetic gives a
+deterministic predicate even at subnormal/extreme magnitudes. This checks affine
+noncollinearity only: an almost-collinear triple may pass and does not establish
+numerical conditioning or a physically sufficient matcher baseline.
+
+cw_xy/ccw_xy denote a caller's declaration when viewed from +Z toward the XY
+plane; unknown explicitly represents an unresolved declaration. This DTO does
+not derive or certify winding from point order or normals. The material-side
+and shape-algorithm version strings are opaque references, not an allowlist of
+supported algorithms. A syntactically valid supplied digest does not establish
+that its source geometry was canonicalized. ADR-0030's source topology/orientation
+and independent inside/outside validation, ADR-0050's material-side use and
+ADR-0059's simple-loop/no-hole/no-branch/no-self-intersection contract remain
+future analysis-owner obligations. Unknown orientation remains non-injectable.
+Length agreement, anchor-on-contour membership, winding agreement, material-side
+proof and digest/algorithm agreement must be established by that owner; no DTO
+constructor or property grants validated/injectable/matched authority.
+
+Keep this standalone type outside canonical serialization and PlanStore until
+the complete Plan v2 schema is accepted. Do not register the new frame/policy
+names as supported source-geometry hashing or physical matching algorithms.
+Existing StructuralLoopReference, v1 bytes and hash roots remain unchanged.
+Required focused checks include malformed fields, repeated points/anchors,
+incorrect/reversed bounds, outside anchors, exactly collinear rejection,
+noncollinear subnormal/extreme-coordinate acceptance without float overflow,
+unknown frame/predicate/winding values, immutability, canonical rejection and
+unchanged v1 projection. No numerical engine or Orca integration is introduced.
+
+## Closed standalone insertion-anchor vocabulary — 2026-10-16
+
+B2's standalone InsertionAnchorV2 has exactly eight required fields:
+anchor_id, structural_loop_ids, layer_index, boundary_signature,
+target_structural_interval_id, boundary_signature_schema_version,
+matching_tolerance_mm, matching_profile_id. It is frozen/slotted, with no defaults.
+All string values are exact builtin nonblank strings. structural_loop_ids is an
+exact nonempty tuple of distinct nonblank builtin strings, preserving order.
+layer_index is an exact builtin int >=1. matching_tolerance_mm is finite binary64
+and >0 (bool/subclasses/overflow reject under existing numeric conventions).
+
+The sole initial boundary_signature_schema_version is
+`opaque_boundary_signature_v1`: a research token vocabulary, NOT a matching or
+signature-generation algorithm. boundary_signature is opaque and MUST NOT be
+interpreted as proof of matching. matching_profile_id names a future verifier's
+profile; construction does not resolve or approve that profile.
+
+This DTO remains outside canonical serialization and PlanStore until the full
+Plan v2 projection is closed. No validated/injectable property is present.
+The analysis owner must later prove loop/interval membership in the same source
+snapshot; no DTO construction or string equality proves geometric correspondence.
+Existing v1 constructors, projected bytes, and hash roots remain unchanged.
+This closes the standalone vocabulary only, not all of B2 or Phase 0.5.
+
+## Closed analysis-evidence and bounded-history slice — 2026-10-16
+
+This slice concretizes B4/B5 and the retention portion of B6. It does not define
+the remaining Plan v2 projection, geometry references, runtime proof verifier,
+or new snapshot token. Existing atomic PlanStore issuance remains the owner.
+
+All evidence values are frozen/slots with required fields, exact declared DTO
+classes and builtin strings/integers. Float inputs use the existing finite
+binary64 convention; bool, numeric subclasses and nonfinite/overflow reject.
+Evidence references are nonblank immutable identifiers, not proof by themselves.
+
+| DTO | Exact fields and constraints |
+| --- | --- |
+| TimeEstimateAvailable | tag literal `available`; estimated_added_time_s finite >=0; predictor_model_version nonblank str other than `unavailable_v1`; resolved_execution_config exact IdentityReference(execution-config,1,1,full digest); evidence_reference nonblank str |
+| TimeEstimateUnavailable | tag literal `unavailable`; reason one of `time-model-unavailable`, `missing-execution-config`, `missing-model-evidence`; missing_dependency_ids nonempty duplicate-free tuple of nonblank builtin str |
+| ErrorConvergenceEvidence | state one of `unknown`, `converged`, `failed`; estimator_policy exact IdentityReference(plugin-settings,2,1,full digest); refinement_count exact int >=0; evidence_reference nonblank str or None; reason declared string below or None |
+| DirectionalErrorEvidence | metrics exact BidirectionalSurfaceErrorMetrics; pred_to_src exact ErrorConvergenceEvidence; src_to_pred exact ErrorConvergenceEvidence |
+
+UNKNOWN requires count=0, evidence=None and reason=None. CONVERGED requires
+count>=1, nonblank evidence and reason=None. FAILED requires a reason from
+`refinement-budget-exhausted`, `missing-error-evidence`, `invalid-error-domain`;
+count may be zero and evidence may be absent. Both direction records must name
+the same typed estimator policy identity. One converged direction never stands
+in for the other. No constructor/property returns printable/validated/feasible
+authorization; future estimator/application ownership remains required.
+
+These DTOs are standalone, deliberately NOT registered in canonical projection
+until a complete Plan v2 contract is reviewed. No bare time Optional/zero sentinel,
+mixed tagged alternatives, v1 Plan/Settings changes or synthetic successful proof.
+The available DTO is a data vocabulary, not a currently supported predictor:
+Settings' only installed time model remains unavailable_v1.
+
+### Opt-in bounded Attempt history
+
+InjectionAttemptStore remains the single state owner. Add keyword-only
+`max_attempts` and `max_revisions_per_attempt`. Either both are omitted/None
+(legacy behavior, no retained revision history), or both are exact positive
+builtin ints. Partial/zero/bool/noninteger values reject. Bounded mode stores an
+immutable `AttemptRevision(revision:int>=0, record:InjectionAttemptRecord)`.
+Begin creates revision 0; each successful monotonic transition adds 1, even after
+older revisions were pruned. Failed operations never change records/history.
+
+At capacity, begin evicts the earliest-created terminal attempt and its history;
+active attempts are never evicted. If all retained attempts are active, reject
+begin with INVALID_STATE_TRANSITION. Validate new record and detect duplicate
+UUID before evicting anything. Every operation uses the existing AttemptStore
+lock; PlanStore -> AttemptStore lock order remains unchanged. Preserve rollback
+on failed atomic issuance. Returned immutable history survives subsequent pruning.
+`history(attempt_id)` returns a tuple, empty for an unknown/evicted ID or legacy
+mode; malformed IDs reject. Revision envelopes stay runtime-only and excluded
+from canonical projection. This adds no validation-evidence success transition;
+legacy AttemptState progression remains unchanged and is not a printer gate.
+
+Bounded retention must not allow an evicted ID to be reused: append a store-owned
+monotonically increasing issuance sequence to the generated UUID in bounded
+mode. IDs remain opaque strings. Reject a generated UUID that duplicates any
+currently retained UUID before eviction; a previously evicted UUID may recur
+only with a different sequence suffix. Increment sequence only on successful
+publication. This prevents stale callbacks addressing a different new attempt
+without requiring an unbounded tombstone set. Legacy ID formatting is unchanged.
+
+## Historical proposal and rationale (non-normative)
+
+All sections below preserve proposal history. Their Proposed/approval-pending statements and candidate alternatives do not override the normative decision above. Unspecified exact contracts remain unresolved; this move does not invent missing fields, version registries or validation algorithms.
+
 ## Current proposed disposition at integrated PR #5 (2026-10-15)
 
 Requester approved D1–D10 **design directions**, not final typed contract sign-off. The early baseline passage below saying atomic PlanStore snapshot/attempt issuance is absent is **historical**: implementation PR #2 now implements and tests `PlanStore.begin_postprocess_attempt` under Accepted ADR-0065. This proposal adds only unapproved immutable provenance, richer validation evidence, v2 directional quality metrics and tagged time-availability semantics. See `docs/implementation/phase05-unified-contract-review-2026-10-15.md`.

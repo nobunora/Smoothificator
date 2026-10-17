@@ -102,6 +102,78 @@ First/last candidate segments and candidate seam-gap-adjacent segments use the s
 
 Nominal flat axial end-cap modeling does not waive transition/segment regularity.
 
+### Closed planned-path numerical regularity gate
+
+The bounded `planned_segment_regularity_v1` evaluator checks only plan-space
+length/time and adjacent commanded volumetric rate, width and effective height.
+It does not establish openness/seam correctness, bead bounds/flow consistency,
+support, material containment, physical calibration or injection authority.
+Existing SubEdgePath construction can represent a closed loop; this gate neither
+rejects that shape nor proves it open. Separate plan-intent validation must ensure
+open execution geometry. Do not compare last and first segments cyclically.
+
+Exact API (frozen slotted result, no defaults):
+
+```python
+PathRegularityResult(state: str, reason: str,
+    offending_segment_indices: tuple[int, ...])
+
+evaluate_path_regularity(path: SubEdgePath, *,
+    policy: CandidateSegmentRegularityPolicy, max_segments: int,
+    cancelled: Callable[[], bool]) -> PathRegularityResult
+```
+
+Require exact existing path/policy types, exact positive integer max_segments
+(bool excluded), callable cancelled and exact bool callback results. The policy
+version must be exactly planned_segment_regularity_v1; unknown versions raise
+INVALID_SETTING at this evaluator. Preserve the existing policy constructor,
+all existing path/segment DTOs, serialization and v1 hash bytes unchanged.
+Invalid path types use INVALID_GEOMETRY; invalid settings/limits/callback use
+INVALID_SETTING. Callback exceptions propagate. A nonempty fixture_evidence_ref
+is not verified physical evidence; None is allowed for this numerical gate.
+
+Validate top-level arguments, check cancellation, then reject an over-budget
+segment count as incomplete/resource-limit before iterating segments. Convert
+all geometric/policy numeric operands through float then exact Fraction, matching
+the existing finite binary64 contract. No square root or float arithmetic predicate
+is needed. Existing DTO validation supplies finite positive speed, q_geom,
+q_cmd, width and height and same-Z contiguous segment intent; this gate does not
+assert those values came from a physically valid calculation.
+
+First pass: for each segment i in ascending order calculate exact
+`L2=(end.x-start.x)**2+(end.y-start.y)**2` from normalized coordinates.
+Require `L2 > min_candidate_segment_length_mm**2`; equality rejects segment-length.
+Then require `L2 >= (requested_speed_mm_s*min_candidate_segment_time_s)**2`;
+failure rejects segment-time. Thus the strict conservative plan-time length
+threshold differs deliberately from final quantized >= acceptance. Time equality
+is accepted. Normalization-collapsed endpoints fail the length test.
+
+Only after every segment passes, scan adjacent pairs (i,i+1) in ascending order.
+Compute exact `Q_i=commanded_mm3_per_mm_i*requested_speed_mm_s_i`. Check, in order,
+absolute adjacent Q difference, width difference, and effective_bead_height_mm
+difference against the corresponding policy maximum. Equality is accepted;
+exceedance yields adjacent-rate-step, adjacent-width-step, or adjacent-height-step.
+Include first/last and seam-adjacent segments in the ordinary individual checks;
+there is no implicit wraparound pair. The first failing check in this two-pass
+order determines the result. No merging, smoothing, repair or geometry changes.
+
+Closed matrix: complete/regular with indices (); rejected/segment-length or
+segment-time with (i,); rejected/adjacent-rate-step, adjacent-width-step or
+adjacent-height-step with (i,i+1); incomplete/cancelled or resource-limit with ().
+Constructors require exact strings/tuple, exact nonnegative integer indices,
+and adjacent pair ordering. They validate shape, not path association or evidence.
+No counters, Plan/root registration or permission fields are added.
+
+Check cancellation before the budget decision, every segment, every adjacent
+pair, and immediately before every expected return, including rejection/resource
+failure. A cancellation there takes precedence and returns incomplete/cancelled
+with no offending indices. Do not recursively call cancellation while constructing
+that cancellation result. Exceptions remain exceptions. Work is O(N), bounded
+by max_segments; exact arithmetic avoids overflow products. The output does not
+replace final quantized geometry/E/feedrate revalidation or fixture approval.
+
+Owning modules: domain/path_regularity.py and engine/path_regularity.py.
+
 ## Requirements / invariants introduced
 
 - No arbitrarily short printable candidate segments.

@@ -1,0 +1,42 @@
+name: Canonical manifest integrity (not specification approval)
+on:
+  push:
+    branches: [codex/spec-readiness-review]
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'AGENTS.md'
+      - '.codex/**'
+      - 'tools/check_canonical_manifest.py'
+      - 'tests/test_canonical_manifest.py'
+      - '.github/workflows/canonical-manifest.yml'
+permissions:
+  contents: read
+jobs:
+  integrity:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m compileall -q tools tests
+      - run: python -m unittest discover -s tests -p 'test_canonical_manifest.py' -v
+      - run: python tools/check_canonical_manifest.py
+      - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase05-evidence-history.md
+      - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase05-insertion-anchor.md
+      - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase05-structural-loop.md
+      - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase05-plan-v2.md
+      - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase05-runtime-interfaces.md
+      - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase1a-bead-flow.md
+      - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase1a-support-cell.md
+      - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase1a-support-controller.md
+      - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase1b-mesh-topology.md
+      - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase1b-mesh-section.md
+      - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase1b-mesh-material.md
+      - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase1b-section-stability.md
+      - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase1b-mesh-segment.md
+      - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase1b-convex-chord-proposals.md
+      - run: python tools/check_canonical_manifest.py --handoff docs/specs/phase1c-path-regularity.md
+      - run: python tools/check_canonical_manifest.py --handoff docs/specs/orca-readonly-chord-preview.md
+      - run: python tools/check_canonical_manifest.py --handoff docs/specs/orca-native-band-preview.md
