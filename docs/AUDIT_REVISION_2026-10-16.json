@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scope": "Phase 0.5 research architecture, Phase 1A nominal support, Phase 1B exact mesh material/section/stability and unscored convex chord proposals; no physical authority",
+  "scope": "Phase 0.5 research architecture, Phase 1A nominal support, Phase 1B exact mesh/chord geometry and Phase 1C planned-path numerical regularity; no physical authority",
   "review_status": "integrity_only_not_implementation_authority",
   "blobs": [
     {
@@ -317,7 +317,7 @@
     },
     {
       "path": "docs/adr/0063-candidate-segment-regularity.md",
-      "git_blob": "9594b50023b3a765f0d31dc11fb360e4e7cc8b89"
+      "git_blob": "bf8ee07da9022337a8d928cc6931efe6a7324e54"
     },
     {
       "path": "docs/adr/0064-canonical-plan-identity-construction.md",
