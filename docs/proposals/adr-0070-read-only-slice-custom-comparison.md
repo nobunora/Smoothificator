@@ -120,3 +120,15 @@ surface, profile-wide minimum/maximum bead constraints and physical support
 are not certified, and the projected paths are not executable. Acceptance of
 this ADR must require a top-surface boundary certificate and enough bounded
 paths to cover that boundary; no underside candidate may enter the Plan.
+
+The user-reviewed native image exposed a more serious limitation: all seven
+display paths have negative nominal footprint clearance to scheduled
+Z=2.4-mm structural paths (five cross top-surface hatches, two overlap the
+Inner/Outer walls). The projected viewer must not be mistaken for an executable
+preview, and its seven paths are rejected for output. In particular, changing
+only the G-code Z to the intermediate value cannot establish chronological
+clearance through the following layer. This ADR remains a read-only preview
+proposal; it cannot grant G-code generation. The canonical additive SubEdge
+Plan requires separately certified residual bands and full downstream motion
+validation. A proposal to replace Orca structural top lines would need its
+own ADR and canonical specification change.

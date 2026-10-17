@@ -112,3 +112,24 @@ G-code remained SHA-256 identical. This proves multi-line native display,
 not exact model shape preservation: a bounding envelope may include area
 outside the real top surface, and the display Z differs from the proposed
 physical Z. No printable candidate or safe G-code claim follows.
+
+## Executable-output review after the visual probe
+
+The seven displayed paths are rejected as executable candidates. Five cross
+14-15 original `Top surface` centerlines at Z=2.4 mm; the other two have
+nominal bead-footprint overlap with the same-layer Inner/Outer walls. Minimum
+nominal footprint clearances for the seven are -0.4068 mm (five paths),
+-0.2605 mm and -0.2115 mm. Several also overlap the Z=2.2 mm top surface in
+XY. Projecting true Z=2.3 mm onto Z=2.4 mm concealed these conflicts. The
+viewer screenshot cannot be treated as a validated Plan.
+
+An executable handoff must use the accepted canonical additive-path pipeline,
+not this viewer envelope: preserve true per-path Z; admit only certified
+residual top-surface bands whose complete bead volumes improve the same
+baseline without crossing structural material; verify prior-layer support and
+all later structural deposition/motion against the new bead; then apply exact
+source/plan identity, machine-state and atomic-output gates. If no region
+passes, publish a non-injectable result and leave the Orca source G-code
+unchanged. Selective replacement/repartition of original top lines would
+require a separate product decision because the canonical printable-v1 contract
+keeps original structural extrusion unchanged.
