@@ -7,14 +7,15 @@ from weakref import WeakSet
 
 from adaptive_subedge.domain.errors import ContractError, ReasonCode
 from adaptive_subedge.domain.plan import SubEdgePlan
+from adaptive_subedge.domain.plan_v2 import SubEdgePlanV2
 from adaptive_subedge.domain.status import InjectionAttemptRecord
 from .execution_status import InjectionAttemptStore
-from .hashing import verify_plan
+from .hashing import verify_plan, verify_plan_v2
 
 
 @dataclass(frozen=True, slots=True)
 class PublishedPlan:
-    plan: SubEdgePlan
+    plan: SubEdgePlan | SubEdgePlanV2
     plugin_session_epoch: str
     analysis_generation_id: int
 
@@ -45,8 +46,11 @@ class PlanStore:
         with self._lock:
             return self._epoch
 
-    def publish(self, plan: SubEdgePlan) -> PublishedPlan:
-        verify_plan(plan)
+    def publish(self, plan: SubEdgePlan | SubEdgePlanV2) -> PublishedPlan:
+        if type(plan) is SubEdgePlanV2:
+            verify_plan_v2(plan)
+        else:
+            verify_plan(plan)
         with self._lock:
             self._next_generation += 1
             entry = PublishedPlan(plan, self._epoch, self._next_generation)

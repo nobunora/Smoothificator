@@ -67,6 +67,9 @@ Unsupported topology may remain analysis-only.
 
 All domain geometry uses centered Orca PrintObject slice-space.
 
+The isolated read-only research-preview exception in ADR-0068 uses explicitly
+labeled model-world mesh/section/chord geometry only, with no Plan consumer.
+
 Adapter:
 - reconstructs centered frame per ADR-0012;
 - validates orientation/material side per ADR-0030;
@@ -404,6 +407,11 @@ Expected unsupported/validation condition:
 Standard Orca preview is pre-postprocess.
 
 Plugin preview uses exact immutable plan plus attempt-derived runtime summary.
+
+Accepted ADR-0068 separately permits a Script/UI-only model-world research preview of
+unscored convex chords. Its labeled non-Plan result and separate distribution do
+not replace this immutable-plan preview contract or change printable eligibility.
+Its validated handoff and runtime checks govern this isolated expansion.
 
 Orca original print time, filament/material statistics, and progress/M73 metadata may under-report the modified file.
 

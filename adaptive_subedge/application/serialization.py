@@ -3,7 +3,8 @@ from dataclasses import is_dataclass
 from collections.abc import Mapping
 from math import isfinite, prod
 from adaptive_subedge.domain.numeric import finite_binary64
-from typing import get_type_hints
+from typing import get_type_hints, get_args, get_origin
+from types import UnionType
 from struct import pack
 
 from adaptive_subedge.domain.errors import ContractError, ReasonCode
@@ -15,8 +16,27 @@ from adaptive_subedge.domain.plan import (
 )
 from adaptive_subedge.domain.settings import (ToolRadialKeepOut, ToolClearanceProfile, CandidateSegmentRegularityPolicy, PluginSettings,
     SurfaceCorrespondencePolicy, ErrorEstimatorConfig, MeshSectionPolicy, CandidateBeadBounds, SupportCoverageThresholds, SupportRefinementPolicy)
+from adaptive_subedge.domain.settings_v2 import (
+    PluginSettingsV2, SupportQueryNumericPolicy, ClassicJerkCorneringLimit,
+    CandidateMotionLimits, DirectionalErrorWeights, OptimizerCostPolicy,
+    CandidateExecutionPolicy,
+)
+from adaptive_subedge.domain.plan_v2 import PlanSemanticContentV2
 
 _FIELDS = {
+    SupportQueryNumericPolicy: ("version", "support_query_length_tolerance_mm"),
+    ClassicJerkCorneringLimit: ("model_version", "max_subedge_jerk_mm_s"),
+    CandidateMotionLimits: ("max_candidate_speed_mm_s", "max_subedge_acceleration_mm_s2", "cornering_limit"),
+    DirectionalErrorWeights: ("pred_to_src_weight", "src_to_pred_weight"),
+    OptimizerCostPolicy: ("version", "quality_mode", "rank_mode", "complexity_counter_version",
+        "search_priority_version", "time_estimator_model_version", "commanded_volume_accounting_version",
+        "tie_break_version", "max_candidate_evaluations"),
+    CandidateExecutionPolicy: ("version", "ordering_policy_id"),
+    PluginSettingsV2: ("schema_version", "surface_error_tolerance_mm", "minimum_effective_bead_height_mm",
+        "candidate_seam_gap_mm", "regularity_policy", "tool_clearance_profile", "candidate_bead_bounds",
+        "support_coverage_thresholds", "support_refinement_policy", "support_query_numeric_policy",
+        "error_estimator_config", "mesh_section_policy", "candidate_motion_limits", "directional_error_weights",
+        "optimizer_cost_policy", "candidate_execution_policy", "physical_injection_requested"),
     PrintPoint2: ("x_mm", "y_mm"),
     PrintPoint3: ("x_mm", "y_mm", "z_mm"),
     StructuralPathSegment: ("start", "end", "width_mm", "local_height_mm", "local_geometric_mm3_per_mm", "command_flow_modifier", "layer_index", "role"),
@@ -151,15 +171,70 @@ def _canonical_bytes(value: object) -> bytes:
     raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "undeclared canonical type")
 
 
+def identity_schema_supported(identity_type: str, schema_version: str) -> bool:
+    return (type(identity_type) is str and identity_type in _TYPES
+            and type(schema_version) is str
+            and (schema_version == "1" or (identity_type in ("plugin-settings", "subedge-plan") and schema_version == "2")))
+
+
 def identity_root(identity_type: str, payload: object, *, schema_version: str = "1", canonical_encoding_version: str = "1") -> dict[str, object]:
-    if type(identity_type) is not str or identity_type not in _TYPES or type(schema_version) is not str or schema_version != "1" or type(canonical_encoding_version) is not str or canonical_encoding_version != "1":
+    if not identity_schema_supported(identity_type, schema_version) or type(canonical_encoding_version) is not str or canonical_encoding_version != "1":
         raise ContractError(ReasonCode.UNKNOWN_IDENTITY_SCHEMA, "unrecognized identity root")
-    return {"identity_type": identity_type, "schema_version": schema_version, "canonical_encoding_version": canonical_encoding_version, "payload": semantic_tree(payload)}
+    version_two_types = {"plugin-settings": PluginSettingsV2, "subedge-plan": PlanSemanticContentV2}
+    if ((schema_version == "2" and type(payload) is not version_two_types.get(identity_type))
+            or (type(payload) in version_two_types.values()
+                and (schema_version != "2" or type(payload) is not version_two_types.get(identity_type)))):
+        raise ContractError(ReasonCode.UNKNOWN_IDENTITY_SCHEMA, "root/payload version mismatch")
+    if type(payload) is PlanSemanticContentV2:
+        from .plan_projection_v2 import project_plan_content_v2
+        projected = project_plan_content_v2(payload)
+    else:
+        projected = semantic_tree(payload)
+    root = {"identity_type": identity_type, "schema_version": schema_version, "canonical_encoding_version": canonical_encoding_version, "payload": projected}
+    if schema_version == "2":
+        validate_root(root, identity_type)
+    return root
+
+
+def _settings_value_from_tree(value, expected):
+    """Revalidate the closed v2 payload using existing DTO validators, not a raw-map hash."""
+    if get_origin(expected) is UnionType:
+        options = get_args(expected)
+        if value is None and type(None) in options:
+            return None
+        return _settings_value_from_tree(value, next(x for x in options if x is not type(None)))
+    if get_origin(expected) is tuple:
+        if type(value) is not list:
+            raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "canonical list required")
+        return tuple(_settings_value_from_tree(x, get_args(expected)[0]) for x in value)
+    if expected in _FIELDS:
+        if type(value) is not dict or any(type(k) is not str for k in value) or set(value) != set(_FIELDS[expected]):
+            raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "closed Settings payload required")
+        hints = get_type_hints(expected)
+        return expected(**{name: _settings_value_from_tree(value[name], hints[name]) for name in _FIELDS[expected]})
+    if expected is float and type(value) is float and finite_binary64(value):
+        return value
+    if expected in (str, bool, int) and type(value) is expected:
+        return value
+    raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "invalid Settings scalar")
 
 
 def validate_root(root: object, expected_type: str) -> None:
-    if type(root) is not dict or any(type(key) is not str for key in root) or frozenset(root) != _ROOT_KEYS or type(expected_type) is not str or expected_type not in _TYPES or type(root["identity_type"]) is not str or root["identity_type"] != expected_type or type(root["schema_version"]) is not str or root["schema_version"] != "1" or type(root["canonical_encoding_version"]) is not str or root["canonical_encoding_version"] != "1":
+    if type(root) is not dict or any(type(key) is not str for key in root) or frozenset(root) != _ROOT_KEYS or type(expected_type) is not str or expected_type not in _TYPES or type(root["identity_type"]) is not str or root["identity_type"] != expected_type or not identity_schema_supported(expected_type, root["schema_version"]) or type(root["canonical_encoding_version"]) is not str or root["canonical_encoding_version"] != "1":
         raise ContractError(ReasonCode.UNKNOWN_IDENTITY_SCHEMA, "invalid typed identity root")
+    if root["schema_version"] == "2":
+        try:
+            if expected_type == "subedge-plan":
+                from .plan_projection_v2 import validate_plan_projection_v2
+                validate_plan_projection_v2(root["payload"])
+            else:
+                _settings_value_from_tree(root["payload"], PluginSettingsV2)
+        except RecursionError as exc:
+            raise ContractError(ReasonCode.INVALID_CANONICAL_VALUE, "recursive schema-2 payload") from exc
+    elif expected_type == "subedge-plan" and type(root["payload"]) is dict and root["payload"].get("schema_version") == "2":
+        raise ContractError(ReasonCode.UNKNOWN_IDENTITY_SCHEMA, "Plan root/payload version mismatch")
+    elif expected_type == "plugin-settings" and type(root["payload"]) is dict and root["payload"].get("schema_version") == "2":
+        raise ContractError(ReasonCode.UNKNOWN_IDENTITY_SCHEMA, "Settings root/payload version mismatch")
 
 
 def canonical_array_token(dtype: str, shape: tuple[int, ...], values_c_order: tuple[int | float, ...]) -> dict[str, object]:

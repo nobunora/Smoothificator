@@ -37,3 +37,14 @@ class InjectionAttemptRecord:
         if ((self.state in failure_states and type(self.reason) is not ReasonCode)
                 or (self.state not in failure_states and self.reason is not None)):
             raise ContractError(ReasonCode.INVALID_STATE_TRANSITION, "attempt state/reason mismatch")
+
+
+@dataclass(frozen=True, slots=True)
+class AttemptRevision:
+    """Runtime-only immutable history entry; never part of Plan identity."""
+    revision: int
+    record: InjectionAttemptRecord
+
+    def __post_init__(self):
+        if type(self.revision) is not int or self.revision < 0 or type(self.record) is not InjectionAttemptRecord:
+            raise ContractError(ReasonCode.INVALID_STATE_TRANSITION, "invalid attempt revision")

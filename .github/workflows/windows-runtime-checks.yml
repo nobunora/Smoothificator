@@ -1,9 +1,9 @@
 name: Windows diagnostic and contract checks
 on:
   pull_request:
-    branches: [phase-0.5-skeleton-20261013, adaptive-subedge-design]
+    branches: [phase-0.5-skeleton-20261013, adaptive-subedge-design, codex/windows-runtime-validation]
   push:
-    branches: [codex/windows-runtime-validation]
+    branches: [codex/windows-runtime-validation, codex/settings-v2]
   workflow_dispatch:
 permissions:
   contents: read
@@ -24,13 +24,51 @@ jobs:
       - name: Syntax and architecture
         shell: pwsh
         run: |
-          ./.venv/Scripts/python -m compileall -q adaptive_subedge orca_plugin diagnostics tools tests
+          ./.venv/Scripts/python -m compileall -q adaptive_subedge orca_plugin smoothificator_preview diagnostics tools tests
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           ./.venv/Scripts/python -m unittest discover -s tests/architecture -p 'test_*.py' -v
       - name: Contract and mock probe tests (no installed Orca)
         run: ./.venv/Scripts/python -m unittest discover -s tests -p 'test_*.py' -v
-      - name: Build and clean extracted import verification
+      - name: Canonical manifest integrity (not review approval)
+        run: ./.venv/Scripts/python tools/check_canonical_manifest.py
+      - name: Evidence and history handoff integrity
+        run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase05-evidence-history.md
+      - name: Standalone insertion anchor handoff integrity
+        run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase05-insertion-anchor.md
+      - name: Standalone structural loop handoff integrity
+        run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase05-structural-loop.md
+      - name: Research Plan v2 handoff integrity
+        run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase05-plan-v2.md
+      - name: Static runtime interface handoff integrity
+        run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase05-runtime-interfaces.md
+      - name: Bead arithmetic handoff integrity
+        run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase1a-bead-flow.md
+      - name: Nominal support cell handoff integrity
+        run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase1a-support-cell.md
+      - name: Adaptive support controller handoff integrity
+        run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase1a-support-controller.md
+      - name: Indexed mesh topology handoff integrity
+        run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase1b-mesh-topology.md
+      - name: Exact mesh section handoff integrity
+        run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase1b-mesh-section.md
+      - name: Exact mesh material handoff integrity
+        run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase1b-mesh-material.md
+      - name: Continuous section stability handoff integrity
+        run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase1b-section-stability.md
+      - name: Whole-segment material handoff integrity
+        run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase1b-mesh-segment.md
+      - name: Convex chord proposal handoff integrity
+        run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase1b-convex-chord-proposals.md
+      - name: Planned-path regularity handoff integrity
+        run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/phase1c-path-regularity.md
+      - name: Build research archive and verify extracted geometry modules
         run: ./.venv/Scripts/python tools/build_validation_artifacts.py
+      - name: Read-only preview specification integrity
+        run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/orca-readonly-chord-preview.md
+      - name: Build separate read-only preview wheel
+        run: ./.venv/Scripts/python tools/build_preview_plugin.py
+      - name: Native band preview specification integrity
+        run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/orca-native-band-preview.md
       - uses: actions/upload-artifact@v4
         with:
           name: windows-diagnostics-${{ github.sha }}
