@@ -34,6 +34,16 @@ Environment: `.venv/Scripts/python.exe --version` -> Python 3.12.10.
   tool or dependency was added for this bounded implementation.
 - `.venv/Scripts/python.exe -m unittest tests.unit.test_nominal_structural_top tests.unit.test_nominal_support_cell` — 24 PASS.
 - `.venv/Scripts/python.exe -m unittest discover -s tests -p 'test_*.py'` — 600 PASS.
+- Canonical manifest integrity at implementation commit `f13e591`: 85 Git
+  blobs PASS (integrity only, not spec approval).
+- `tools/build_validation_artifacts.py`: PASS, exact-head research ZIP SHA-256
+  `9935a1834042ebe60e69ead8c8a1c1f239b6a7c9894594b4441982247d1b3214`;
+  extracted isolated source imports PASS. The ZIP is non-installable.
+- `tools/build_preview_plugin.py --output-dir artifacts/package-check`:
+  PASS, check wheel SHA-256
+  `f5f3c7a3f8838c3935bc785e77babd93cc74f05525086b2b983dc342cfd137a5`;
+  isolated `python -I` import of the new API PASS. This wheel was not
+  installed or tested in native Orca.
 
 Independent blind review: PASS for the bounded research query. It checked
 union max, conservative full/partial/absent outcomes, bit/count preflights,
