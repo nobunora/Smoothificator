@@ -253,6 +253,11 @@ It MUST NOT:
 
 All domain geometry uses Orca's centered PrintObject slice-space in mm.
 
+Isolated exception: Accepted ADR-0068 defines model-world geometry solely for a
+separate read-only research preview. Only its explicitly labeled preview flow may use
+generic mesh/section/chord values outside centered space; no PlanStore, analyzer,
+structural/execution geometry or injection consumer may receive those values.
+
 Printable v1 reconstruction follows ADR-0012:
 - one total ModelInstance;
 - one ModelPart volume;

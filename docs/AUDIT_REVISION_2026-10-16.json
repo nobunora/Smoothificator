@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scope": "Phase 0.5 research architecture, Phase 1A nominal support, Phase 1B exact mesh/chord geometry and Phase 1C planned-path numerical regularity; no physical authority",
+  "scope": "Research geometry and planned-path regularity; isolated read-only Orca model-world Script preview; no physical authority",
   "review_status": "integrity_only_not_implementation_authority",
   "blobs": [
     {
@@ -25,7 +25,7 @@
     },
     {
       "path": "docs/ARCHITECTURE.md",
-      "git_blob": "f2b66f659eafc0cc26636da1e5996991936e3d4b"
+      "git_blob": "5be4a56b0fb1adf4b97a0dcafd9630e5a2a2fcdb"
     },
     {
       "path": "docs/IMPLEMENTATION.md",
@@ -33,7 +33,7 @@
     },
     {
       "path": "docs/PLUGIN_REQUIREMENTS.md",
-      "git_blob": "0892a59dec04ca87dd9cb4ddab7df39ca7118bcd"
+      "git_blob": "7a909851a497851a7b27b052206931b5268fba9e"
     },
     {
       "path": "docs/ERROR_MODEL.md",
@@ -334,6 +334,10 @@
     {
       "path": "docs/adr/0067-phase05-domain-dto-and-attempt-snapshot-contract-proposal.md",
       "git_blob": "4bc6ef3a6f5e261f7b614e2ba7c5ceae18d624e6"
+    },
+    {
+      "path": "docs/adr/0068-read-only-model-world-research-preview.md",
+      "git_blob": "38f49f1d998f334471427df5090fee44812b8624"
     }
   ]
 }
