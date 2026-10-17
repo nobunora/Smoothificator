@@ -1,7 +1,8 @@
 # Orca sliced-baseline Custom comparison (draft handoff)
 
 Status: DRAFT_SPEC; implementation is not authorized by this document.
-Authority under review: proposed ADR-0070. Existing Accepted ADR-0069
+Authority under review: docs/proposals/adr-0070-read-only-slice-custom-comparison.md.
+Existing Accepted ADR-0069
 continues to forbid reading or appending an original G-code in its mode.
 Canonical product revision: docs/AUDIT_REVISION_2026-10-16.json.
 
