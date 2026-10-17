@@ -1,15 +1,23 @@
 """Focused geometry tests for the read-only layered-preview conflict audit."""
 
-import json
-from pathlib import Path
+import hashlib
 import unittest
+from unittest.mock import patch
 
 from tools.audit_layered_preview_overlap import audit, centerline_distance, source_segments
 
 
-ROOT = Path(__file__).resolve().parents[2]
-SOURCE = ROOT / "artifacts/cli-midpoint-slice/plate_1.gcode"
-MANIFEST = ROOT / "artifacts/layered-viewer/smoothificator-0f17b22cd4744c848b2e427bae9bf4bc.VIEW_ONLY.json"
+SOURCE = b"M83\n;Z:2.4\n;WIDTH:0.4\nG0 X0 Y0 Z2.4\nG1 X2 Y0 E0.1\n"
+DIGEST = hashlib.sha256(SOURCE).hexdigest()
+
+
+def manifest():
+    return {"source_gcode_sha256": DIGEST,
+            "layers": [{"z_mm": 2.4, "candidate_segments": 1}],
+            "candidate": {"scope": "top-surface-only", "display_z_mm": 2.4,
+                          "true_interpolated_z_mm": 2.3, "display_width_mm": 0.4,
+                          "segment_count": 1,
+                          "segments": [{"start_xy_mm": [0, 0], "end_xy_mm": [2, 0]}]}}
 
 
 class LayeredPreviewOverlapAuditTests(unittest.TestCase):
@@ -33,23 +41,24 @@ class LayeredPreviewOverlapAuditTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unpinned source"):
             source_segments(b"G1 X1 Y1 E1\n")
 
-    def test_pinned_viewer_is_rejected_without_print_authorization(self):
-        result = audit(SOURCE.read_bytes(), json.loads(MANIFEST.read_text(encoding="utf-8")))
+    @patch("tools.audit_layered_preview_overlap.SOURCE_SHA256", DIGEST)
+    def test_projected_overlapping_candidate_is_rejected_without_print_authorization(self):
+        result = audit(SOURCE, manifest())
         self.assertEqual(result["state"], "rejected")
         self.assertEqual(result["reason"], "projected-Z-and-footprint-overlap")
-        self.assertEqual(len(result["paths"]), 7)
+        self.assertEqual(len(result["paths"]), 1)
         self.assertTrue(all(row["footprint_clearance_mm"] < 0 for row in result["paths"]))
         self.assertFalse(result["printable_authorized"])
 
+    @patch("tools.audit_layered_preview_overlap.SOURCE_SHA256", DIGEST)
     def test_missing_candidate_segments_fail_closed(self):
-        source = SOURCE.read_bytes()
-        manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
-        manifest["candidate"]["segments"].pop()
+        data = manifest()
+        data["candidate"]["segments"].pop()
         with self.assertRaisesRegex(ValueError, "segment count mismatch"):
-            audit(source, manifest)
-        manifest["candidate"]["segments"] = []
+            audit(SOURCE, data)
+        data["candidate"]["segments"] = []
         with self.assertRaisesRegex(ValueError, "segment count mismatch"):
-            audit(source, manifest)
+            audit(SOURCE, data)
 
 
 if __name__ == "__main__":
