@@ -11,7 +11,7 @@ Authority: ADR-0059 Closed continuous event-partition stability certificate owns
 the exact API, event guards, symbolic route and continuous displacement proof.
 ADR-0030 owns fresh embedded-mesh prerequisites.
 Manifest: docs/AUDIT_REVISION_2026-10-16.json.
-Manifest Git blob: `7e96ba2c2f77717503fcee1e22e8c6de3ba3501e`
+Manifest Git blob: `6daab8f3e35a03cc0cbc7bdda20dbe096d78950b`
 
 Implement domain/section_stability.py and engine/section_stability.py. Narrow
 private refactoring may expose explicit Fraction section tolerances and return

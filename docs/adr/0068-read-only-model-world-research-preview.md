@@ -3,6 +3,9 @@
 Status: Accepted
 Date: 2026-10-17
 
+ADR-0069 adds a separate, explicitly bounded native-viewer artifact mode. The
+read-only contract below and its existing public APIs remain unchanged.
+
 ## Context and evidence
 
 The user authorized the shortest runnable Orca research preview using the existing

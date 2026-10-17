@@ -12,7 +12,7 @@ Authority: ADR-0068 owns the isolated Script/UI package, coordinate exception,
 bounded lifecycle and shared exact preview API. ADR-0005 owns unscored proposals;
 ADR-0030/0059 own reused geometry. Printable/Plan/G-code contracts are unchanged.
 Manifest: docs/AUDIT_REVISION_2026-10-16.json.
-Manifest Git blob: `7e96ba2c2f77717503fcee1e22e8c6de3ba3501e`
+Manifest Git blob: `6daab8f3e35a03cc0cbc7bdda20dbe096d78950b`
 
 Implement smoothificator_preview adapters/UI/entrypoint as a separate distribution.
 Add immutable ConvexChordPreview and the same-owner propose_convex_chord_preview
