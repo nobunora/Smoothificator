@@ -11,7 +11,7 @@ review confirmed this scope cannot verify physical evidence or full bead bounds.
 Authority: ADR-0063 Closed planned-path numerical regularity gate owns the exact
 API, result matrix, policy version, arithmetic and cancellation precedence.
 Manifest: docs/AUDIT_REVISION_2026-10-16.json.
-Manifest Git blob: `7e96ba2c2f77717503fcee1e22e8c6de3ba3501e`
+Manifest Git blob: `7c0e2b4787f9cb6df8f62786ea2c9bc3d1dc9688`
 
 Implement domain/path_regularity.py and engine/path_regularity.py. Reuse existing
 SubEdgePath/SubEdgeSegment and CandidateSegmentRegularityPolicy without modifying

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scope": "Research geometry and planned-path regularity; isolated read-only Orca model-world Script preview; no physical authority",
+  "scope": "Research geometry and planned-path regularity; isolated Orca research preview and manual-open Custom viewer artifacts; no physical authority",
   "review_status": "integrity_only_not_implementation_authority",
   "blobs": [
     {
@@ -337,7 +337,11 @@
     },
     {
       "path": "docs/adr/0068-read-only-model-world-research-preview.md",
-      "git_blob": "38f49f1d998f334471427df5090fee44812b8624"
+      "git_blob": "b0347bfd58eb39227aaca9a835cf185dfa657485"
+    },
+    {
+      "path": "docs/adr/0069-native-custom-band-research-preview.md",
+      "git_blob": "332c31a70feaa8dc55287722a23dffc524fbd612"
     }
   ]
 }

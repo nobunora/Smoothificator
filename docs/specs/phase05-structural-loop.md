@@ -8,7 +8,7 @@ finite-binary64 and serializer boundaries before implementation. Disposition:
 validated, with no claim of geometry/matching proof or complete Phase 0.5.
 
 Manifest: docs/AUDIT_REVISION_2026-10-16.json.
-Manifest Git blob: `7e96ba2c2f77717503fcee1e22e8c6de3ba3501e`
+Manifest Git blob: `7c0e2b4787f9cb6df8f62786ea2c9bc3d1dc9688`
 
 Acceptance and exact thirteen fields belong to ADR-0067. Test duplicate/closed
 endpoints, bounds/anchors, binary64 noncollinearity at extreme and subnormal
