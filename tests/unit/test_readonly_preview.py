@@ -266,6 +266,7 @@ class PreviewLifecycleTests(unittest.TestCase):
             ExecutionResult=SimpleNamespace(success=lambda reason: reason, skipped=lambda reason: reason),
             host=SimpleNamespace(app_info=lambda: {"version": "2.5.0-dev", "build": "86905a8a"},
                                  model=lambda: model_fixture().model,
+                                 plugin=SimpleNamespace(storage=lambda: "fixture-plugin-storage"),
                                  ui=SimpleNamespace(create_window=create_window, message=lambda *a, **k: None)))
         spec = importlib.util.spec_from_file_location("smoothificator_preview._entrypoint_test",
             Path(__file__).parents[2] / "smoothificator_preview" / "entrypoint.py")

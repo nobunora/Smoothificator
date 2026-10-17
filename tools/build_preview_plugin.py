@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
-VERSION = "0.1.0"
+VERSION = "0.2.1"
 DISTRIBUTION = "smoothificator_preview"
 DIST_INFO = f"{DISTRIBUTION}-{VERSION}.dist-info"
 WHEEL_NAME = f"{DISTRIBUTION}-{VERSION}-py3-none-any.whl"

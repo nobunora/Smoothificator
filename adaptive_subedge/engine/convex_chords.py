@@ -2,7 +2,7 @@
 from fractions import Fraction
 from typing import Callable
 
-from adaptive_subedge.domain.convex_chords import ChordProposal, ConvexChordProposalSet, ConvexChordPreview
+from adaptive_subedge.domain.convex_chords import BandChordPreview, ChordProposal, ConvexChordProposalSet, ConvexChordPreview
 from adaptive_subedge.domain.errors import ContractError, ReasonCode
 from adaptive_subedge.domain.mesh_topology import IndexedTriangleMesh
 from adaptive_subedge.domain.numeric import finite_binary64
@@ -134,3 +134,71 @@ def _preview(mesh, command_z_mm, *, axis, width_mm, end_trim_mm, chord_positions
     except (_Stopped, _SectionStop) as stopped:
         return ConvexChordPreview(None, ConvexChordProposalSet(
             stopped.state, stopped.reason, z, axis, width, ()))
+
+
+def propose_convex_band_preview(mesh: IndexedTriangleMesh, z_mm: float, *,
+        axis: str, span_min_mm: float, span_max_mm: float,
+        minimum_width_mm: float, maximum_width_mm: float,
+        display_height_mm: float, end_trim_mm: float, algorithm_version: str,
+        max_chords: int, max_vertices: int, max_triangles: int,
+        max_mesh_pair_checks: int, max_section_segments: int,
+        max_section_pair_checks: int, max_ray_directions: int,
+        cancelled: Callable[[], bool]) -> BandChordPreview:
+    scalars = (z_mm, span_min_mm, span_max_mm, minimum_width_mm,
+               maximum_width_mm, display_height_mm, end_trim_mm)
+    if (not all(finite_binary64(x) for x in scalars)
+            or type(axis) is not str or axis not in ("X", "Y")):
+        raise ContractError(ReasonCode.INVALID_GEOMETRY, "invalid band geometry inputs")
+    z, lower, upper, minimum, maximum, height, trim = (Fraction(float(x)) for x in scalars)
+    if not (lower < upper and 0 < minimum <= maximum and height > 0 and trim > 0):
+        raise ContractError(ReasonCode.INVALID_GEOMETRY, "invalid band geometry bounds")
+    _validate(mesh, (max_chords, max_vertices, max_triangles, max_mesh_pair_checks,
+                     max_section_segments, max_section_pair_checks, max_ray_directions), cancelled)
+    if type(algorithm_version) is not str or algorithm_version != "convex_equal_bands_v1":
+        raise ContractError(ReasonCode.INVALID_SETTING, "unsupported band algorithm")
+    check = _cancellation(cancelled)
+    try:
+        check()
+        span = upper-lower
+        ratio = span/maximum
+        count = -(-ratio.numerator // ratio.denominator)
+        ratio = span/max(minimum, height)
+        maximum_count = ratio.numerator // ratio.denominator
+        if count > maximum_count:
+            raise _Stopped("rejected", "width-span-infeasible")
+        if count > max_chords:
+            raise _Stopped("incomplete", "resource-limit")
+        width = span/count
+        check()
+        triangles, topology = _embedding(mesh, max_vertices, max_triangles,
+                                         max_mesh_pair_checks, cancelled, check)
+        check()
+        section = _section(topology, z, max_section_segments, max_section_pair_checks, check,
+                           coplanar=Fraction(0), epsilon=Fraction(0), join_tolerance=Fraction(0))
+        if section.state == "empty":
+            raise _Stopped("rejected", "empty-section")
+        points, planes = _convex_halfplanes(section.loop, check)
+        running = 0 if axis == "X" else 1
+        bounds = min(p[running] for p in points), max(p[running] for p in points)
+        rows = []
+        for i in range(count):
+            check()
+            position = lower+(Fraction(i)+Fraction(1, 2))*width
+            row = _propose(position, running, width, trim, bounds, planes, triangles,
+                           z, max_ray_directions, check)
+            if row.state != "proposed":
+                raise _Stopped("rejected", "band-chord-rejected")
+            rows.append(row)
+        common = (max(row.start_xy_mm[running] for row in rows),
+                  min(row.end_xy_mm[running] for row in rows))
+        if common[0] >= common[1]:
+            raise _Stopped("rejected", "no-common-running-span")
+        check()
+        return BandChordPreview("complete", "bands-proposed", section.loop, tuple(rows),
+                                width, z, axis, common)
+    except (_Stopped, _SectionStop) as stopped:
+        try:
+            check()
+        except _Stopped as cancelled_stop:
+            stopped = cancelled_stop
+        return BandChordPreview(stopped.state, stopped.reason, None, (), None, z, axis, None)

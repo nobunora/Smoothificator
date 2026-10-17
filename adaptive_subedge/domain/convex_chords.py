@@ -90,3 +90,48 @@ class ConvexChordPreview:
                      "completed preview requires its source section")
         else:
             _require(self.section is None, "failed preview cannot retain partial geometry")
+
+
+@dataclass(frozen=True, slots=True)
+class BandChordPreview:
+    state: str
+    reason: str
+    section: MeshSectionLoop | None
+    proposals: tuple[ChordProposal, ...]
+    width_mm: Fraction | None
+    command_z_mm: Fraction
+    axis: str
+    common_running_interval: tuple[Fraction, Fraction] | None
+
+    def __post_init__(self):
+        _require(type(self.state) is str and type(self.reason) is str
+                 and type(self.command_z_mm) is Fraction and type(self.axis) is str
+                 and self.axis in ("X", "Y") and type(self.proposals) is tuple,
+                 "invalid band preview metadata")
+        if self.state != "complete":
+            _require(self.section is None and not self.proposals and self.width_mm is None
+                     and self.common_running_interval is None, "partial band geometry forbidden")
+            if self.state == "rejected" and self.reason in (
+                    "width-span-infeasible", "band-chord-rejected", "no-common-running-span"):
+                return
+            ConvexChordProposalSet(self.state, self.reason, self.command_z_mm,
+                                   self.axis, Fraction(1), ())
+            return
+        _require(self.reason == "bands-proposed" and type(self.section) is MeshSectionLoop
+                 and self.section.command_z_mm == self.command_z_mm,
+                 "completed bands require same-Z source section")
+        ConvexChordProposalSet("complete", "proposals-evaluated", self.command_z_mm,
+                               self.axis, self.width_mm, self.proposals)
+        _require(all(row.state == "proposed" for row in self.proposals),
+                 "all bands must be proposed")
+        for left, right in zip(self.proposals, self.proposals[1:]):
+            _require(right.position_mm-left.position_mm == self.width_mm,
+                     "band centers must partition contiguous equal widths")
+        interval = self.common_running_interval
+        _require(type(interval) is tuple and len(interval) == 2
+                 and all(type(x) is Fraction for x in interval) and interval[0] < interval[1],
+                 "positive exact common interval required")
+        running = 0 if self.axis == "X" else 1
+        expected = (max(row.start_xy_mm[running] for row in self.proposals),
+                    min(row.end_xy_mm[running] for row in self.proposals))
+        _require(interval == expected, "common interval must equal endpoint intersection")

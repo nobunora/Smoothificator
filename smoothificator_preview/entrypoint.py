@@ -4,8 +4,9 @@ import sys
 import orca
 
 from .adapters import copy_model
-from .application import parse_request, PreviewJob
-from .ui import page, render_result
+from .application import parse_request, PreviewJob, BandRequest
+from .ui import page, render_result, render_artifact_path
+from .native_scene import ViewerSceneError
 
 EXPECTED_VERSION = "2.5.0-dev"
 EXPECTED_BUILD = "86905a8a"
@@ -19,6 +20,7 @@ class CandidatePreview(orca.script.ScriptPluginCapabilityBase):
         self.generation = 0
         self.window_epoch = 0
         self.closed = True
+        self.storage = None
         self.lock = Lock()
 
     def get_name(self):
@@ -36,6 +38,7 @@ class CandidatePreview(orca.script.ScriptPluginCapabilityBase):
             if numpy.__version__ != "2.2.6":
                 raise ValueError("unsupported-numpy-version")
             snapshot = copy_model(orca.host.model())
+            self.storage = orca.host.plugin.storage()
             html = page(snapshot)
             with self.lock:
                 self.closed = False
@@ -97,22 +100,52 @@ class CandidatePreview(orca.script.ScriptPluginCapabilityBase):
         try:
             request = parse_request(message)
             snapshot = copy_model(orca.host.model())
+            config = storage = None
+            if isinstance(request, BandRequest):
+                from .native_scene import copy_viewer_config
+                config = copy_viewer_config(orca.host.preset_bundle())
+                storage = self.storage
             def completed(state, reason, result):
                 html = ""
                 try:
                     if result is not None:
                         html = render_result(snapshot, request, result)
+                    if isinstance(request, BandRequest) and state == "complete" and result is not None:
+                        from .native_scene import render_scene
+                        from .viewer_artifact import write_scene
+                        def cancelled():
+                            return self.closed or generation != self.generation or job.cancelled()
+                        if cancelled():
+                            raise InterruptedError("cancelled")
+                        content = render_scene(result, request, config)
+                        path = write_scene(storage, content, cancelled)
+                        # I/O stays cancellable; only final advertisement shares the
+                        # generation lock. Unadvertised stale files are removed.
+                        with self.lock:
+                            if cancelled():
+                                path.unlink(missing_ok=True)
+                                raise InterruptedError("cancelled")
+                            self.window.post({"generation": generation, "state": state,
+                                "reason": reason, "html": render_artifact_path(path) + html})
+                        print(f"SMOOTHIFICATOR_NATIVE Custom count={len(result.proposals)} "
+                              f"width_mm={float(result.width_mm):.12g} saved=1", flush=True)
+                        return
                     self._post(generation, state, reason, html)
+                    rows = (result.proposals if isinstance(request, BandRequest)
+                            else result.proposals.proposals) if result else ()
                     print(f"SMOOTHIFICATOR_PREVIEW result generation={generation} "
                           f"state={state} reason={reason} "
-                          f"proposed={sum(r.state == 'proposed' for r in result.proposals.proposals) if result else 0}", flush=True)
+                          f"proposed={sum(r.state == 'proposed' for r in rows)}", flush=True)
+                except InterruptedError:
+                    self._post(generation, "incomplete", "cancelled-or-time-limit")
                 except Exception as error:
-                    self._post(generation, "error", type(error).__name__)
-            self.job = PreviewJob(snapshot, request, completed)
+                    self._post(generation, "error", str(error) if isinstance(error, ViewerSceneError) else type(error).__name__)
+            job = PreviewJob(snapshot, request, completed)
+            self.job = job
             self._post(generation, "running", "generating unscored candidates")
             self.job.start()
         except Exception as error:
-            reason = str(error) if type(error) is ValueError and str(error) in (
+            reason = str(error) if isinstance(error, ViewerSceneError) or type(error) is ValueError and str(error) in (
                 "invalid-request", "position-limit", "invalid-numeric-input",
                 "one-model-object-required", "one-instance-and-volume-required",
                 "printable-model-part-required", "resource-limit") else type(error).__name__

@@ -67,6 +67,8 @@ jobs:
         run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/orca-readonly-chord-preview.md
       - name: Build separate read-only preview wheel
         run: ./.venv/Scripts/python tools/build_preview_plugin.py
+      - name: Native band preview specification integrity
+        run: ./.venv/Scripts/python tools/check_canonical_manifest.py --handoff docs/specs/orca-native-band-preview.md
       - uses: actions/upload-artifact@v4
         with:
           name: windows-diagnostics-${{ github.sha }}
