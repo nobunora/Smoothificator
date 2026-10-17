@@ -1,12 +1,14 @@
 """Certified bounds on actual stadium-sweep support over a closed XY rectangle."""
 from fractions import Fraction
 from math import isqrt
+from typing import Callable
 
 from adaptive_subedge.domain.errors import ContractError, ReasonCode
 from adaptive_subedge.domain.numeric import finite_binary64
 from adaptive_subedge.domain.settings import CandidateBeadBounds
 from adaptive_subedge.domain.support_cell import (
-    NominalSupportSegment, SupportCellQueryPolicy, SupportCellQueryResult, SupportCellXY,
+    NominalStructuralTopBounds, NominalSupportSegment, SupportCellQueryPolicy,
+    SupportCellQueryResult, SupportCellXY,
 )
 
 
@@ -62,6 +64,93 @@ def _segment_top_bounds(
     if fully_covered:
         lower = min(nozzle_endpoints) - radius + _cap_bounds(q_max, radius, flat_half_width, bits)[0]
     return lower, upper
+
+
+def _structural_top_query(
+    corners: tuple[tuple[Fraction, Fraction], ...],
+    sources: tuple[NominalSupportSegment, ...],
+    policy: SupportCellQueryPolicy,
+    cancelled: Callable[[], bool],
+    full_reason: str,
+) -> NominalStructuralTopBounds:
+    def is_cancelled() -> bool:
+        answer = cancelled()
+        if type(answer) is not bool:
+            raise ContractError(ReasonCode.INVALID_SETTING, "cancellation callback must return exact bool")
+        return answer
+
+    def publish(state: str, reason: str, lower: Fraction | None = None,
+                upper: Fraction | None = None) -> NominalStructuralTopBounds:
+        if is_cancelled():
+            return NominalStructuralTopBounds("incomplete", "cancelled", None, None)
+        result = NominalStructuralTopBounds(state, reason, lower, upper)
+        if is_cancelled():
+            return NominalStructuralTopBounds("incomplete", "cancelled", None, None)
+        return result
+
+    if len(sources) > policy.max_source_segments:
+        return publish("incomplete", "resource-limit")
+    identifiers: set[str] = set()
+    top_lower = top_upper = None
+    for source in sources:
+        if is_cancelled():
+            return NominalStructuralTopBounds("incomplete", "cancelled", None, None)
+        if type(source) is not NominalSupportSegment or source.source_kind != "structural":
+            raise ContractError(ReasonCode.INVALID_GEOMETRY, "exact structural source required")
+        if float(source.start.z_mm) != float(source.end.z_mm):
+            raise ContractError(ReasonCode.INVALID_GEOMETRY, "horizontal structural source required")
+        if source.segment_id in identifiers:
+            raise ContractError(ReasonCode.INVALID_GEOMETRY, "duplicate structural source identity")
+        identifiers.add(source.segment_id)
+        segment_bounds = _segment_top_bounds(source, corners, policy.sqrt_fraction_bits)
+        if is_cancelled():
+            return NominalStructuralTopBounds("incomplete", "cancelled", None, None)
+        if segment_bounds is None:
+            continue
+        lower, upper = segment_bounds
+        top_upper = upper if top_upper is None else max(top_upper, upper)
+        if lower is not None:
+            top_lower = lower if top_lower is None else max(top_lower, lower)
+    if top_upper is None:
+        return publish("absent", "disjoint")
+    if top_lower is None:
+        return publish("unresolved-partial", "union-coverage-unproven", upper=top_upper)
+    return publish("full-bounded", full_reason, top_lower, top_upper)
+
+
+def query_nominal_structural_top_point(
+    x_mm: Fraction, y_mm: Fraction, sources: tuple[NominalSupportSegment, ...], *,
+    policy: SupportCellQueryPolicy, max_point_coordinate_bits: int,
+    cancelled: Callable[[], bool],
+) -> NominalStructuralTopBounds:
+    """Bound the nominal structural union top at one exact XY point."""
+    if (type(policy) is not SupportCellQueryPolicy or type(max_point_coordinate_bits) is not int
+            or max_point_coordinate_bits < 1 or not callable(cancelled)):
+        raise ContractError(ReasonCode.INVALID_SETTING, "invalid structural top query settings")
+    if type(x_mm) is not Fraction or type(y_mm) is not Fraction or type(sources) is not tuple:
+        raise ContractError(ReasonCode.INVALID_GEOMETRY, "exact structural point inputs required")
+    if any(component.bit_length() > max_point_coordinate_bits
+           for point in (x_mm, y_mm)
+           for component in (point.numerator, point.denominator)):
+        answer = cancelled()
+        if type(answer) is not bool:
+            raise ContractError(ReasonCode.INVALID_SETTING, "cancellation callback must return exact bool")
+        return NominalStructuralTopBounds("incomplete", "cancelled" if answer else "resource-limit", None, None)
+    return _structural_top_query(((x_mm, y_mm),) * 4, sources, policy, cancelled, "covered-point")
+
+
+def query_nominal_structural_top_cell(
+    cell: SupportCellXY, sources: tuple[NominalSupportSegment, ...], *,
+    policy: SupportCellQueryPolicy, cancelled: Callable[[], bool],
+) -> NominalStructuralTopBounds:
+    """Conservatively bound union top over a closed rectangular cell."""
+    if type(policy) is not SupportCellQueryPolicy or not callable(cancelled):
+        raise ContractError(ReasonCode.INVALID_SETTING, "invalid structural top query settings")
+    if type(cell) is not SupportCellXY or type(sources) is not tuple:
+        raise ContractError(ReasonCode.INVALID_GEOMETRY, "exact structural cell inputs required")
+    corners = tuple((x, y) for x in (_r(cell.x_min_mm), _r(cell.x_max_mm))
+                    for y in (_r(cell.y_min_mm), _r(cell.y_max_mm)))
+    return _structural_top_query(corners, sources, policy, cancelled, "one-segment-covers-cell")
 
 
 def query_nominal_support_cell(

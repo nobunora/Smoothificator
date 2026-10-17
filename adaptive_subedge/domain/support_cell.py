@@ -109,3 +109,36 @@ class SupportCellQueryResult:
             _require(self.top_z_lower_mm is not None, "full-coverage bounds required")
         if self.reason == "coverage-unresolved":
             _require(self.top_z_lower_mm is None, "coverage remains unproven")
+
+
+@dataclass(frozen=True, slots=True)
+class NominalStructuralTopBounds:
+    state: str
+    reason: str
+    top_z_lower_mm: Fraction | None
+    top_z_upper_mm: Fraction | None
+
+    def __post_init__(self):
+        allowed = {
+            "absent": "disjoint",
+            "full-bounded": ("covered-point", "one-segment-covers-cell"),
+            "unresolved-partial": "union-coverage-unproven",
+            "incomplete": ("resource-limit", "cancelled"),
+        }
+        _require(type(self.state) is str and self.state in allowed
+                 and type(self.reason) is str and self.reason in
+                 ((allowed[self.state],) if type(allowed[self.state]) is str else allowed[self.state]),
+                 "invalid structural top outcome")
+        lower, upper = self.top_z_lower_mm, self.top_z_upper_mm
+        _require((lower is None or type(lower) is Fraction)
+                 and (upper is None or type(upper) is Fraction),
+                 "exact rational structural top bounds required")
+        if self.state == "full-bounded":
+            _require(lower is not None and upper is not None and lower <= upper,
+                     "ordered full structural top bounds required")
+        elif self.state == "unresolved-partial":
+            _require(lower is None and upper is not None,
+                     "partial structural top requires only upper bound")
+        else:
+            _require(lower is None and upper is None,
+                     "absent or incomplete structural top has no bounds")
