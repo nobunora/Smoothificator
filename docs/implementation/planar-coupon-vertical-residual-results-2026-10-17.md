@@ -35,9 +35,19 @@ Windows `.venv/Scripts/python.exe` (Python 3.12.10) validation:
 - Architecture/import-boundary suite: 43 PASS.
 - Coupon, exact-top and planar-top focused modules: 29 PASS.
 - Full `unittest discover -s tests -p test_*.py -q`: 618 PASS.
+- Canonical manifest integrity at implementation commit `9b4e4fb`: 85 Git
+  blobs PASS (integrity only, not spec approval).
+- `tools/build_validation_artifacts.py`: PASS, exact-head research ZIP SHA-256
+  `060b2abb17ccccf3e4277767adace7029a2166cfb46e694b66938e84b4f72b4b`;
+  extracted isolated source import PASS. The ZIP is non-installable.
+- `tools/build_preview_plugin.py --output-dir artifacts/package-check`:
+  PASS, check wheel SHA-256
+  `50d3d40c482afc34eb71e4e700b945fed1bd1064ef75db5c7d0075fdbcf11cf4`;
+  isolated `python -I` import of the new comparison API PASS. This wheel was
+  not installed or runtime-tested inside Orca.
 - Lint/type analyzers: NOT CONFIGURED; no dependency added.
 
-Exact-head package/build and CI results are recorded after commit. No Plan,
+No Plan,
 Orca callback, G-code, printer or unrelated log file was changed. Before
 product improvement can be claimed, candidate placement must be bound to
 an actual source-model region and explicit slicer baseline, with full
