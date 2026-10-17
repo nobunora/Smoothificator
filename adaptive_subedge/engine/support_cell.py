@@ -4,9 +4,11 @@ from math import isqrt
 from typing import Callable
 
 from adaptive_subedge.domain.errors import ContractError, ReasonCode
+from adaptive_subedge.domain.convex_chords import ChordProposal
 from adaptive_subedge.domain.numeric import finite_binary64
 from adaptive_subedge.domain.settings import CandidateBeadBounds
 from adaptive_subedge.domain.support_cell import (
+    ExactNominalTopBounds, ExactNominalTopSegment, ExactTopCellXY,
     NominalStructuralTopBounds, NominalSupportSegment, SupportCellQueryPolicy,
     SupportCellQueryResult, SupportCellXY,
 )
@@ -41,9 +43,44 @@ def _cap_bounds(lateral_squared: Fraction, radius: Fraction,
 def _segment_top_bounds(
     source: NominalSupportSegment, corners: tuple[tuple[Fraction, Fraction], ...], bits: int,
 ) -> tuple[Fraction | None, Fraction] | None:
-    sx, sy, sz = (_r(source.start.x_mm), _r(source.start.y_mm), _r(source.start.z_mm))
-    dx, dy = _r(source.end.x_mm) - sx, _r(source.end.y_mm) - sy
-    dz = _r(source.end.z_mm) - sz
+    return _segment_top_bounds_exact(_exact_top_segment_from_nominal(source), corners, bits)
+
+
+def exact_top_segment_from_structural(source: NominalSupportSegment) -> ExactNominalTopSegment:
+    if type(source) is not NominalSupportSegment or source.source_kind != "structural":
+        raise ContractError(ReasonCode.INVALID_GEOMETRY, "structural nominal source required")
+    return _exact_top_segment_from_nominal(source)
+
+
+def _exact_top_segment_from_nominal(source: NominalSupportSegment) -> ExactNominalTopSegment:
+    return ExactNominalTopSegment(
+        source.segment_id,
+        (_r(source.start.x_mm), _r(source.start.y_mm), _r(source.start.z_mm)),
+        (_r(source.end.x_mm), _r(source.end.y_mm), _r(source.end.z_mm)),
+        _r(source.width_mm), _r(source.height_mm), source.source_kind,
+    )
+
+
+def exact_top_segment_from_chord(
+    proposal: ChordProposal, *, segment_id: str, command_z_mm: Fraction,
+    width_mm: Fraction, height_mm: Fraction,
+) -> ExactNominalTopSegment:
+    if type(proposal) is not ChordProposal or proposal.state != "proposed" or proposal.reason != "unscored":
+        raise ContractError(ReasonCode.INVALID_GEOMETRY, "proposed unscored chord required")
+    return ExactNominalTopSegment(
+        segment_id,
+        (proposal.start_xy_mm[0], proposal.start_xy_mm[1], command_z_mm),
+        (proposal.end_xy_mm[0], proposal.end_xy_mm[1], command_z_mm),
+        width_mm, height_mm, "candidate",
+    )
+
+
+def _segment_top_bounds_exact(
+    source: ExactNominalTopSegment, corners: tuple[tuple[Fraction, Fraction], ...], bits: int,
+) -> tuple[Fraction | None, Fraction] | None:
+    sx, sy, sz = source.start_xyz_mm
+    dx, dy = source.end_xyz_mm[0] - sx, source.end_xyz_mm[1] - sy
+    dz = source.end_xyz_mm[2] - sz
     length_squared = dx * dx + dy * dy
     parameters = tuple(((x - sx) * dx + (y - sy) * dy) / length_squared for x, y in corners)
     crosses = tuple((x - sx) * dy - (y - sy) * dx for x, y in corners)
@@ -52,7 +89,7 @@ def _segment_top_bounds(
     q_min = (Fraction(0) if c_min <= 0 <= c_max
              else min(c_min * c_min, c_max * c_max) / length_squared)
     q_max = max(c_min * c_min, c_max * c_max) / length_squared
-    half_width, radius = _r(source.width_mm) / 2, _r(source.height_mm) / 2
+    half_width, radius = source.width_mm / 2, source.height_mm / 2
     if t_max < 0 or t_min > 1 or q_min > half_width * half_width:
         return None
     fully_covered = t_min >= 0 and t_max <= 1 and q_max <= half_width * half_width
@@ -64,6 +101,105 @@ def _segment_top_bounds(
     if fully_covered:
         lower = min(nozzle_endpoints) - radius + _cap_bounds(q_max, radius, flat_half_width, bits)[0]
     return lower, upper
+
+
+def _exact_top_query(
+    corners: tuple[tuple[Fraction, Fraction], ...],
+    sources: tuple[ExactNominalTopSegment, ...], *,
+    max_sources: int, max_coordinate_bits: int, sqrt_fraction_bits: int,
+    cancelled: Callable[[], bool], full_reason: str,
+) -> ExactNominalTopBounds:
+    if (type(max_sources) is not int or max_sources < 1
+            or type(max_coordinate_bits) is not int or max_coordinate_bits < 1
+            or type(sqrt_fraction_bits) is not int or not 1 <= sqrt_fraction_bits <= 4096
+            or not callable(cancelled)):
+        raise ContractError(ReasonCode.INVALID_SETTING, "invalid exact top query settings")
+    if type(sources) is not tuple:
+        raise ContractError(ReasonCode.INVALID_GEOMETRY, "exact source tuple required")
+
+    def is_cancelled() -> bool:
+        answer = cancelled()
+        if type(answer) is not bool:
+            raise ContractError(ReasonCode.INVALID_SETTING, "cancellation callback must return exact bool")
+        return answer
+
+    def publish(state: str, reason: str, lower: Fraction | None = None,
+                upper: Fraction | None = None) -> ExactNominalTopBounds:
+        if is_cancelled():
+            return ExactNominalTopBounds("incomplete", "cancelled", None, None)
+        result = ExactNominalTopBounds(state, reason, lower, upper)
+        if is_cancelled():
+            return ExactNominalTopBounds("incomplete", "cancelled", None, None)
+        return result
+
+    if is_cancelled():
+        return ExactNominalTopBounds("incomplete", "cancelled", None, None)
+    if len(sources) > max_sources:
+        return publish("incomplete", "resource-limit")
+    if any(component.bit_length() > max_coordinate_bits
+           for corner in corners for coordinate in corner
+           for component in (coordinate.numerator, coordinate.denominator)):
+        return publish("incomplete", "resource-limit")
+    identifiers: set[str] = set()
+    for source in sources:
+        if is_cancelled():
+            return ExactNominalTopBounds("incomplete", "cancelled", None, None)
+        if type(source) is not ExactNominalTopSegment:
+            raise ContractError(ReasonCode.INVALID_GEOMETRY, "exact nominal top segment required")
+        if source.segment_id in identifiers:
+            raise ContractError(ReasonCode.INVALID_GEOMETRY, "duplicate exact top segment identity")
+        identifiers.add(source.segment_id)
+        coordinates = source.start_xyz_mm + source.end_xyz_mm + (source.width_mm, source.height_mm)
+        if any(component.bit_length() > max_coordinate_bits
+               for coordinate in coordinates
+               for component in (coordinate.numerator, coordinate.denominator)):
+            return publish("incomplete", "resource-limit")
+    top_lower = top_upper = None
+    for source in sources:
+        if is_cancelled():
+            return ExactNominalTopBounds("incomplete", "cancelled", None, None)
+        bounds = _segment_top_bounds_exact(source, corners, sqrt_fraction_bits)
+        if is_cancelled():
+            return ExactNominalTopBounds("incomplete", "cancelled", None, None)
+        if bounds is None:
+            continue
+        lower, upper = bounds
+        top_upper = upper if top_upper is None else max(top_upper, upper)
+        if lower is not None:
+            top_lower = lower if top_lower is None else max(top_lower, lower)
+    if top_upper is None:
+        return publish("absent", "disjoint")
+    if top_lower is None:
+        return publish("unresolved-partial", "union-coverage-unproven", upper=top_upper)
+    return publish("full-bounded", full_reason, top_lower, top_upper)
+
+
+def query_exact_nominal_top_point(
+    x_mm: Fraction, y_mm: Fraction, sources: tuple[ExactNominalTopSegment, ...], *,
+    max_sources: int, max_coordinate_bits: int, sqrt_fraction_bits: int,
+    cancelled: Callable[[], bool],
+) -> ExactNominalTopBounds:
+    if type(x_mm) is not Fraction or type(y_mm) is not Fraction:
+        raise ContractError(ReasonCode.INVALID_GEOMETRY, "exact point required")
+    return _exact_top_query(((x_mm, y_mm),), sources, max_sources=max_sources,
+                            max_coordinate_bits=max_coordinate_bits,
+                            sqrt_fraction_bits=sqrt_fraction_bits, cancelled=cancelled,
+                            full_reason="covered-point")
+
+
+def query_exact_nominal_top_cell(
+    cell: ExactTopCellXY, sources: tuple[ExactNominalTopSegment, ...], *,
+    max_sources: int, max_coordinate_bits: int, sqrt_fraction_bits: int,
+    cancelled: Callable[[], bool],
+) -> ExactNominalTopBounds:
+    if type(cell) is not ExactTopCellXY:
+        raise ContractError(ReasonCode.INVALID_GEOMETRY, "exact cell required")
+    corners = tuple((x, y) for x in (cell.x_min_mm, cell.x_max_mm)
+                    for y in (cell.y_min_mm, cell.y_max_mm))
+    return _exact_top_query(corners, sources, max_sources=max_sources,
+                            max_coordinate_bits=max_coordinate_bits,
+                            sqrt_fraction_bits=sqrt_fraction_bits, cancelled=cancelled,
+                            full_reason="one-segment-covers-cell")
 
 
 def _structural_top_query(

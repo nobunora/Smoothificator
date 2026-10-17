@@ -142,3 +142,69 @@ class NominalStructuralTopBounds:
         else:
             _require(lower is None and upper is None,
                      "absent or incomplete structural top has no bounds")
+
+
+@dataclass(frozen=True, slots=True)
+class ExactNominalTopSegment:
+    segment_id: str
+    start_xyz_mm: tuple[Fraction, Fraction, Fraction]
+    end_xyz_mm: tuple[Fraction, Fraction, Fraction]
+    width_mm: Fraction
+    height_mm: Fraction
+    source_kind: str
+
+    def __post_init__(self):
+        _require(type(self.segment_id) is str and bool(self.segment_id.strip()), "segment identity required")
+        for endpoint in (self.start_xyz_mm, self.end_xyz_mm):
+            _require(type(endpoint) is tuple and len(endpoint) == 3
+                     and all(type(x) is Fraction for x in endpoint), "exact XYZ endpoint required")
+        _require(type(self.width_mm) is Fraction and type(self.height_mm) is Fraction
+                 and self.width_mm >= self.height_mm > 0, "exact stadium dimensions required")
+        _require(self.start_xyz_mm[:2] != self.end_xyz_mm[:2], "nonzero XY segment required")
+        _require(type(self.source_kind) is str and self.source_kind in ("structural", "candidate"),
+                 "invalid exact top source kind")
+        if self.source_kind == "candidate":
+            _require(self.start_xyz_mm[2] == self.end_xyz_mm[2], "candidate Z must be constant")
+
+
+@dataclass(frozen=True, slots=True)
+class ExactTopCellXY:
+    x_min_mm: Fraction
+    x_max_mm: Fraction
+    y_min_mm: Fraction
+    y_max_mm: Fraction
+
+    def __post_init__(self):
+        _require(all(type(x) is Fraction for x in
+                     (self.x_min_mm, self.x_max_mm, self.y_min_mm, self.y_max_mm))
+                 and self.x_min_mm < self.x_max_mm and self.y_min_mm < self.y_max_mm,
+                 "positive exact cell extents required")
+
+
+@dataclass(frozen=True, slots=True)
+class ExactNominalTopBounds:
+    state: str
+    reason: str
+    top_z_lower_mm: Fraction | None
+    top_z_upper_mm: Fraction | None
+
+    def __post_init__(self):
+        allowed = {
+            "absent": ("disjoint",),
+            "full-bounded": ("covered-point", "one-segment-covers-cell"),
+            "unresolved-partial": ("union-coverage-unproven",),
+            "incomplete": ("resource-limit", "cancelled"),
+        }
+        _require(type(self.state) is str and self.state in allowed
+                 and type(self.reason) is str and self.reason in allowed[self.state],
+                 "invalid exact top outcome")
+        lower, upper = self.top_z_lower_mm, self.top_z_upper_mm
+        _require((lower is None or type(lower) is Fraction)
+                 and (upper is None or type(upper) is Fraction), "exact top bounds required")
+        if self.state == "full-bounded":
+            _require(lower is not None and upper is not None and lower <= upper,
+                     "ordered full top bounds required")
+        elif self.state == "unresolved-partial":
+            _require(lower is None and upper is not None, "partial top has upper bound only")
+        else:
+            _require(lower is None and upper is None, "absent or incomplete top has no bounds")
