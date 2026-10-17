@@ -9,7 +9,7 @@ maximum-path-Z bound. Final recheck found no unresolved schema conflict in this
 scope. No production implementation preceded this disposition.
 
 Manifest: docs/AUDIT_REVISION_2026-10-16.json.
-Manifest Git blob: `90490ca791491ab1aef2b5f1bf596bd59015f372`
+Manifest Git blob: `44f3dc7b41b0cb88d197ad041543c7cbc02c9287`
 
 ## Owning contract and scope
 

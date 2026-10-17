@@ -10,7 +10,7 @@ Authority: ADR-0030 Closed exact whole-segment material classification owns the
 API, contact predicates, endpoint proof and closed results. Its embedding and
 point-classification subsections remain authoritative prerequisites.
 Manifest: docs/AUDIT_REVISION_2026-10-16.json.
-Manifest Git blob: `90490ca791491ab1aef2b5f1bf596bd59015f372`
+Manifest Git blob: `44f3dc7b41b0cb88d197ad041543c7cbc02c9287`
 
 Extend domain/material_side.py, engine/material_side.py and
 engine/triangle_intersection.py. Extract shared private endpoint classification

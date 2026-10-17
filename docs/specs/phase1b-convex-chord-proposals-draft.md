@@ -1,6 +1,8 @@
 # Draft: convex-section unscored chord proposals
 
-Status: DRAFT_SPEC. Not implementation authority; no canonical revision is changed.
+Status: SUPERSEDED historical draft. The adopted contract is ADR-0005 Closed
+unscored convex chord proposal primitive; use phase1b-convex-chord-proposals.md
+for implementation. This draft remains non-authoritative.
 
 ## Purpose and exclusions
 

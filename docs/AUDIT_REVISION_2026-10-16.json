@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scope": "Phase 0.5 research architecture, Phase 1A nominal bead/flow and adaptive support, Phase 1B exact mesh material, segment, section and supplied-interval stability; no physical authority",
+  "scope": "Phase 0.5 research architecture, Phase 1A nominal support, Phase 1B exact mesh material/section/stability and unscored convex chord proposals; no physical authority",
   "review_status": "integrity_only_not_implementation_authority",
   "blobs": [
     {
@@ -85,7 +85,7 @@
     },
     {
       "path": "docs/adr/0005-surface-band-centerline-and-nesting.md",
-      "git_blob": "636af83c9729a08c2061e0473b986e004e97864f"
+      "git_blob": "90a9e746a611934b1b5060b221c20bc9ba58d099"
     },
     {
       "path": "docs/adr/0006-orca-zaa-z-semantics-and-flow.md",
