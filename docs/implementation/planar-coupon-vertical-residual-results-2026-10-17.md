@@ -77,3 +77,20 @@ the interval changed from `[8589803517/21474836480, 2/5]` mm to exactly
 possible candidate heuristic, but cannot itself certify benefit against the
 full sliced baseline. Width/footprint, support, and Orca slice provenance
 remain unverified; this probe authorizes no injection or printing.
+
+An offline CLI slice of `artifacts/fixtures/offline-coupon.3mf` with the
+pinned `OrcaSlicer 2.5.0-dev` executable succeeded (`--slice 0`, isolated
+`--datadir`, Custom MyMarlin 0.4 mm machine / 0.20 mm process / generic PLA
+profile). The input 3MF SHA-256 was
+`6b17c12a81ea54a0bf8545713c2119e7d6604b6ee9abfbdc23b73e883eebc4`;
+the ignored slicer output `artifacts/cli-midpoint-slice/plate_1.gcode` SHA-256
+was `499ecc78586fea15694eea16a33bfebea761522aa0bf5eee9069e67c0ae1dd9e`.
+This is ordinary slicer output, not a Smoothificator modification or safe
+export. In that output, the X=120.2..129.8 mm overhang segments at Z=0.4 mm,
+Y=127.242 mm and Z=0.6 mm, Y=125.359 mm have a simple 3D midpoint segment
+at Z=0.5 mm, Y=126.3005 mm. Their XY separation is 1.883 mm, so the midpoint
+is 0.9415 mm from either source centerline. A lone nominal 0.4 mm bead does
+not establish continuity or support across that gap, and Z=0.5 mm is absent
+from the original 0.2 mm layer schedule. No candidate was added to this
+G-code or viewed in Orca. The candidate requires profile-bound width and
+multi-line support analysis before any Preview or export claim.
