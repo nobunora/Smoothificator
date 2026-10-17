@@ -16,7 +16,7 @@ halfplane clipping, endpoint trimming, result matrices and resource precedence.
 ADR-0030 owns fresh embedding and whole-segment material queries; ADR-0059 owns
 the reused exact symbolic section predicates.
 Manifest: docs/AUDIT_REVISION_2026-10-16.json.
-Manifest Git blob: `44f3dc7b41b0cb88d197ad041543c7cbc02c9287`
+Manifest Git blob: `a2db5305551533b98df22a1436a35c5985e09b93`
 
 Implement domain/convex_chords.py and engine/convex_chords.py. Extract private
 material_side._classify_segment returning a closed classification string or

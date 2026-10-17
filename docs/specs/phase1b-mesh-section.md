@@ -11,7 +11,7 @@ Authority: ADR-0059 Closed exact single-plane research section owns the exact
 API, predicates, topology events, reason precedence and limits. ADR-0030 owns
 the revalidated topology prerequisite. ADR-0053 owns remaining simple-loop rules.
 Manifest: docs/AUDIT_REVISION_2026-10-16.json.
-Manifest Git blob: `44f3dc7b41b0cb88d197ad041543c7cbc02c9287`
+Manifest Git blob: `a2db5305551533b98df22a1436a35c5985e09b93`
 
 Implement domain/mesh_section.py and engine/mesh_section.py. Reuse PrintPoint3,
 IndexedTriangleMesh, prepare_mesh_topology, MeshSectionPolicy and typed errors.
