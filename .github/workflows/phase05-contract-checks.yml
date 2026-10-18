@@ -1,0 +1,20 @@
+name: Phase 0.5 contracts
+on:
+  push:
+    branches: [phase-0.5-skeleton-20261013]
+  pull_request:
+    branches: [adaptive-subedge-design]
+permissions:
+  contents: read
+jobs:
+  unittest-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Syntax and package compilation
+        run: python -m compileall -q adaptive_subedge orca_plugin tests
+      - name: Focused architecture and contract tests
+        run: python -m unittest discover -s tests -p 'test_*.py' -v

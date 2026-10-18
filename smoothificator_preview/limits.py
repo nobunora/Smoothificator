@@ -1,0 +1,11 @@
+"""ADR-0068 operational bounds, never printer/material settings."""
+MAX_VERTICES = 512
+MAX_TRIANGLES = 512
+MAX_POSITIONS = 64
+MAX_PAIRS = 130816
+MAX_SECTION_SEGMENTS = 512
+MAX_RAYS = 8
+DEADLINE_SECONDS = 15
+MAX_REQUEST_BYTES = 8192
+MAX_HTML_BYTES = 2097152
+FRAME = "orca_model_world_mm_v1"
