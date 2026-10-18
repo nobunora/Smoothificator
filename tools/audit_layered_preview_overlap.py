@@ -17,8 +17,10 @@ SOURCE_SHA256 = "499ecc78586fea15694eea16a33bfebea761522aa0bf5eee9069e67c0ae1dd9
 WORD = re.compile(r"([XYZEF])([+-]?(?:\d+(?:\.\d*)?|\.\d+))")
 
 
-def source_segments(source: bytes) -> tuple[tuple[float, ...], ...]:
-    if hashlib.sha256(source).hexdigest() != SOURCE_SHA256:
+def source_segments(source: bytes, *, expected_sha256: str | None = None) -> tuple[tuple[float, ...], ...]:
+    if expected_sha256 is None:
+        expected_sha256 = SOURCE_SHA256
+    if hashlib.sha256(source).hexdigest() != expected_sha256:
         raise ValueError("unpinned source G-code")
     x = y = z = 0.0
     layer_z = None
@@ -30,7 +32,11 @@ def source_segments(source: bytes) -> tuple[tuple[float, ...], ...]:
             raise ValueError("unsupported source motion mode")
         if line.startswith("G92") and any(key in line for key in ("X", "Y", "Z")):
             raise ValueError("unsupported source origin remap")
-        if line.startswith(";Z:"):
+        if line.startswith("; Z_HEIGHT:"):
+            layer_z = float(line.split(":",1)[1])
+        elif line.startswith("; LINE_WIDTH:"):
+            width = float(line.split(":",1)[1])
+        elif line.startswith(";Z:"):
             layer_z = float(line[3:])
         elif line.startswith(";WIDTH:"):
             width = float(line[7:])

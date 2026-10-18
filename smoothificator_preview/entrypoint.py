@@ -7,6 +7,10 @@ from .adapters import copy_model
 from .application import parse_request, PreviewJob, BandRequest
 from .ui import page, render_result, render_artifact_path
 from .native_scene import ViewerSceneError
+from .material_settings import load_policy, save_policy, presentation
+from adaptive_subedge.application.empirical_material_settings import policy_from_message
+from . import dimension_settings
+from adaptive_subedge.application.smooth_dimension_settings import policy_from_message as dimension_policy_from_message
 
 EXPECTED_VERSION = "2.5.0-dev"
 EXPECTED_BUILD = "86905a8a"
@@ -39,7 +43,10 @@ class CandidatePreview(orca.script.ScriptPluginCapabilityBase):
                 raise ValueError("unsupported-numpy-version")
             snapshot = copy_model(orca.host.model())
             self.storage = orca.host.plugin.storage()
-            html = page(snapshot)
+            material_policy, material_path = load_policy(self.storage)
+            dimension_policy, dimension_path = dimension_settings.load_policy(self.storage)
+            html = page(snapshot, presentation(material_policy, material_path, saved=material_path.exists()),
+                dimension_settings.presentation(dimension_policy, dimension_path, saved=dimension_path.exists()))
             with self.lock:
                 self.closed = False
                 epoch = self.window_epoch
@@ -82,6 +89,29 @@ class CandidatePreview(orca.script.ScriptPluginCapabilityBase):
 
     def on_message(self, message, epoch=None):
         if self.closed or epoch is not None and epoch != self.window_epoch:
+            return
+        if type(message) is dict and message.get("command") == "save_dimension_policy":
+            with self.lock:
+                if self.closed or epoch is not None and epoch != self.window_epoch:
+                    return
+                try:
+                    policy = dimension_policy_from_message(message)
+                    policy, target = dimension_settings.save_policy(self.storage, policy)
+                    self.window.post({"dimension_settings": dimension_settings.presentation(policy, target, saved=True)})
+                except (ValueError, OSError) as error:
+                    self.window.post({"dimension_error": str(error)[:160]})
+            return
+        if type(message) is dict and message.get("command") == "save_material_policy":
+            # Serialize the small atomic settings commit with window close/reopen.
+            with self.lock:
+                if self.closed or epoch is not None and epoch != self.window_epoch:
+                    return
+                try:
+                    policy = policy_from_message(message)
+                    policy, target = save_policy(self.storage, policy)
+                    self.window.post({"material_settings": presentation(policy, target, saved=True)})
+                except (ValueError, OSError) as error:
+                    self.window.post({"material_error": str(error)[:160]})
             return
         if message == {"command": "cancel"}:
             with self.lock:

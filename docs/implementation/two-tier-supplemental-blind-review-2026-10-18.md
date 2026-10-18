@@ -1,0 +1,37 @@
+# Two-tier pure implementation independent blind review — 2026-10-18
+
+Initial disposition: **one Medium finding; bounded search resource/cancellation correction required**. No parent primary findings were received before this initial report. This is the frozen pure solver/intent/fixture-cycle review; separately moving copy/source integration was not inspected.
+
+Authority: `docs/specs/two-tier-supplemental-review.md`, its repository review, SPEC14 and Accepted ADR0043/0044/0048/0058. Read the full two new owners and focused tests, plus targeted existing freeze, formatting/cycle and finite clipping/packing owners. The opt-in earlier-parent route is canonically consistent while nominal centerline evidence remains distinct from full-footprint/physical support.
+
+Frozen manifest: `artifacts/two-tier-review/pure-freeze-v1.json`. Solver SHA `093bbc3712342c72aa792914257ea2a032172d16fa9094afb4f9ff11b8695f64`; intent owner `d83fade629a832781bfc4460cc0ef4f6c028b9d38809825dfc78421cbb82b832`; tests `87812162313ea590c6484ef74d91d712513ee5889dc01c5af977e0cd04b47cb0` / `f3acfdd41244e17b3e0074182b7b25a875a74d59636bed273a2555bde83c0556`. Verified all four remain unchanged after probes. No reusable source/test edit, printer operation or artifact overwrite.
+
+## TTR-1 — Medium — Height-pair preparation bypasses event/cancellation bounds
+
+Location: `tools/solve_two_tier_rectangles.py:171`, the nested `pairs` dictionary/tuple comprehension immediately after height filtering.
+
+For H admissible heights, this unconditionally evaluates H² exact rational height-pair predicates and can retain H² entries before polling cancellation again. Only H is checked against `max_events`; none of these pair evaluations contributes to the event counter. The later comparator budget check does not cover this preparation. Large permitted caller families can therefore spend excessive time/memory before honoring cancellation or a small declared search budget, even though the final report claims only a few consumed events.
+
+Concrete independently executed Python3.12.10 probe: use the test policy with grid2, exact heights `tuple(F(80+i,1000) for i in range(100))`, base0.55, rise0.4, `max_events=100`, `max_candidates=1`; callback returns false on first poll and true on second. Result is `incomplete/cancelled`, events6, polls2, but cProfile records10100 invocations of the height-pair generator,10017 rational additions and10208 rational multiplications before cancellation. The10000 pair predicate evaluations already exceed the declared100-event search budget. H can grow up to the caller's much larger event limit; this is quadratic uncancellable work/storage, not a numerical tolerance issue.
+
+Violated requirement: explicit bounded event/candidate/cancellation controls must cover the finite-family search preparation; inability to finish must fail closed without first doing work far beyond those limits. No false optimum is returned by this probe, limiting severity to Medium for offline resource failure.
+
+Remediation direction: budget/poll the height-combination preparation itself or preflight a conservative H² bound before allocation; preferably construct only admissible pairs with checkpoints and explicit accounting. Add a regression that verifies preparation stops before an oversized quadratic family is built, rather than merely checking the eventual report is incomplete. Confidence high. Disposition pending reconciliation.
+
+## Checks and negative coverage
+
+Command `.\.venv\Scripts\python.exe -m unittest tests.unit.test_two_tier_sections tests.unit.test_two_tier_intents -v` — PASS,8 tests,21.769 seconds, Python3.12.10. Tests genuinely execute the new family and graph, including exact30% compensated overlap, zero overlap, strict original upper layer, thinner child after parent, missing/cyclic/depth3/foreign/spatial rejection, cancellation, forged frozen-parent rejection and actual cycle restoration.
+
+Additional independent finite-family enumeration matched the solver's `family_error_area_mm2` for nine cases: overlaps0/10/30%, bases0.4/0.55/0.8, grid4, explicit configured heights. The independent recursion enumerated all feasible lower/contained-upper blocks and disjoint interval combinations. This falsification did not establish a DP optimality/objective defect. Shared overlap is counted once through exact finite inclusion/exclusion; interblock X interiors are disjoint. The floor comparator is explicitly continuous-median and separately posed/rescored for configured overlap, rather than falsely included in the height lattice.
+
+Original floor and local support plane remain separate immutable meanings. Numeric emission goes through the existing freeze owner, which rejects off-grid support/top, compensated minimum/height/overlap failure and E-implied width overflow. Actual parent and child straight beads are checked for parallel finite span containment and parent-only exact contact. The immediate-support slab binds fresh parent/child frozen identities; no third tier or future/same-top required support is admitted. Ready-node ordering uses world top, physical height and canonical ID; every parent top is strictly lower. Stale plans are freshly rebuilt before the pure cycle adapter executes each one-path block.
+
+Pure cycle execution restores the supplied anchor exactly and uses the ORIGINAL next-layer ceiling through the existing hop owner. It is an offline fixture adapter, not a source association validator: an independently supplied different saved anchor can still be restored successfully. The later copy integration must rebuild/bind actual source/profile/feed/anchor context, validate real material/tool interactions and restore preview/source bytes. This report does not promote pure graph success to those pending source-association or collision gates.
+
+No second material defect established within this initial pure review. No actual20 fixture source/copy, intended-versus-unrelated material audit, native preview, full-footprint support, opaque prefix/suffix execution, legacy full-copy byte parity or physical result is accepted by these eight tests. Those remain separate integration gates. All physical/runtime/print authority stays false.
+
+## TTR-1 correction verification
+
+Parent confirmed TTR-1 after the initial report. Frozen v2 solver SHA `cb2103de5c67e8e078538a5784ee38bacfad8fef2d0666c42ce179d209f0e1de`; section tests `daf52861e15cd8449e5eed46ec8655b39abccaa823f0c765d8998978733c8091`. Graph files unchanged. Numeric-family validation, height filtering and every height-pair comparison now charge/poll a checkpoint. The new immutable report records actual `height_pair_tests`; incomplete states still cannot claim finite-family completeness.
+
+Independently reran the original100-height/base0.55/rise0.4/grid2/max_events100/cancel-on-second-poll counterexample: cancellation occurs at event2 with0 pair tests. New focused tests also verify budget100 does no quadratic preparation and budget400 accounts a bounded partial pair prefix. Combined command `.\.venv\Scripts\python.exe -m unittest tests.unit.test_two_tier_sections tests.unit.test_two_tier_intents tests.unit.test_two_tier_copy tests.unit.test_two_tier_material -v` — PASS,16 tests,10.007 seconds (9 pure and7 new copy/material tests). Disposition: **confirmed, fixed and independently verified** for TTR-1. Separate copy/material initial review records TTC-1; this correction does not close that different boundary.

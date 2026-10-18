@@ -1,0 +1,16 @@
+# ADR-0072: Bounded flat clearance and volume calibration fixture
+
+Status: Accepted for the explicit offline experimental fixture only.
+Date: 2026-10-19
+
+The user requested one common small flat substrate with5 x5 individual straight test lines and one-layer numbers above each line. The experiment independently varies commanded nozzle clearance above an original sliced flat surface and final commanded filament-equivalent volume per path length. It is not geometric surface-filling optimization and does not change ADR0071, ordinary SupplementalPath/HopPolicy validation, plugin admission bounds, or production physical-envelope claims.
+
+Use a separate closed, immutable, source/profile-bound tools-owned calibration representation and offline native adapter. It must not coerce low-volume/high-clearance cases into a stadium with width<height, relabel commanded clearance as measured physical thickness, or bypass ordinary numeric/geometry validators by weakening them. The final volume axis is after all host-side scaling; derive E from filament area exactly once and record achieved volume after decimal rounding. Firmware flow/feed overrides must remain supported and explicitly verified. Command precision does not imply physical reproduction precision.
+
+The exact fixture/axes are specified in `../specs/flat-microextrusion-matrix-trial.md`. Genuine original slicing, actual base/label layer verification, immutable source identities, exact original-byte recovery, source modal-state restoration, profile motion/flow limits, safe-ceiling travel, fresh bounded nominal tool/material/label checks, deterministic package generation, focused and full tests, independent review and actual Studio load are required separately. An explicit conservative nominal material envelope is a trial assumption, not a calibrated prediction. Keep physical material behavior and opaque OEM execution limitations visible; no whole-printer safety certificate is implied by this experiment.
+
+Freeze labels and all ordinary source extrusion before injecting samples. No later ordinary model extrusion may cross or cover test samples. Keep low-to-high clearance order and hop above all original labels and prior sample envelopes before inter-sample motion. Existing supplemental retract1.6mm and reverse-wipe1mm remain fixed; maintain exact source state on return. Narrow changes must not alter historical output files, saved profile values or legacy adapter semantics.
+
+This acceptance authorizes implementation and software validation of the user-requested trial. It does not start a printer, install a plugin, release, merge PR8 or assert empirical lower limits.
+
+Accepted narrow self-retreat amendment: the assumed .2mm deposit envelope extends above h_cmd. Besides current-line forming and reverse wipe, the same empirical own-material premise therefore covers the immediately subsequent fixed-XY, strictly upward retreat from that just-formed line to above its own envelope and safe ceiling. Retraction occurs before retreat. This is not a strict separation proof. No other line, source/label material or lateral inter-cell travel is exempt; lateral travel starts only after the safe ceiling is reached. Do not shrink the unknown-material envelope merely to hide this necessary exit.

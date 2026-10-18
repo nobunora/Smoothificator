@@ -191,7 +191,7 @@ class ExactNominalTopBounds:
     def __post_init__(self):
         allowed = {
             "absent": ("disjoint",),
-            "full-bounded": ("covered-point", "one-segment-covers-cell"),
+            "full-bounded": ("covered-point", "one-segment-covers-cell", "one-segment-covers-span"),
             "unresolved-partial": ("union-coverage-unproven",),
             "incomplete": ("resource-limit", "cancelled"),
         }
@@ -208,3 +208,28 @@ class ExactNominalTopBounds:
             _require(lower is None and upper is not None, "partial top has upper bound only")
         else:
             _require(lower is None and upper is None, "absent or incomplete top has no bounds")
+
+
+@dataclass(frozen=True, slots=True)
+class ExactNominalProjectionBounds:
+    segment_id: str
+    axis_xyz: tuple[Fraction, Fraction, Fraction]
+    state: str
+    reason: str
+    lower_dot_units: Fraction | None
+    upper_dot_units: Fraction | None
+
+    def __post_init__(self):
+        _require(type(self.segment_id) is str and bool(self.segment_id.strip()), "projection segment identity required")
+        _require(type(self.axis_xyz) is tuple and len(self.axis_xyz) == 3
+                 and all(type(v) is Fraction for v in self.axis_xyz) and any(self.axis_xyz),
+                 "nonzero exact immutable projection axis required")
+        allowed = {"bounded": ("outward-whole-solid",), "incomplete": ("resource-limit", "cancelled")}
+        _require(type(self.state) is str and self.state in allowed and type(self.reason) is str
+                 and self.reason in allowed[self.state], "invalid exact projection outcome")
+        lower, upper = self.lower_dot_units, self.upper_dot_units
+        if self.state == "incomplete":
+            _require(lower is None and upper is None, "incomplete projection carries no bounds")
+        else:
+            _require(type(lower) is Fraction and type(upper) is Fraction and lower <= upper,
+                     "ordered exact outward projection bounds required")

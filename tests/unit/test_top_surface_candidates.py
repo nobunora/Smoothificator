@@ -43,7 +43,7 @@ class TopSurfaceCandidatesTests(unittest.TestCase):
         self.assertEqual(segments[-1]["review_status"], "continuous-contact-unverified")
         self.assertAlmostEqual(segments[-1]["sampled_nominal_minimum_top_z_mm"], 2.16131, places=4)
         self.assertEqual(segments[-1]["sampled_effective_height_mm"], 0.08)
-        self.assertEqual(segments[-1]["bead_height_mm"], 0.14)
+        self.assertEqual(segments[-1]["bead_height_mm"], 0.19)
         self.assertEqual(segments[-1]["width_mm"], 0.34)
         self.assertTrue(segments[-1]["width_minimum_verified"])
 
@@ -64,8 +64,8 @@ class TopSurfaceCandidatesTests(unittest.TestCase):
         self.assertEqual(manifest["candidate_ids"], ["top-07"])
         self.assertTrue(manifest["unverified_display"])
         self.assertFalse(manifest["printable_authorized"])
-        self.assertIn(";Z:2.28\n;HEIGHT:0.14", content)
-        self.assertIn(";TYPE:Custom\n;WIDTH:0.34\n;HEIGHT:0.14", content)
+        self.assertIn(";Z:2.28\n;HEIGHT:0.19", content)
+        self.assertIn(";TYPE:Custom\n;WIDTH:0.34\n;HEIGHT:0.19", content)
 
 
 if __name__ == "__main__":

@@ -64,7 +64,7 @@ def render_result(snapshot, request, preview):
     return output
 
 
-def page(snapshot):
+def page(snapshot, material_settings=None, dimension_settings=None):
     vertices = snapshot.mesh.vertices
     lowz, highz = min(p.z_mm for p in vertices), max(p.z_mm for p in vertices)
     lowy, highy = min(p.y_mm for p in vertices), max(p.y_mm for p in vertices)
@@ -76,7 +76,7 @@ def page(snapshot):
     for key in defaults:
         defaults[key] = _number(defaults[key])
     encoded = json.dumps(defaults).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
-    return PAGE.replace("__DEFAULTS__", encoded)
+    return PAGE.replace("__DIMENSION__", json.dumps(dimension_settings).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")).replace("__DEFAULTS__", encoded).replace("__MATERIAL__", json.dumps(material_settings).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026"))
 
 
 PAGE = '''<!doctype html><html lang="ja"><meta charset="utf-8">
@@ -91,6 +91,30 @@ table{border-collapse:collapse;width:100%}td,th{text-align:left;padding:7px;bord
 Custom分類の候補のみを標準ビュー用の別ファイルに保存します。印刷しないでください。<br>
 モデルworld座標（mm）。幅0.3〜0.6 mm・高さ0.2 mmは研究例で、プリンタの保証値ではありません。<br>
 表示は生成時点のスナップショットです。Orcaでモデルを変更したら再生成してください。</p>
+<section><h2>補完試験出力用設定</h2>
+<p>補完の移動吐出量だけの経験補正です。候補プレビューには適用しません。保存したJSONを試験出力側で読み込みます。</p>
+<form id="material_form"><label>0° の吐出量 (%)<input id="material_start_percent" required></label>
+<label>対象上限角の吐出量 (%)<input id="material_end_percent" required></label>
+<label>終了retract (mm)<input id="material_retract_mm" required></label><label>逆方向wipe (mm)<input id="material_wipe_mm" required></label>
+<label>基準層高 (mm)<input id="material_admission_layer_height_mm" required></label>
+<label>最小幅 (mm)<input id="material_admission_minimum_width_mm" required></label>
+<label>補正後の最小モデル高さ (mm)<input id="material_minimum_modeled_thickness_mm" required></label>
+<label>対象上限角 (°・導出値)<input id="material_maximum_angle_degrees" readonly></label>
+<button>設定を保存・試験出力用JSONを書き出す</button></form><p id="material_status" role="status"></p></section>
+<section><h2>形状テーパー試験設定（別モード）</h2>
+<p>低角度では元寸法を維持し、その後quinticで最小寸法へ近づけます。通常の全体積で再計算し、経験吐出補正25%と併用しません。保存だけでは試験出力モードを切り替えません。出力側でこのJSONを明示選択します。</p>
+<form id="dimension_form"><label>保持率 R(t) の式<input id="dimension_retention_expression" required style="width:400px"></label>
+<p>t は角度区間を0〜1へ正規化。t・有理数・+ - *・定数での割算・整数べき（次数12以下）。R(0)=1、R(1)=0が必須。結果は0〜1へ制限します。実機で寸法・式を調整してください。</p>
+<label>基準の最終線幅 (mm・前半を維持)<input id="dimension_reference_minimum_width_mm" required></label>
+<label>線幅終端補正の開始角 (°)<input id="dimension_width_tail_start_degrees" required></label>
+<label>線幅終端の保持率 R(u)<input id="dimension_width_tail_expression" required style="width:400px"></label>
+<p>開始角までは基準線幅による形状を維持し、その後だけ最終線幅へ移行します。高さの式は変わりません。</p>
+<label>維持する上限角 (°)<input id="dimension_plateau_end_degrees" required></label>
+<label>最終高さの通常最小値 (mm)<input id="dimension_minimum_height_mm" required></label><label>最終線幅の通常最小値 (mm)<input id="dimension_minimum_width_mm" required></label>
+<label>基準層高 (mm)<input id="dimension_admission_layer_height_mm" required></label><label>対象判定の最小幅 (mm)<input id="dimension_admission_minimum_width_mm" required></label>
+<label>寸法格子 (mm)<input id="dimension_dimension_grid_mm" required></label><label>対象上限角 (°・導出値)<input id="dimension_maximum_angle_degrees" readonly></label>
+<label>表現探索上限<input id="dimension_maximum_width_ticks" readonly></label>
+<label>幅の追加格子上限（元幅内で表現不能の場合）<input id="dimension_maximum_extra_width_ticks" readonly></label><button>形状モードの設定JSONを保存</button></form><p id="dimension_status" role="status"></p></section>
 <form id="form"><label>Z (mm)<input id="z" required></label><label>方向<select id="axis"><option>X</option><option>Y</option></select></label>
 <label>最小幅 (mm)<input id="minimum_width" required></label><label>最大幅 (mm)<input id="maximum_width" required></label>
 <label>表示高さ (mm)<input id="display_height" required></label><label>端部trim (mm)<input id="trim" required></label>
@@ -99,6 +123,21 @@ Custom分類の候補のみを標準ビュー用の別ファイルに保存し�
 <p id="status" role="status">idle — 入力確認後に候補を生成</p><div id="result"></div>
 <script>
 const defaults=__DEFAULTS__;for(const [key,value] of Object.entries(defaults))document.getElementById(key).value=value;
+const material=__MATERIAL__;
+function showMaterial(record){if(!record)return;document.getElementById('material_minimum_modeled_thickness_mm').value='';for(const [key,value] of Object.entries(record.settings))document.getElementById('material_'+key).value=value;
+ document.getElementById('material_status').textContent=(record.saved?'保存済み':'未保存の既定値')+(!record.settings.minimum_modeled_thickness_mm?' / 旧v1・高さフィルタなし（保存時にv2へ明示更新）':'')+' — '+record.path+' — SHA256 '+record.identity;}
+showMaterial(material);
+document.getElementById('material_form').addEventListener('input',()=>{document.getElementById('material_status').textContent='未保存の変更 — 保存するまで試験出力は以前のJSON設定を使用します';});
+document.getElementById('material_form').addEventListener('submit',event=>{event.preventDefault();const msg={command:'save_material_policy'};
+ for(const key of ['start_percent','end_percent','retract_mm','wipe_mm','admission_layer_height_mm','admission_minimum_width_mm','minimum_modeled_thickness_mm'])msg[key]=document.getElementById('material_'+key).value;
+ window.orca.postMessage(msg);});
+function showDimension(record){if(!record)return;document.getElementById('dimension_reference_minimum_width_mm').value=record.settings.reference_minimum_width_mm??record.settings.minimum_width_mm;document.getElementById('dimension_width_tail_start_degrees').value=record.settings.width_tail_start_degrees??'30';document.getElementById('dimension_width_tail_expression').value=record.settings.width_tail_expression??'1-(6*t**5-15*t**4+10*t**3)';document.getElementById('dimension_retention_expression').value=record.settings.retention_expression??'1-(6*t**5-15*t**4+10*t**3)';document.getElementById('dimension_maximum_extra_width_ticks').value=record.settings.maximum_extra_width_ticks??'0（旧v1）';for(const key of ['retention_expression','admission_layer_height_mm','admission_minimum_width_mm','maximum_angle_degrees','plateau_end_degrees','minimum_height_mm','minimum_width_mm','dimension_grid_mm','maximum_width_ticks','maximum_extra_width_ticks','reference_minimum_width_mm','width_tail_start_degrees','width_tail_expression']){if(Object.hasOwn(record.settings,key))document.getElementById('dimension_'+key).value=record.settings[key];}
+ document.getElementById('dimension_status').textContent=(record.saved?'保存済み':'未保存の既定値')+' — 形状のみ・経験補正なし / 保存時はv5・線幅の後半補正式も使用 — '+record.path+' — SHA256 '+record.identity;}
+showDimension(__DIMENSION__);
+document.getElementById('dimension_form').addEventListener('input',()=>{document.getElementById('dimension_status').textContent='未保存の変更 — 保存まで以前の形状JSONが有効';});
+document.getElementById('dimension_form').addEventListener('submit',event=>{event.preventDefault();const msg={command:'save_dimension_policy'};
+ for(const key of ['admission_layer_height_mm','admission_minimum_width_mm','plateau_end_degrees','minimum_height_mm','minimum_width_mm','dimension_grid_mm','retention_expression','reference_minimum_width_mm','width_tail_start_degrees','width_tail_expression'])msg[key]=document.getElementById('dimension_'+key).value;
+ window.orca.postMessage(msg);});
 let generation=-1;
 document.getElementById('form').addEventListener('submit',event=>{event.preventDefault();
  document.getElementById('result').replaceChildren();document.getElementById('status').textContent='copying';
@@ -106,7 +145,7 @@ document.getElementById('form').addEventListener('submit',event=>{event.preventD
  window.orca.postMessage(msg);
 });
 document.getElementById('cancel').onclick=()=>window.orca.postMessage({command:'cancel'});
-window.orca.onMessage(msg=>{if(msg.generation<generation)return;generation=msg.generation;
+window.orca.onMessage(msg=>{if(msg.dimension_settings){showDimension(msg.dimension_settings);return;}if(msg.dimension_error){document.getElementById('dimension_status').textContent=msg.dimension_error;return;}if(msg.material_settings){showMaterial(msg.material_settings);return;}if(msg.material_error){document.getElementById('material_status').textContent=msg.material_error;return;}if(msg.generation<generation)return;generation=msg.generation;
  document.getElementById('status').textContent=msg.state+' — '+msg.reason;
  document.getElementById('generate').disabled=['running','copying'].includes(msg.state);
  document.getElementById('result').innerHTML=msg.html||'';

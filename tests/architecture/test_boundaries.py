@@ -92,7 +92,12 @@ class BoundaryTests(unittest.TestCase):
                 self.assertFalse(any(x.startswith(("orca_plugin", "bambu", "slicer")) for x in imported), relative)
             if relative.startswith("adaptive_subedge/engine/"):
                 self.assertFalse(any("gcode" in x for x in imported), relative)
-        self.assertFalse((ROOT / "orca_plugin" / "gcode").exists(), "no G-code executor may be implemented in this milestone")
+        # Post-Phase-0.5 source inspection is explicitly read-only. Keep the
+        # closed file allowlist: an executor cannot appear as an unnoticed peer.
+        gcode = ROOT / "orca_plugin" / "gcode"
+        allowed = {"__init__.py", "linear_trace.py", "source_profile.py"}
+        if gcode.exists():
+            self.assertEqual({p.relative_to(gcode).as_posix() for p in gcode.rglob("*.py")}, allowed)
 
     def test_resolved_relative_and_absolute_import_boundaries(self):
         source_paths = sorted((ROOT / "adaptive_subedge").rglob("*.py")) + sorted(
@@ -173,7 +178,7 @@ class BoundaryTests(unittest.TestCase):
         names = list((ROOT / "docs" / "adr").glob("[0-9][0-9][0-9][0-9]-*.md"))
         numbers = [int(p.name[:4]) for p in names]
         self.assertEqual(len(numbers), len(set(numbers)))
-        self.assertEqual(sorted(numbers), list(range(1, 70)))
+        self.assertEqual(sorted(numbers), list(range(1, 73)))
         legacy = (ROOT / "docs" / "adr" / "0010-orca-filament-flow-ratio-e-conversion.md").read_text(encoding="utf-8")
         self.assertIn("Status: Superseded", legacy)
 

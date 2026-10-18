@@ -49,7 +49,12 @@ class Phase05SupportOwnership(unittest.TestCase):
 
     def test_phase05_adds_no_runtime_orca_gcode_execution_modules(self):
         # Handoff forbids live Orca, G-code and optimizer execution in this phase.
-        self.assertFalse((ROOT/"orca_plugin"/"gcode").exists())
+        # Phase-0.5 DTOs remain isolated. The later read-only source inspection
+        # contract permits these three files, without a printer/export hook.
+        gcode = ROOT/"orca_plugin"/"gcode"
+        if gcode.exists():
+            self.assertEqual({p.relative_to(gcode).as_posix() for p in gcode.rglob("*.py")},
+                             {"__init__.py", "source_profile.py", "linear_trace.py"})
         self.assertFalse((ROOT/"orca_plugin"/"capabilities").exists())
         self.assertFalse((ROOT/"orca_plugin"/"adapters").exists())
         self.assertFalse((ROOT/"adaptive_subedge"/"application"/"analyzer.py").exists())

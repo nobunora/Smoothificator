@@ -8,7 +8,7 @@ from adaptive_subedge.domain.convex_chords import ChordProposal
 from adaptive_subedge.domain.numeric import finite_binary64
 from adaptive_subedge.domain.settings import CandidateBeadBounds
 from adaptive_subedge.domain.support_cell import (
-    ExactNominalTopBounds, ExactNominalTopSegment, ExactTopCellXY,
+    ExactNominalProjectionBounds, ExactNominalTopBounds, ExactNominalTopSegment, ExactTopCellXY,
     NominalStructuralTopBounds, NominalSupportSegment, SupportCellQueryPolicy,
     SupportCellQueryResult, SupportCellXY,
 )
@@ -24,6 +24,62 @@ def _sqrt_bounds(radicand: Fraction, bits: int) -> tuple[Fraction, Fraction]:
     lower = Fraction(root, denominator)
     upper = lower if lower * lower == radicand else Fraction(root + 1, denominator)
     return lower, upper
+
+
+def query_exact_nominal_bead_projection(
+    source: ExactNominalTopSegment, axis_xyz: tuple[Fraction, Fraction, Fraction], *,
+    max_coordinate_bits: int, sqrt_fraction_bits: int, cancelled: Callable[[], bool],
+) -> ExactNominalProjectionBounds:
+    """Outward whole-solid dot bounds on an unnormalized exact XYZ axis.
+
+    The canonical flat-capped sweep is a centerline segment plus a normal-plane
+    flat segment and normal/vertical disc. Its support extent is
+    flat_half*sqrt(q) + radius*sqrt(q+axis_z**2); no axial XY cap is added.
+    Overlapping projection intervals are inconclusive, never overlap proof.
+    """
+    if type(source) is not ExactNominalTopSegment:
+        raise ContractError(ReasonCode.INVALID_GEOMETRY, "exact nominal projection source required")
+    if (type(axis_xyz) is not tuple or len(axis_xyz) != 3
+            or any(type(v) is not Fraction for v in axis_xyz) or not any(axis_xyz)):
+        raise ContractError(ReasonCode.INVALID_GEOMETRY, "nonzero exact immutable XYZ axis required")
+    if (type(max_coordinate_bits) is not int or max_coordinate_bits < 1
+            or type(sqrt_fraction_bits) is not int or not 1 <= sqrt_fraction_bits <= 4096
+            or not callable(cancelled)):
+        raise ContractError(ReasonCode.INVALID_SETTING, "explicit projection bit limits and cancellation required")
+    cancellation_latched = False
+
+    def is_cancelled():
+        nonlocal cancellation_latched
+        answer = cancelled()
+        if type(answer) is not bool:
+            raise ContractError(ReasonCode.INVALID_SETTING, "cancellation callback must return exact bool")
+        cancellation_latched = cancellation_latched or answer
+        return cancellation_latched
+
+    def publish(state, reason, lower=None, upper=None):
+        if is_cancelled():
+            state, reason, lower, upper = "incomplete", "cancelled", None, None
+        return ExactNominalProjectionBounds(source.segment_id, axis_xyz, state, reason, lower, upper)
+
+    if is_cancelled():
+        return publish("incomplete", "cancelled")
+    coordinates = (*source.start_xyz_mm, *source.end_xyz_mm, source.width_mm, source.height_mm, *axis_xyz)
+    if any(component.bit_length() > max_coordinate_bits for coordinate in coordinates
+           for component in (coordinate.numerator, coordinate.denominator)):
+        return publish("incomplete", "resource-limit")
+    start, end = source.start_xyz_mm, source.end_xyz_mm
+    dx, dy = end[0]-start[0], end[1]-start[1]
+    length_squared = dx*dx+dy*dy
+    q = (axis_xyz[0]*dy-axis_xyz[1]*dx)**2/length_squared
+    flat_half, radius = (source.width_mm-source.height_mm)/2, source.height_mm/2
+    normal_upper = _sqrt_bounds(q, sqrt_fraction_bits)[1]
+    if is_cancelled():
+        return publish("incomplete", "cancelled")
+    disc_upper = _sqrt_bounds(q+axis_xyz[2]**2, sqrt_fraction_bits)[1]
+    extent_upper = flat_half*normal_upper+radius*disc_upper
+    dots = tuple(axis_xyz[0]*point[0]+axis_xyz[1]*point[1]+axis_xyz[2]*(point[2]-radius)
+                 for point in (start, end))
+    return publish("bounded", "outward-whole-solid", min(dots)-extent_upper, max(dots)+extent_upper)
 
 
 def _cap_bounds(lateral_squared: Fraction, radius: Fraction,
@@ -200,6 +256,30 @@ def query_exact_nominal_top_cell(
                             max_coordinate_bits=max_coordinate_bits,
                             sqrt_fraction_bits=sqrt_fraction_bits, cancelled=cancelled,
                             full_reason="one-segment-covers-cell")
+
+
+def query_exact_nominal_top_span(
+    start_xy_mm: tuple[Fraction, Fraction], end_xy_mm: tuple[Fraction, Fraction],
+    sources: tuple[ExactNominalTopSegment, ...], *,
+    max_sources: int, max_coordinate_bits: int, sqrt_fraction_bits: int,
+    cancelled: Callable[[], bool],
+) -> ExactNominalTopBounds:
+    """Bound the entire straight span through affine projection/lateral extrema.
+
+    Endpoints define extrema over every span parameter, not sampled coverage.
+    The existing core requires one source to cover the whole domain before
+    returning a lower bound; different endpoint sources cannot imply coverage.
+    """
+    for endpoint in (start_xy_mm, end_xy_mm):
+        if (type(endpoint) is not tuple or len(endpoint) != 2
+                or any(type(v) is not Fraction for v in endpoint)):
+            raise ContractError(ReasonCode.INVALID_GEOMETRY, "exact immutable XY span endpoints required")
+    if start_xy_mm == end_xy_mm:
+        raise ContractError(ReasonCode.INVALID_GEOMETRY, "nondegenerate exact span required")
+    return _exact_top_query((start_xy_mm, end_xy_mm), sources, max_sources=max_sources,
+                            max_coordinate_bits=max_coordinate_bits,
+                            sqrt_fraction_bits=sqrt_fraction_bits, cancelled=cancelled,
+                            full_reason="one-segment-covers-span")
 
 
 def _structural_top_query(
