@@ -5,10 +5,11 @@ import csv
 import hashlib
 import io
 import json
+import sys
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
-VERSION = "0.2.7"
+VERSION = "0.3.1"
 DISTRIBUTION = "smoothificator_preview"
 DIST_INFO = f"{DISTRIBUTION}-{VERSION}.dist-info"
 WHEEL_NAME = f"{DISTRIBUTION}-{VERSION}-py3-none-any.whl"
@@ -16,7 +17,7 @@ PACKAGES = ("adaptive_subedge", "smoothificator_preview")
 AUDIT_MANIFEST = "docs/AUDIT_REVISION_2026-10-16.json"
 
 
-def collect_files(root: Path) -> dict[str, bytes]:
+def collect_files(root: Path, calibration_bundle: Path | None = None) -> dict[str, bytes]:
     """Allow only package Python sources and explicit distribution metadata."""
     root = root.resolve()
     files = {}
@@ -38,12 +39,12 @@ def collect_files(root: Path) -> dict[str, bytes]:
         "Metadata-Version: 2.4\n"
         "Name: smoothificator-preview\n"
         f"Version: {VERSION}\n"
-        "Summary: Read-only unscored model-world chord preview for pinned OrcaSlicer\n"
+        "Summary: Preview and frozen experimental calibration file export for pinned OrcaSlicer\n"
         "Import-Name: smoothificator_preview\n"
         "Requires-Python: >=3.12\n"
         "Requires-Dist: numpy==2.2.6\n"
         "License-File: LICENSE\n\n"
-        "Research preview only. No G-code mutation or physical printing authority.\n"
+        "Preview plus byte-exact prepared experimental file export. No live G-code generation or automatic printing.\n"
     ).encode("utf-8")
     files[f"{DIST_INFO}/WHEEL"] = (
         "Wheel-Version: 1.0\nGenerator: Smoothificator stdlib preview builder\n"
@@ -53,7 +54,7 @@ def collect_files(root: Path) -> dict[str, bytes]:
     manifest_bytes = (root / AUDIT_MANIFEST).read_bytes()
     provenance = {
         "schema_version": 1,
-        "scope": "read-only unscored model-world preview; no physical authority",
+        "scope": "read-only preview and frozen prepared experimental export; no automatic printing",
         "audit_manifest_path": AUDIT_MANIFEST,
         "audit_manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(),
         "package_source_sha256": {
@@ -64,6 +65,15 @@ def collect_files(root: Path) -> dict[str, bytes]:
     files[f"{DIST_INFO}/provenance.json"] = (
         json.dumps(provenance, sort_keys=True, indent=2)+"\n"
     ).encode("utf-8")
+    if calibration_bundle is not None:
+        from smoothificator_preview.calibration_bundle import load_bundle
+        content = calibration_bundle.read_bytes()
+        bundle = load_bundle(content)
+        files["smoothificator_preview/_calibration_bundle.zip"] = content
+        provenance["calibration_bundle_sha256"] = bundle.bundle_sha256
+        provenance["calibration_manifest_sha256"] = bundle.manifest_sha256
+        files[f"{DIST_INFO}/provenance.json"] = (json.dumps(provenance, sort_keys=True, indent=2)+"\n").encode("utf8")
+        files["smoothificator_preview/_calibration_bundle_lock.json"] = json.dumps({"bundle_sha256": bundle.bundle_sha256, "manifest_sha256": bundle.manifest_sha256}, sort_keys=True).encode("utf8")
     record = io.StringIO(newline="")
     writer = csv.writer(record, lineterminator="\n")
     for name, content in sorted(files.items()):
@@ -74,8 +84,8 @@ def collect_files(root: Path) -> dict[str, bytes]:
     return files
 
 
-def build_wheel(root: Path, output_directory: Path) -> Path:
-    files = collect_files(root)
+def build_wheel(root: Path, output_directory: Path, calibration_bundle: Path | None = None) -> Path:
+    files = collect_files(root, calibration_bundle)
     output_directory.mkdir(parents=True, exist_ok=True)
     output = output_directory / WHEEL_NAME
     with ZipFile(output, "w", compression=ZIP_DEFLATED, compresslevel=9) as archive:
@@ -91,9 +101,11 @@ def build_wheel(root: Path, output_directory: Path) -> Path:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, default=Path(__file__).resolve().parents[1] / "dist")
+    parser.add_argument("--calibration-bundle", type=Path)
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
-    output = build_wheel(root, args.output_dir)
+    if str(root) not in sys.path:sys.path.insert(0,str(root))
+    output = build_wheel(root, args.output_dir, args.calibration_bundle)
     print(f"Built {output.name}: sha256={hashlib.sha256(output.read_bytes()).hexdigest()}")
 
 

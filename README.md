@@ -110,3 +110,31 @@ Production implementation starts only after the final consistency audit and a re
 ## License
 
 GNU GPL terms and upstream copyright notices are retained.
+
+## Prepared 5x5 calibration trials
+
+ADR-0073 adds a separate **Smoothificator 校正マトリクス（実G-code）** Script
+capability for the pinned Orca plugin runtime. A wheel built with
+`python -m tools.build_preview_plugin --calibration-bundle <validated-bundle.zip>`
+contains four prepared 25-line trials: clearance/volume, end retraction/wipe,
+first-2-mm extra E/start debt-recovery speed, and volume/drawing speed. An ordinary
+unbundled wheel reports that no prepared trials are included.
+
+Select a trial and export its actual `.gcode` and condition table. Load the raw
+G-code directly in Bambu Studio for comparison; reslicing the geometry loses the
+experimental commands. The displayed .45mm width is nominal metadata; commanded
+volume changes and the deposited width must be measured. The trials retain the
+identified frozen reference profile. Required source-header keys must match the
+current Orca configuration before G-code export. The geometry-only reference
+settings project can be exported separately when configuration does not match.
+
+Select a numbered cell and observation to save the result. The next-range action
+saves a proposal JSON for offline preparation, not newly generated G-code. It does
+not change ordinary filler settings or start printing. See
+[the bounded contract](docs/specs/prepared-calibration-matrix-library.md) for the
+finite axes, configuration-guard scope and verification requirements.
+
+New source-relative speed trials use20/40/60/80/100percent of the actual
+source/profile/machine-limited reference. The pinned current source resolves
+200mm/s, yielding40/80/120/160/200mm/s commands. Legacy absolute trials remain
+available. See [the speed amendment](docs/specs/source-relative-calibration-speed.md).

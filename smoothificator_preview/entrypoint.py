@@ -1,5 +1,5 @@
-"""Pinned Orca Script-only entrypoint. No slicing or export capabilities."""
-from threading import Lock
+"""Pinned Orca scripts: preview and frozen prepared-file export, no live slicing."""
+from threading import Lock, Thread, Event
 import sys
 import orca
 
@@ -182,7 +182,115 @@ class CandidatePreview(orca.script.ScriptPluginCapabilityBase):
             self._post(generation, "rejected", reason)
 
 
+class CalibrationMatrices(orca.script.ScriptPluginCapabilityBase):
+    """Dedicated prepared-file capability; no model copy or live slicing."""
+    def __init__(self):
+        super().__init__()
+        self.window=None;self.storage=None;self.bundle=None;self.closed=True
+        self.lock=Lock();self.epoch=0;self.cancel=Event();self.worker=None
+
+    def get_name(self):
+        return "Smoothificator 校正マトリクス（実G-code）"
+
+    def _state(self,current=None,reason=""):
+        from .calibration_profile import compare_profile
+        from .calibration_storage import load_selections
+        bundle=self.bundle
+        mismatches=compare_profile(dict(bundle.profile_hashes),current or {}) if bundle else ()
+        return {"trials":[t.presentation() for t in bundle.trials] if bundle else [],
+            "compatible":bool(bundle) and not mismatches,"mismatched_keys":mismatches,
+            "selections":load_selections(self.storage,bundle) if bundle else {},
+            "busy":bool(self.worker and self.worker.is_alive()),"reason":reason or ("準備済みデータを選択してください" if bundle else "準備済みデータは同梱されていません")}
+
+    def _profile(self):
+        from .calibration_profile import current_profile_hashes
+        return current_profile_hashes(orca.host.preset_bundle())
+
+    def execute(self):
+        from .calibration_bundle import installed_bundle
+        from .calibration_ui import page as calibration_page
+        self.on_close()
+        if self.window is not None and self.window.is_open():self.window.close()
+        try:
+            app=orca.host.app_info()
+            if app.get("version")!=EXPECTED_VERSION or app.get("build")!=EXPECTED_BUILD:raise ValueError("unsupported-runtime")
+            self.storage=orca.host.plugin.storage();self.bundle=installed_bundle()
+            try:current=self._profile() if self.bundle else {}
+            except (ValueError,RuntimeError):current={}
+            html=calibration_page(self._state(current))
+            with self.lock:
+                self.closed=False;epoch=self.epoch;self.cancel=Event()
+            self.window=orca.host.ui.create_window(title="Smoothificator 校正マトリクス",html=html,width=1100,height=900,
+                on_message=lambda message:self.on_message(message,epoch),on_close=lambda:self.on_close(epoch))
+            return orca.ExecutionResult.success("Prepared calibration library opened")
+        except (ValueError,OSError) as error:
+            self.on_close();orca.host.ui.message(str(error)[:160],title="校正データを開けません",buttons="ok",icon="info")
+            return orca.ExecutionResult.skipped("Prepared library unavailable")
+
+    def on_close(self,epoch=None):
+        with self.lock:
+            if epoch is not None and epoch!=self.epoch:return
+            self.closed=True;self.epoch+=1;self.cancel.set()
+
+    def on_unload(self):
+        self.on_close()
+        if self.window is not None:self.window.close()
+
+    def _post(self,epoch,message):
+        with self.lock:
+            if not self.closed and epoch==self.epoch:self.window.post(message)
+
+    def on_message(self,message,epoch=None):
+        from .calibration_bundle import installed_bundle
+        from .calibration_profile import compare_profile
+        from .calibration_storage import export_trial,remove_created_export,save_selection
+        with self.lock:
+            if self.closed or epoch is not None and epoch!=self.epoch:return
+            epoch=self.epoch
+            if self.worker is not None and self.worker.is_alive():
+                self.window.post({"reason":"書き出し中です。完了を待ってください"});return
+        try:
+            if type(message) is not dict or type(message.get("command")) is not str:raise ValueError("invalid-calibration-message")
+            command=message['command'];keys={"command"}
+            if command in ("calibration_export","calibration_baseline_export"):keys.add("trial_id")
+            elif command in ("calibration_save_selection","calibration_save_proposal"):keys.update(("trial_id","cell_id","symptom"))
+            elif command!="calibration_refresh":raise ValueError("unknown-calibration-command")
+            if set(message)!=keys:raise ValueError("invalid-calibration-message-fields")
+            bundle=installed_bundle()
+            if bundle is None:raise ValueError("prepared-calibration-data-not-packaged")
+            if self.bundle is None or bundle.bundle_sha256!=self.bundle.bundle_sha256:raise ValueError("prepared-data-changed-reopen-window")
+            # Host config strings are copied/hashed only on this UI callback thread.
+            try:current=self._profile()
+            except (ValueError,RuntimeError):current={}
+            if command=="calibration_refresh":self._post(epoch,{"state":self._state(current)});return
+            trial=bundle.trial(message['trial_id'])
+            if command in ("calibration_save_selection","calibration_save_proposal"):
+                with self.lock:
+                    if self.closed or epoch!=self.epoch:return
+                    path,record=save_selection(self.storage,bundle,trial.id,message['cell_id'],message['symptom'],refine=command=="calibration_save_proposal")
+                    self.window.post({"reason":("範囲の端または分解能の限界です。選択を保存し、オフラインでの範囲見直しを依頼しました。新しいG-codeは生成していません" if record.get("proposal",{}).get("status") in ("resolution_limit_offline_range_review_required","offline_range_expansion_review_required") else "提案のみ保存しました。新しいG-codeは生成していません") if command=="calibration_save_proposal" else "選択を保存しました", "paths":[str(path)],"state":self._state(current)})
+                return
+            baseline=command=="calibration_baseline_export"
+            if not baseline and compare_profile(dict(bundle.profile_hashes),current):raise ValueError("current-source-header-keys-missing-or-mismatched")
+            cancel=self.cancel;storage=self.storage
+            def work():
+                target=None
+                try:
+                    target,receipt=export_trial(storage,bundle,trial.id,baseline_only=baseline,cancelled=cancel.is_set)
+                    with self.lock:
+                        stale=self.closed or epoch!=self.epoch or cancel.is_set()
+                        if not stale:self.window.post({"reason":"基準プロジェクトを書き出しました" if baseline else "同梱済み実G-codeをそのまま書き出しました（新規生成ではありません）", "paths":[str(target/f['filename']) for f in receipt['files']],"state":dict(self._state(current),busy=False)})
+                    if stale:remove_created_export(target,storage)
+                except (ValueError,OSError,InterruptedError) as error:
+                    self._post(epoch,{"reason":str(error)[:160],"state":dict(self._state(current),busy=False)})
+            self.worker=Thread(target=work,daemon=True)
+            self._post(epoch,{"state":dict(self._state(current),busy=True)})
+            self.worker.start()
+        except (ValueError,OSError) as error:self._post(epoch,{"reason":str(error)[:160]})
+
+
 @orca.plugin
 class PreviewPackage(orca.base):
     def register_capabilities(self):
         orca.register_capability(CandidatePreview)
+        orca.register_capability(CalibrationMatrices)

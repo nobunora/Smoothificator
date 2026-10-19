@@ -117,6 +117,9 @@ class NativeCouponEmissionPolicy:
 
 
 def rebuild_native_trial_copy(recipe, *, cancelled):
+    from tools.native_prepared_matrix import NativePreparedMatrixRecipe,rebuild_prepared_matrix
+    if type(recipe) is NativePreparedMatrixRecipe:
+        return rebuild_prepared_matrix(recipe,cancelled=cancelled)
     from tools.native_microextrusion_matrix import NativeMicroextrusionMatrixRecipe,rebuild_microextrusion_matrix
     if type(recipe) is NativeMicroextrusionMatrixRecipe:
         return rebuild_microextrusion_matrix(recipe,cancelled=cancelled)

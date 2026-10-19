@@ -692,3 +692,15 @@ No module is allowed to normalize the full G-code text encoding/newlines.
 - safety/architecture changes require ADR first;
 - focused owner tests before broader integration checks;
 - inspect final diff and affected execution paths.
+
+## 32. Prepared calibration export ownership (ADR-0073)
+
+A dedicated Script capability may read an explicit bounded host-configuration
+allowlist and pass immutable values to the calibration bridge. The bridge validates
+pinned prepared resources, copies exact bytes into plugin-owned storage, and owns
+selection/refinement-request persistence. It must not import tools, geometry
+optimizers or G-code mutation adapters. Offline tools own preparation, mechanical
+execution and auditing; the wheel builder accepts only an explicit validated
+resource bundle. Runtime export is source-header-key guarded; geometry-only
+reference-settings export is independent. No live slicing, printer submission,
+arbitrary-path/code execution or ordinary policy changes belong to this capability.
