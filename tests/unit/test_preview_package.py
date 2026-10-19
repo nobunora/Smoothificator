@@ -44,7 +44,7 @@ class PreviewPackageTests(unittest.TestCase):
         self.assertEqual(wheel.name, WHEEL_NAME)
         with ZipFile(wheel) as archive:
             metadata = BytesParser().parsebytes(archive.read(f"{DIST_INFO}/METADATA"))
-            for field, expected in (("Name", "smoothificator-preview"),("Version", "0.2.7"),
+            for field, expected in (("Name", "smoothificator-preview"),("Version", "0.3.1"),
                                     ("Import-Name", "smoothificator_preview"),("Requires-Python", ">=3.12"),
                                     ("Requires-Dist", "numpy==2.2.6"),("License-File", "LICENSE")):
                 self.assertEqual(metadata[field], expected)

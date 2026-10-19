@@ -1124,3 +1124,27 @@ No physical printing until all software/fixture gates and independent review req
 - no inherited jerk/cornering state outside the fixture contract;
 - deterministic output for identical validated inputs;
 - new safety/architecture semantics require ADR first.
+
+## Prepared calibration matrix library (ADR-0073)
+
+The isolated Script package additionally exposes a dedicated calibration capability,
+independent of an active model. It exports vetted, immutable, source-profile-bound
+experimental raw G-code and numbered condition tables from an explicit optional
+resource bundle. It does not slice the live model or generate from current presets.
+Four finite trial families cover clearance/volume, end retraction/wipe, first-2-mm
+extra extrusion/start debt-recovery speed, and volume/drawing speed. The source
+numbered base, prior V1 bytes and ordinary geometry/injection gates remain unchanged.
+
+Required current configuration values are compared as exact source-header
+opt_serialize hashes; unknown or mismatched keys disable G-code export. This is a
+source-header-key guard, not complete profile-equivalence proof. A geometry-only
+reference-settings project may be exported independently. Missing bundled resources
+are reported explicitly. Selection and refinement persist requests only, never
+pretend to generate new G-code or start printing. The nominal displayed width is
+not a measured physical bead width. See ADR-0073 and the bounded handoff specification
+`specs/prepared-calibration-matrix-library.md` for identities and acceptance.
+
+The latest ADR0073 calibration-speed amendment uses20/40/60/80/100percent of
+an actual source/profile/machine-limited reference for new volume_speed trials;
+legacy prepared absolute-speed trials remain reproducible. Runtime export remains
+prepared-byte copying. See `specs/source-relative-calibration-speed.md`.

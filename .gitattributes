@@ -1,0 +1,7 @@
+# Historical evidence is byte-pinned; prevent checkout newline conversion.
+/docs/implementation/floor40-local-seam-patch-feasibility-2026-10-18.md -text whitespace=cr-at-eol
+/tools/freeze_supplemental_emission.py -text
+/tools/prepare_executable_ring_intents.py -text
+/tools/prepare_source_contour_intents.py -text
+/tools/audit_radial_rectangle_spill.py -text
+/tests/unit/test_source_contour_intents.py -text

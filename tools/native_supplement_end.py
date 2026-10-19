@@ -21,7 +21,7 @@ class NativeSupplementEndPolicy:
             raise ValueError('strict staged retraction fraction required')
 
 
-def apply_native_end_policy(block, frozen, anchor, hop, end):
+def apply_native_end_policy(block, frozen, anchor, hop, end, *, start_deretract_speed_mm_s=None):
     """Replace a single known cycle end, rejecting unsupported reverse geometry.
 
     Wipe follows only the last axis-aligned deposited segment, clipped to it.
@@ -31,6 +31,9 @@ def apply_native_end_policy(block, frozen, anchor, hop, end):
         raise ValueError('immutable native end policy required')
     if end.retract_speed_mm_s > hop.retract_speed_mm_s or end.deretract_speed_mm_s > hop.deretract_speed_mm_s:
         raise ValueError('native end E speed exceeds saved profile cap')
+    start_speed = end.deretract_speed_mm_s if start_deretract_speed_mm_s is None else start_deretract_speed_mm_s
+    if type(start_speed) is not F or not 0 < start_speed <= hop.deretract_speed_mm_s:
+        raise ValueError('native start E speed exceeds saved profile cap')
     points = frozen.path.points_mm
     a, b = points[-2:]
     changed = [i for i in range(3) if a[i] != b[i]]
@@ -59,7 +62,7 @@ def apply_native_end_policy(block, frozen, anchor, hop, end):
         raise ValueError('native wipe feed collapsed at command precision')
     replacement = (f'G1 E-{e(stationary)} F{feed(end.retract_speed_mm_s)}\n'
         f'G1 X{xyz(target[0])} Y{xyz(target[1])} E-{e(moving)} F{_text(emitted_feed,3)}\n').encode()
-    block = block.replace(old_start, f'G1 E{e(debt)} F{feed(end.deretract_speed_mm_s)}\n'.encode())
+    block = block.replace(old_start, f'G1 E{e(debt)} F{feed(start_speed)}\n'.encode())
     block = block.replace(old_end, replacement)
     # Reconcile only after the immediately following Z hop; preserve physical debt.
     lines = block.splitlines(keepends=True)
